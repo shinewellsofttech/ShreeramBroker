@@ -1,0 +1,568 @@
+// Contract Print Styles - Exact Match to Image
+
+// Global print styles
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+  
+  .contract-print-container {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  // Hide print header and buttons when printing
+  .print-header {
+    display: none !important;
+  }
+
+  // Ensure blue separator prints properly
+  .blue-separator {
+    background-color: #0000ff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+}
+
+.contract-print-container {
+  background: #fff;
+  min-height: 100vh;
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  line-height: 1.2;
+  color: #000;
+  font-size: 12px;
+  overflow: visible;
+  width: 100%;
+  position: relative;
+ 
+  // Ensure proper spacing between multiple contracts
+  .contract-document + .contract-document {
+    margin-top: 160px;
+  }
+
+  // Print Header (hidden when printing)
+  .print-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+
+    .btn-group {
+      .btn {
+        margin-left: 0.5rem;
+      }
+    }
+  }
+
+  // Print header styling (hidden when printing via global print styles)
+
+  // Loading and Error States
+  .contract-print-loading,
+  .contract-print-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    text-align: center;
+
+    .spinner-border {
+      width: 3rem;
+      height: 3rem;
+    }
+  }
+
+  // Main Contract Document
+  .contract-document {
+    max-width: 210mm; // A4 width
+    margin: 0 auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    page-break-inside: avoid;
+    page-break-after: always;
+    overflow: visible;
+    min-height: auto;
+    height: auto;
+    width: 100%;
+    margin-bottom: 200px;
+
+    // Contract Header - Exact match to image
+    .contract-header {
+      position: relative;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+
+      // Top Section - Shree and Jurisdiction
+      .header-top-section {
+        text-align: center;
+        margin-bottom: 10px;
+        margin-top: 5px;
+
+        .shree-text {
+          font-size: 16px;
+          font-weight: bold;
+          color: #000;
+          margin-bottom: 10px;
+        }
+
+        .jurisdiction-text {
+          font-size: 12px;
+          color: #000;
+          font-weight: bold;
+        }
+      }
+
+      // Middle Section - Logo, Company Name and Details
+      .header-middle-section {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        gap: 15px;
+
+        .logo-section {
+          flex-shrink: 0;
+          order: 1;
+          text-align: center;
+
+          .company-logo {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border: none;
+          }
+        }
+
+        .company-details {
+          flex-grow: 1;
+          text-align: center;
+          order: 2;
+
+          .company-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #0000ff;
+            margin: 0 0 6px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .company-role {
+            font-size: 11px;
+            color: #000;
+            margin-bottom: 4px;
+            font-weight: bold;
+          }
+
+          .company-address {
+            font-size: 11px;
+            color: #000;
+            font-weight: bold;
+          }
+        }
+
+        .empty-space {
+          flex-shrink: 0;
+          order: 3;
+          width: 70px; // Same width as logo to balance the layout
+        }
+      }
+
+      // Bottom Section - PAN and GSTIN in opposite corners
+      .header-bottom-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+
+        .pan-section {
+          flex-shrink: 0;
+          text-align: left;
+
+          .pan-text {
+            font-size: 10px;
+            font-weight: bold;
+            color: #000;
+          }
+        }
+
+        .gstin-section {
+          flex-shrink: 0;
+          text-align: right;
+
+          .gstin-text {
+            font-size: 10px;
+            font-weight: bold;
+            color: #000;
+          }
+        }
+      }
+
+      // Blue separator line
+      .blue-separator {
+        height: 2px;
+        background-color: #0000ff;
+        margin-bottom: 8px;
+        width: 100%;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color-adjust: exact;
+      }
+    }
+
+    // Main Content
+    .contract-main-content {
+      margin-bottom: 20px;
+
+      // Parties Section - Exact layout from image
+      .parties-section {
+        display: flex;
+        gap: 40px;
+        margin-bottom: 15px;
+
+        .left-column {
+          flex: 1;
+
+          .contract-number {
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 10px;
+          }
+
+          .seller-info,
+          .buyer-info {
+            margin-bottom: 15px;
+
+            .party-name {
+              font-size: 14px;
+              font-weight: bold;
+              color: #000;
+              margin-bottom: 6px;
+            }
+
+            .party-address {
+              font-size: 12px;
+              color: #000;
+              font-weight: bold;
+            }
+          }
+
+          .dear-sir {
+            font-size: 12px;
+            color: #000;
+            font-weight: bold;
+            margin-top: 20px;
+          }
+        }
+
+        .right-column {
+          flex: 1;
+          text-align: right;
+
+          .contact-person-info {
+            .contract-date {
+              font-size: 12px;
+              font-weight: bold;
+              color: #000;
+              margin-bottom: 10px;
+            }
+
+            .person-name {
+              font-size: 12px;
+              font-weight: bold;
+              color: #000;
+              margin-bottom: 6px;
+            }
+
+            .person-gstin {
+              font-size: 12px;
+              color: #000;
+              margin-bottom: 10px;
+              font-weight: bold;
+            }
+          }
+        }
+      }
+
+      // Central Table - Exact structure from image
+      .central-table {
+        border: 2px solid #000;
+        margin-bottom: 20px;
+        overflow: hidden;
+
+        .table-header {
+          display: flex;
+          border-bottom: 2px solid #000;
+          align-items: stretch;
+
+          .left-header {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #000;
+            border-right: 1px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .right-header {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+        }
+
+        .table-content {
+          display: flex;
+
+          .left-subtable {
+            flex: 1;
+            border-right: 2px solid #000;
+            display: flex;
+            flex-direction: column;
+
+            .table-row {
+              display: flex;
+              border-bottom: 1px solid #000;
+              min-height: 40px;
+
+              &:last-child {
+                flex-grow: 1;
+                border-bottom: none;
+              }
+
+              .label {
+                flex: 1;
+                padding: 8px 6px;
+                font-size: 11px;
+                font-weight: bold;
+                color: #000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                border-right: 1px solid #000;
+              }
+
+              .value {
+                flex: 1;
+                padding: 8px 6px;
+                font-size: 11px;
+                font-weight: bold;
+                color: #000;
+                text-align: left;
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+              }
+            }
+          }
+
+          .right-subtable {
+            flex: 1;
+
+            .table-row {
+              display: flex;
+              border-bottom: 1px solid #000;
+              min-height: 40px;
+
+              &:last-child {
+                border-bottom: none;
+              }
+
+              .label {
+                flex: 1;
+                padding: 8px 6px;
+                font-size: 11px;
+                font-weight: bold;
+                color: #000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                border-right: 1px solid #000;
+              }
+
+              .value {
+                flex: 1;
+                padding: 8px 6px;
+                font-size: 11px;
+                font-weight: bold;
+                color: #000;
+                text-align: left;
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+              }
+            }
+          }
+        }
+
+        // Bottom Table - Separate table as shown in image
+        .bottom-table {
+          border-top: 2px solid #000;
+          width: 100%;
+
+          .bottom-table-header {
+            display: flex;
+            border-bottom: 1px solid #000;
+
+            .bottom-header-cell {
+              flex: 1;
+              padding: 8px 6px;
+              text-align: center;
+              font-size: 10px;
+              font-weight: bold;
+              color: #000;
+              border-right: 1px solid #000;
+              background: #f5f5f5;
+
+              &:last-child {
+                border-right: none;
+              }
+            }
+          }
+
+          .bottom-table-row {
+            display: flex;
+
+            .bottom-data-cell {
+              flex: 1;
+              padding: 8px 6px;
+              text-align: center;
+              font-size: 10px;
+              font-weight: bold;
+              color: #000;
+              border-right: 1px solid #000;
+
+              &:last-child {
+                border-right: none;
+              }
+            }
+          }
+        }
+      }
+
+      // Other Terms
+      .other-terms {
+        margin-bottom: 15px;
+
+        .terms-header {
+          font-size: 15px;
+          font-weight: bold;
+          color: #000;
+          margin-bottom: 8px;
+        }
+
+        .terms-content {
+          .term-item {
+            font-size: 14px;
+            color: #000;
+            margin-bottom: 4px;
+            font-weight: bold;
+            line-height: 1.3;
+          }
+        }
+      }
+
+      // Terms & Conditions - Exact match to image
+      .terms-conditions {
+        margin-bottom: 20px;
+
+        .terms-header-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+
+          .terms-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #000;
+            margin: 0;
+          }
+
+          .regards-text {
+            font-size: 12px;
+            color: #000;
+            font-weight: bold;
+            font-style: italic;
+          }
+        }
+
+        .terms-list {
+          .term-item {
+            margin-bottom: 10px;
+            line-height: 1.3;
+
+            .term-number {
+              font-size: 12px;
+              font-weight: bold;
+              color: #000;
+              display: block;
+              margin-bottom: 3px;
+            }
+
+            .term-description {
+              font-size: 12px;
+              color: #000;
+              line-height: 1.3;
+              font-weight: bold;
+
+              strong {
+                color: #ff0000;
+                font-weight: bold;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Footer - Exact match to image
+    .contract-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-end;
+      margin-top: auto;
+
+      .footer-right {
+        text-align: right;
+
+        .for-company {
+          font-size: 9px;
+          color: #000;
+          margin-bottom: 6px;
+          font-weight: bold;
+
+          .company-name-bold {
+            color: #000;
+            font-weight: bold;
+          }
+        }
+
+        .authorised-signatory {
+          font-size: 9px;
+          color: #000;
+          font-weight: bold;
+        }
+      }
+    }
+  }
+}

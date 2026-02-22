@@ -1,0 +1,1294 @@
+// Compact Contract Page Styles
+.contract-page {
+  background: #fffacd !important;
+  min-height: 100vh;
+  padding: 10px;
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  // Modal specific styles
+  &.contract-modal {
+    background: #fffacd !important;
+    position: relative;
+    min-height: auto;
+  }
+
+  .page-content {
+    background: #fffacd;
+    border-radius: 0;
+    box-shadow: none;
+    margin: 0;
+    max-width: none;
+    width: 100%;
+    height: 100vh;
+    overflow: auto;
+    padding: 0px;
+  }
+
+  // Main Form Container - Ultra Compact
+  .contract-form {
+    background: #fffacd !important;
+    padding: 0.95rem;
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    height: auto;
+    overflow: visible;
+
+    // Ensure the form takes full width
+    .form {
+      width: 100%;
+      
+      margin: 0;
+      padding: 0;
+    }
+
+    // Ultra compact rows and columns
+    .row {
+      margin: -0.125rem;
+      width: 100%;
+    }
+
+    .col, .col-lg-4, .col-lg-7, .col-lg-5, .col-lg-8, .col-lg-12, .col-md-4, .col-md-7, .col-md-5, .col-md-6, .col-md-3, .col-md-2 {
+      padding: 0.05rem;
+    }
+
+    .form-section {
+      background: #fffacd !important;
+      border-radius: 0.25rem;
+      padding: 0.45rem;
+      margin: 0.125rem;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e5e7eb;
+      transition: all 0.3s ease;
+      height: auto;
+      min-height: auto;
+      overflow: visible;
+
+      &:hover {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+        transform: translateY(-1px);
+      }
+
+      h6 {
+        color: #1f2937;
+        font-weight: 600;
+        font-size: 0.4rem;
+        margin: 0 0 0.125rem 0;
+        padding: 0 0 0.125rem 0;
+        border-bottom: 1px solid #f3f4f6;
+        position: relative;
+
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          width: 30px;
+          height: 1px;
+          background: linear-gradient(90deg, #4f46e5, #7c3aed);
+          border-radius: 1px;
+        }
+      }
+    }
+
+    // Modal specific styles
+    &.contract-form-modal {
+      background: #fffacd !important;
+      
+      .form-section-modal {
+        background: #fffacd !important;
+      }
+    }
+
+    // Ultra Compact Form Controls
+    .form-control-sm {
+      border: 1px solid #e5e7eb !important;
+      border-radius: 0.125rem !important;
+      font-size: 0.7rem !important;
+      padding: 0.125rem 0.25rem !important;
+      height: 18px !important;
+      min-height: 18px !important;
+      margin-bottom: 0.125rem !important;
+      line-height: 1.1 !important;
+      transition: all 0.3s ease !important;
+      background: #ffffff !important;
+      box-sizing: border-box !important;
+      display: block !important;
+      width: 100% !important;
+      position: relative !important;
+      font-weight: bold !important;
+      color: black !important;
+
+      &:focus {
+        border: 1px solid #007bff !important;
+        border-color: #007bff !important;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25) !important;
+        outline: none !important;
+        transform: scale(1.02) !important;
+        z-index: 10 !important;
+      }
+
+      &:hover {
+        border-color: #007bff !important;
+        border-width: 1px !important;
+        box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.15) !important;
+        transform: scale(1.01) !important;
+      }
+
+      &:focus:hover {
+        border: 1px solid #0056b3 !important;
+        border-color: #0056b3 !important;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3) !important;
+        transform: scale(1.02) !important;
+      }
+    }
+
+    // Lifting Table Styles
+    .table-container {
+      // Lifting date input specific styles
+      .lifting-date-input,
+      input[type="date"].lifting-date-input {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+        
+        &::-webkit-calendar-picker-indicator {
+          filter: invert(0) !important;
+          opacity: 1 !important;
+        }
+        
+        &::-webkit-input-placeholder {
+          color: #6c757d !important;
+          opacity: 1 !important;
+        }
+        
+        &::placeholder {
+          color: #6c757d !important;
+          opacity: 1 !important;
+        }
+        
+        &::-webkit-datetime-edit-text,
+        &::-webkit-datetime-edit-month-field,
+        &::-webkit-datetime-edit-day-field,
+        &::-webkit-datetime-edit-year-field {
+          color: #000000 !important;
+        }
+      }
+      
+      .table-responsive {
+        // Custom scrollbar styling
+        &::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        &::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 4px;
+        }
+        
+        &::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 4px;
+          
+          &:hover {
+            background: #a8a8a8;
+          }
+        }
+        
+        .sticky-top {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          
+          th {
+            background-color: #331597 !important;
+            border-bottom: 2px solid #dee2e6 !important;
+          }
+        }
+        
+        .table {
+          margin-bottom: 0;
+          
+          tbody {
+            tr {
+              &:nth-child(even) {
+                background-color: #fafbfc;
+              }
+              
+              &:hover {
+                background-color: #f8f9fa;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Ensure all input elements have ultra compact styling
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"] {
+      border: 1px solid #e5e7eb !important;
+      border-radius: 0.125rem !important;
+      font-size: 0.7rem !important;
+      padding: 0.125rem 0.25rem !important;
+      height: 18px !important;
+      min-height: 18px !important;
+      margin-bottom: 0.125rem !important;
+      line-height: 1.1 !important;
+      transition: all 0.3s ease !important;
+      background: #ffffff !important;
+      box-sizing: border-box !important;
+      display: block !important;
+      width: 100% !important;
+      position: relative !important;
+      font-weight: bold !important;
+      color: black !important;
+
+      &:focus {
+        border: 3px solid #007bff !important;
+        border-color: #007bff !important;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25) !important;
+        outline: none !important;
+        transform: scale(1.02) !important;
+        z-index: 10 !important;
+      }
+
+      &:hover {
+        border-color: #007bff !important;
+        border-width: 2px !important;
+        box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.15) !important;
+        transform: scale(1.01) !important;
+      }
+
+      &:focus:hover {
+        border: 3px solid #0056b3 !important;
+        border-color: #0056b3 !important;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3) !important;
+        transform: scale(1.02) !important;
+      }
+    }
+
+    // Ultra compact select elements
+    select {
+      border: 1px solid #e5e7eb !important;
+      border-radius: 0.125rem !important;
+      font-size: 0.7rem !important;
+      padding: 0.125rem 0.25rem !important;
+      height: 18px !important;
+      min-height: 18px !important;
+      margin-bottom: 0.125rem !important;
+      line-height: 1.1 !important;
+      transition: all 0.3s ease !important;
+      background: #ffffff !important;
+      box-sizing: border-box !important;
+      display: block !important;
+      width: 100% !important;
+      position: relative !important;
+      font-weight: bold !important;
+      color: black !important;
+
+      &:focus {
+        border: 3px solid #007bff !important;
+        border-color: #007bff !important;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25) !important;
+        outline: none !important;
+        transform: scale(1.02) !important;
+        z-index: 10 !important;
+      }
+
+      &:hover {
+        border-color: #007bff !important;
+        border-width: 2px !important;
+        box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.15) !important;
+        transform: scale(1.01) !important;
+      }
+
+      &:focus:hover {
+        border: 3px solid #0056b3 !important;
+        border-color: #0056b3 !important;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3) !important;
+        transform: scale(1.02) !important;
+      }
+
+      // Make all select options bold and black
+      option {
+        font-weight: bold !important;
+        color: black !important;
+      }
+    }
+
+    .form-label {
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 0.125rem;
+      font-size: 0.4rem;
+      display: block;
+    }
+
+    .form-label-sm {
+      font-weight: 500;
+      color: #6b7280;
+      margin-bottom: 0.125rem;
+      font-size: 0.4rem;
+      display: block;
+    }
+
+    // Ultra compact select styling
+    select.form-control-sm {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 4px center;
+      background-repeat: no-repeat;
+      background-size: 10px;
+      padding-right: 20px;
+      appearance: none;
+    }
+
+    // Ultra compact checkbox styling
+    .form-check {
+      margin-bottom: 0.125rem;
+
+      .form-check-input {
+        width: 10px;
+        height: 10px;
+        margin-top: 0;
+        border: 1px solid #d1d5db;
+        border-radius: 0.125rem;
+        transition: all 0.2s ease;
+
+        &:checked {
+          background-color: #4f46e5;
+          border-color: #4f46e5;
+        }
+
+        &:focus {
+          box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.1);
+        }
+      }
+
+      .form-check-label {
+        font-size: 0.4rem;
+        color: #374151;
+        font-weight: 500;
+        margin-left: 0.125rem;
+      }
+    }
+
+    // Ultra compact form group
+    .form-group {
+      margin-bottom: 0.125rem;
+    }
+
+    // Ultra compact row spacing
+    .row {
+      margin-bottom: 0.125rem;
+    }
+
+    // Ultra compact column spacing
+    .col, .col-md-4, .col-md-7, .col-md-5, .col-md-6, .col-md-3, .col-md-2 {
+      margin-bottom: 0.0625rem;
+    }
+  }
+
+  // Ultra compact table styling
+  .table-container {
+    margin-bottom: 0.125rem;
+    
+    .table-responsive {
+      border-radius: 0.25rem;
+      overflow: hidden;
+    }
+
+    .table {
+      font-size: 0.4rem;
+      margin-bottom: 0;
+      border-radius: 0.125rem;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+
+      th {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-color: #e5e7eb;
+        font-weight: 600;
+        color: #1f2937;
+        padding: 0.125rem 0.0625rem !important;
+        height: auto;
+        text-align: center;
+        font-size: 0.4rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      td {
+        border-color: #f3f4f6;
+        padding: 0.0625rem;
+        vertical-align: middle;
+        text-align: center;
+        background: #ffffff;
+      }
+
+      tbody tr {
+        transition: all 0.2s ease;
+
+        &:hover {
+          background-color: #f8fafc;
+          transform: scale(1.002);
+        }
+      }
+
+      // Enhanced focus effects for table input fields
+      input[type="text"],
+      input[type="date"],
+      input[type="number"] {
+        border: 1px solid #e5e7eb !important;
+        border-radius: 0.125rem !important;
+        font-size: 0.65rem !important;
+        padding: 0.125rem 0.25rem !important;
+        height: 18px !important;
+        min-height: 18px !important;
+        line-height: 1.1 !important;
+        transition: all 0.3s ease !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        position: relative !important;
+        font-weight: bold !important;
+        color: #000000 !important;
+        
+        // Date input specific styling
+        &[type="date"] {
+          color: #000000 !important;
+          background-color: #ffffff !important;
+          
+          &::-webkit-calendar-picker-indicator {
+            filter: invert(0) !important;
+            opacity: 1 !important;
+            cursor: pointer;
+          }
+          
+          &::-webkit-input-placeholder {
+            color: #6c757d !important;
+            opacity: 1 !important;
+          }
+          
+          &::placeholder {
+            color: #6c757d !important;
+            opacity: 1 !important;
+          }
+          
+          &::-webkit-datetime-edit-text,
+          &::-webkit-datetime-edit-month-field,
+          &::-webkit-datetime-edit-day-field,
+          &::-webkit-datetime-edit-year-field {
+            color: #000000 !important;
+          }
+        }
+
+        &:focus {
+          border: 3px solid #007bff !important;
+          border-color: #007bff !important;
+          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25) !important;
+          outline: none !important;
+          transform: scale(1.05) !important;
+          z-index: 10 !important;
+          background: #f8f9ff !important;
+        }
+
+        &:hover {
+          border-color: #007bff !important;
+          border-width: 2px !important;
+          box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.15) !important;
+          transform: scale(1.02) !important;
+        }
+
+        &:focus:hover {
+          border: 3px solid #0056b3 !important;
+          border-color: #0056b3 !important;
+          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3) !important;
+          transform: scale(1.05) !important;
+          background: #f0f4ff !important;
+        }
+      }
+    }
+  }
+
+  // Ultra compact lifting summary
+  .lifting-summary {
+    margin-top: 0.125rem;
+    
+    .form-group {
+      margin-bottom: 0.125rem;
+    }
+    
+    .form-label {
+      margin-bottom: 0.0625rem;
+      font-size: 0.4rem;
+    }
+  }
+
+  // Ultra compact entries summary
+  .entries-summary-section {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.125rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    margin-top: 0.125rem;
+
+    .section-title {
+      font-size: 0.4rem;
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 0;
+      
+      i {
+        color: #6c757d;
+      }
+    }
+
+    .entries-status {
+      .badge {
+        font-size: 0.3rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-weight: 500;
+      }
+    }
+
+    .entries-single-line {
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+      margin-bottom: 0.25rem;
+      
+      .entry-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.125rem 0;
+        border-bottom: 1px solid #f1f3f4;
+        
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .entry-label {
+          font-size: 0.6rem;
+          font-weight: 600;
+          color: #495057;
+          min-width: 80px;
+          flex-shrink: 0;
+        }
+
+        .entry-status {
+          font-size: 0.6rem;
+          color: #6c757d;
+          font-weight: 500;
+          min-width: 70px;
+          flex-shrink: 0;
+        }
+
+        .entry-detail {
+          font-size: 0.6rem;
+          color: #dc3545;
+          background: #f8d7da;
+          padding: 0.0625rem 0.25rem;
+          border-radius: 0.125rem;
+          font-weight: 500;
+          flex-shrink: 0;
+        }
+      }
+    }
+
+    .entries-footer {
+      border-top: 1px solid #dee2e6;
+      padding-top: 0.25rem;
+      
+      small {
+        font-size: 0.4rem;
+        color: #6c757d;
+        
+        i {
+          color: #6c757d;
+        }
+      }
+
+      .btn-outline-secondary {
+          font-size: 0.4rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        border-color: #6c757d;
+        color: #6c757d;
+        
+        &:hover {
+          background-color: #6c757d;
+          border-color: #6c757d;
+          color: #ffffff;
+        }
+        
+        i {
+          font-size: 0.5rem;
+        }
+      }
+    }
+  }
+
+  // Ultra compact action buttons
+  .action-buttons {
+    .btn {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.875rem;
+      border-radius: 0.375rem;
+      margin-right: 0.25rem;
+      margin-bottom: 0.25rem;
+      height: auto;
+      min-height: 38px;
+      line-height: 1.5;
+      font-weight: 500;
+      border: 1px solid transparent;
+      transition: all 0.15s ease-in-out;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      white-space: nowrap;
+      
+      &:last-child {
+        margin-right: 0;
+      }
+
+      // Bootstrap button variants
+      &.btn-primary {
+        color: #fff;
+        background-color: #556ee6;
+        border-color: #556ee6;
+        
+        &:hover {
+          color: #fff;
+          background-color: #485ec4;
+          border-color: #485ec4;
+        }
+      }
+
+      &.btn-success {
+        color: #fff;
+        background-color: #34c38f;
+        border-color: #34c38f;
+        
+        &:hover {
+          color: #fff;
+          background-color: #2daa7e;
+          border-color: #2daa7e;
+        }
+      }
+
+      &.btn-danger {
+        color: #fff;
+        background-color: #f46a6a;
+        border-color: #f46a6a;
+        
+        &:hover {
+          color: #fff;
+          background-color: #e55555;
+          border-color: #e55555;
+        }
+      }
+
+      &.btn-info {
+        color: #fff;
+        background-color: #50a5f1;
+        border-color: #50a5f1;
+        
+        &:hover {
+          color: #fff;
+          background-color: #3d8fd9;
+          border-color: #3d8fd9;
+        }
+      }
+
+      &.btn-dark {
+        color: #fff;
+        background-color: #495057;
+        border-color: #495057;
+        
+        &:hover {
+          color: #fff;
+          background-color: #3a4047;
+          border-color: #3a4047;
+        }
+      }
+
+      &.btn-outline-primary {
+        color: #556ee6;
+        background-color: transparent;
+        border-color: #556ee6;
+        
+        &:hover {
+          color: #fff;
+          background-color: #556ee6;
+          border-color: #556ee6;
+        }
+      }
+
+      &.btn-outline-success {
+        color: #34c38f;
+        background-color: transparent;
+        border-color: #34c38f;
+        
+        &:hover {
+          color: #fff;
+          background-color: #34c38f;
+          border-color: #34c38f;
+        }
+      }
+      
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+
+      &:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+    }
+    
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+      height: auto;
+      min-height: 31px;
+      line-height: 1.5;
+      min-width: auto;
+    }
+  }
+
+  // Ultra compact amount summary
+  .amount-summary {
+    margin-bottom: 0.125rem;
+    
+    .form-group {
+      margin-bottom: 0.125rem;
+    }
+    
+    .form-label {
+      margin-bottom: 0.0625rem;
+      font-size: 0.65rem;
+    }
+  }
+
+  // Ultra compact notes section
+  .notes-section {
+    .form-group {
+      margin-bottom: 0.0625rem;
+    }
+    
+    input[type="text"] {
+      margin-bottom: 0.0625rem;
+      font-weight: bold !important;
+      color: black !important;
+    }
+  }
+
+  // Ultra compact global spacing adjustments
+  .mb-3 {
+    margin-bottom: 0.125rem !important;
+  }
+  
+  .mb-2 {
+    margin-bottom: 0.125rem !important;
+  }
+  
+  .mt-2 {
+    margin-top: 0.125rem !important;
+  }
+  
+  .mt-3 {
+    margin-top: 0.25rem !important;
+  }
+  
+  .p-3 {
+    padding: 0.125rem !important;
+  }
+  
+  .p-4 {
+    padding: 0.25rem !important;
+  }
+
+
+
+  // Ultra compact form controls with specific classes
+  .contract-form {
+    .form-control-sm {
+      &.py-1 {
+        padding-top: 0.125rem !important;
+        padding-bottom: 0.125rem !important;
+      }
+    }
+
+    // Ultra compact table styles
+    .table {
+      th, td {
+        padding: 0.0625rem;
+      }
+    }
+
+    // Ultra compact button groups
+    .btn-group-sm > .btn {
+      padding: 0.0625rem 0.125rem;
+      font-size: 0.65rem;
+      min-height: 20px;
+    }
+
+    // Ultra compact select dropdowns
+    select.form-control-sm {
+      padding-right: 1rem;
+      background-position: right 0.25rem center;
+      background-size: 0.5rem 0.5rem;
+    }
+
+    // Ultra compact date inputs
+    input[type="date"].form-control-sm {
+      padding-right: 0.25rem;
+    }
+
+    // Ultra compact number inputs
+    input[type="number"].form-control-sm {
+      padding-right: 0.25rem;
+    }
+
+    // Ultra compact text inputs
+    input[type="text"].form-control-sm {
+      padding-right: 0.25rem;
+    }
+  }
+
+  // Ultra compact spacing utilities
+  .g-1 {
+    --bs-gutter-x: 0.125rem;
+    --bs-gutter-y: 0.125rem;
+  }
+
+  .g-2 {
+    --bs-gutter-x: 0.25rem;
+    --bs-gutter-y: 0.25rem;
+  }
+
+  .py-1 { 
+    padding-top: 0.125rem !important; 
+    padding-bottom: 0.125rem !important; 
+  }
+  
+  .px-1 { 
+    padding-left: 0.125rem !important; 
+    padding-right: 0.125rem !important; 
+  }
+  
+  .px-2 { 
+    padding-left: 0.25rem !important; 
+    padding-right: 0.25rem !important; 
+  }
+
+  // Responsive adjustments for ultra compact layout
+  @media (max-width: 1200px) {
+    .form-section {
+      padding: 0.5rem;
+      
+      .section-title {
+        font-size: 0.55rem;
+        margin-bottom: 0.25rem;
+      }
+    }
+    
+    .form-control-sm {
+      font-size: 0.65rem;
+      padding: 0.1rem 0.2rem;
+    }
+    
+    .btn-sm {
+      font-size: 0.6rem;
+      padding: 0.1rem 0.2rem;
+    }
+  }
+
+  // Mobile Responsive Design
+  @media (max-width: 768px) {
+    .contract-page {
+      padding: 5px;
+      top: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      position: relative;
+      height: auto;
+      min-height: 100vh;
+      
+      .contract-form {
+        padding: 0.5rem;
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
+        
+        .form-section {
+          margin: 0.25rem 0;
+          padding: 0.75rem;
+          border-radius: 0.5rem;
+          position: relative;
+          height: auto;
+          overflow: visible;
+          
+          .section-title {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            word-wrap: break-word;
+          }
+        }
+        
+        // Stack left and right columns on mobile
+        .contract-left-column,
+        .contract-right-column {
+          width: 100% !important;
+          float: none !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          margin-bottom: 1rem;
+          display: block;
+        }
+        
+        // Hide vertical separator on mobile
+        .vertical-separator {
+          display: none !important;
+        }
+        
+        .contract-left-column::after,
+        .contract-right-column::before {
+          display: none;
+        }
+        
+        // Make form controls larger on mobile
+        .form-control-sm,
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select {
+          font-size: 0.875rem !important;
+          padding: 0.375rem 0.5rem !important;
+          height: 38px !important;
+          min-height: 38px !important;
+          margin-bottom: 0.5rem !important;
+        }
+        
+        .form-label-sm {
+          font-size: 0.75rem;
+          margin-bottom: 0.25rem;
+        }
+        
+        // Stack form groups properly
+        .row {
+          margin-left: -0.5rem;
+          margin-right: -0.5rem;
+          
+          .col,
+          [class*="col-"] {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            margin-bottom: 0.5rem;
+          }
+        }
+        
+        // Table responsive on mobile with horizontal scroll
+        .table-container {
+          margin: 0.5rem 0;
+          
+          .table-responsive,
+          .lifting-table-responsive {
+            max-height: 400px;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            display: block !important;
+            width: 100% !important;
+            
+            // Custom scrollbar for mobile
+            &::-webkit-scrollbar {
+              width: 8px;
+              height: 8px;
+            }
+            
+            &::-webkit-scrollbar-track {
+              background: #f1f1f1;
+              border-radius: 4px;
+            }
+            
+            &::-webkit-scrollbar-thumb {
+              background: #c1c1c1;
+              border-radius: 4px;
+              
+              &:hover {
+                background: #a8a8a8;
+              }
+            }
+            
+            // Horizontal scrollbar
+            &::-webkit-scrollbar:horizontal {
+              height: 8px;
+            }
+          }
+          
+          .table {
+            min-width: 600px !important;
+            width: 100% !important;
+          }
+          
+          .table {
+            font-size: 0.75rem;
+            
+            th {
+              font-size: 0.7rem;
+              padding: 0.5rem 0.25rem !important;
+            }
+            
+            td {
+              padding: 0.375rem 0.25rem !important;
+              
+              input[type="text"],
+              input[type="date"],
+              input[type="number"] {
+                font-size: 0.75rem !important;
+                padding: 0.25rem 0.375rem !important;
+                height: 32px !important;
+                min-height: 32px !important;
+                color: #000000 !important;
+                background-color: #ffffff !important;
+                
+                // Date input specific styles for mobile
+                &[type="date"] {
+                  color: #000000 !important;
+                  background-color: #ffffff !important;
+                  
+                  &::-webkit-calendar-picker-indicator {
+                    filter: invert(0) !important;
+                    opacity: 1 !important;
+                  }
+                  
+                  &::-webkit-input-placeholder {
+                    color: #6c757d !important;
+                    opacity: 1 !important;
+                  }
+                  
+                  &::placeholder {
+                    color: #6c757d !important;
+                    opacity: 1 !important;
+                  }
+                  
+                  &::-webkit-datetime-edit-text {
+                    color: #000000 !important;
+                  }
+                  
+                  &::-webkit-datetime-edit-month-field {
+                    color: #000000 !important;
+                  }
+                  
+                  &::-webkit-datetime-edit-day-field {
+                    color: #000000 !important;
+                  }
+                  
+                  &::-webkit-datetime-edit-year-field {
+                    color: #000000 !important;
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // Action buttons mobile layout - 5 buttons in first row, 4 in second row
+        .action-buttons {
+          .d-flex {
+            display: grid !important;
+            grid-template-columns: repeat(5, 1fr) !important;
+            gap: 0.4rem !important;
+            width: 100% !important;
+          }
+          
+          .btn,
+          .action-btn {
+            width: 100% !important;
+            margin-right: 0 !important;
+            margin-bottom: 0 !important;
+            padding: 0.35rem 0.25rem !important;
+            font-size: 0.7rem !important;
+            min-height: 38px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            
+            i {
+              font-size: 0.9rem !important;
+            }
+            
+            span {
+              font-size: 0.65rem !important;
+              white-space: nowrap;
+            }
+          }
+        }
+        
+        // Lifting summary mobile
+        .lifting-summary {
+          .row {
+            .col {
+              margin-bottom: 0.75rem;
+            }
+          }
+        }
+        
+        // Notes section mobile
+        .notes-section {
+          margin-top: 1rem;
+          
+          input[type="text"] {
+            font-size: 0.875rem !important;
+            padding: 0.5rem !important;
+            height: 40px !important;
+            margin-bottom: 0.5rem !important;
+          }
+        }
+        
+        // Lifting ledger select mobile
+        select[name="LiftingLedger"] {
+          width: 100% !important;
+          max-width: 100% !important;
+          font-size: 0.875rem !important;
+          padding: 0.5rem !important;
+          height: 40px !important;
+        }
+        
+        // Form group spacing on mobile
+        .form-group {
+          margin-bottom: 0.75rem;
+        }
+        
+        // Clearfix for mobile
+        .clearfix-mobile {
+          clear: both;
+          margin-top: 1rem;
+          height: 0;
+        }
+      }
+    }
+    
+    // Mobile specific adjustments for buttons
+    @media (max-width: 576px) {
+      .contract-page {
+        .contract-form {
+          padding: 0.25rem;
+          
+          .form-section {
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+          }
+          
+          .section-title {
+            font-size: 0.8rem;
+          }
+          
+          .form-control-sm,
+          input[type="text"],
+          input[type="number"],
+          input[type="date"],
+          select {
+            font-size: 0.8rem !important;
+            padding: 0.5rem !important;
+            height: 42px !important;
+          }
+          
+          .action-buttons {
+            .btn {
+              font-size: 0.8rem;
+              padding: 0.625rem 0.875rem;
+              min-height: 46px;
+            }
+          }
+          
+          .table-container {
+            .table-responsive,
+            .lifting-table-responsive {
+              overflow-x: auto !important;
+              overflow-y: auto !important;
+              -webkit-overflow-scrolling: touch !important;
+            }
+            
+            .table {
+              font-size: 0.7rem;
+              min-width: 600px !important;
+              
+              th {
+                font-size: 0.65rem;
+                padding: 0.375rem 0.2rem !important;
+              }
+              
+              td {
+                padding: 0.25rem 0.2rem !important;
+                
+                input {
+                  font-size: 0.7rem !important;
+                  height: 30px !important;
+                  color: #000000 !important;
+                  background-color: #ffffff !important;
+                }
+                
+                input[type="date"] {
+                  color: #000000 !important;
+                  background-color: #ffffff !important;
+                  
+                  &::-webkit-calendar-picker-indicator {
+                    filter: invert(0) !important;
+                    opacity: 1 !important;
+                  }
+                  
+                  &::-webkit-input-placeholder {
+                    color: #6c757d !important;
+                    opacity: 1 !important;
+                  }
+                  
+                  &::placeholder {
+                    color: #6c757d !important;
+                    opacity: 1 !important;
+                  }
+                  
+                  &::-webkit-datetime-edit-text,
+                  &::-webkit-datetime-edit-month-field,
+                  &::-webkit-datetime-edit-day-field,
+                  &::-webkit-datetime-edit-year-field {
+                    color: #000000 !important;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
