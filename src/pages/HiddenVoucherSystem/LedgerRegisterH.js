@@ -1,0 +1,183 @@
+import React, { useEffect, useState, useMemo } from 'react';
+import { Row, Col, Card, CardBody, Input, Button, Table, Spinner, Badge, FormGroup, Label } from 'reactstrap';
+import { useDispatch, useSelector } from 'react-redux';
+import { Fn_GetReport } from '../../store/Functions';
+import { API_WEB_URLS } from '../../constants/constAPI';
+
+const formatDateLocal = (value) => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const LedgerRegisterH = () => {
+    const dispatch = useDispatch();
+    const globalDates = useSelector(state => state.GlobalDates);
+
+    const [ledgerData, setLedgerData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [fromDate, setFromDate] = useState(globalDates?.fromDate || '');
+    const [toDate, setToDate] = useState(globalDates?.toDate || '');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedItems, setSelectedItems] = useState(new Set());
+
+    const API_URL = 'LedgerRegister/0/token';
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const formData = new FormData();
+            formData.append('FromDate', formatDateLocal(fromDate));
+            formData.append('ToDate', formatDateLocal(toDate));
+            formData.append('F_LedgerGroupMaster', 36); // Hidden system group
+
+            await Fn_GetReport(dispatch, setLedgerData,
+                "tenderData", API_URL, { arguList: { id: 0, formData: formData } }, true);
+        } catch (error) {
+            console.error('Error fetching hidden ledger balances:', error);
+            setLedgerData([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (globalDates?.fromDate && globalDates?.toDate) {
+            setFromDate(globalDates.fromDate);
+            setToDate(globalDates.toDate);
+        }
+    }, [globalDates?.fromDate, globalDates?.toDate]);
+
+    useEffect(() => {
+        if (fromDate && toDate) {
+            fetchData();
+        }
+    }, [fromDate, toDate]);
+
+    const filteredData = useMemo(() => {
+        let data = ledgerData || [];
+        if (searchQuery.trim() !== '') {
+            const lowerQuery = searchQuery.toLowerCase();
+            data = data.filter(item =>
+                item.LedgerName && item.LedgerName.toLowerCase().includes(lowerQuery)
+            );
+        }
+        return data;
+    }, [ledgerData, searchQuery]);
+
+    const toggleSelectAll = () => {
+        if (selectedItems.size === filteredData.length && filteredData.length > 0) {
+            setSelectedItems(new Set());
+        } else {
+            setSelectedItems(new Set(filteredData.map((_, i) => i)));
+        }
+    };
+
+    const toggleSelectItem = (index) => {
+        const newSelected = new Set(selectedItems);
+        if (newSelected.has(index)) {
+            newSelected.delete(index);
+        } else {
+            newSelected.add(index);
+        }
+        setSelectedItems(newSelected);
+    };
+
+    let totalDr = 0;
+    let totalCr = 0;
+    let totalNet = 0;
+    selectedItems.forEach(idx => {
+        const item = filteredData[idx];
+        if (item) {
+            totalDr += (item.DrBalance || 0);
+            totalCr += (item.CrBalance || 0);
+            totalNet += (item.Balance || 0);
+        }
+    });
+
+    return (
+        <Card>
+            <CardBody>
+                <div style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: "10px", marginBottom: "15px" }}>
+                    <div className="d-flex align-items-center gap-2" style={{ minWidth: "max-content" }}>
+                        <div className="d-flex align-items-center">
+                            <Input type="date" value={formatDateLocal(fromDate)} onChange={(e) => setFromDate(e.target.value)} bsSize="sm" style={{ width: "130px" }} />
+                            <span className="mx-2 font-size-12 fw-medium text-muted">To</span>
+                            <Input type="date" value={formatDateLocal(toDate)} onChange={(e) => setToDate(e.target.value)} bsSize="sm" style={{ width: "130px" }} />
+                        </div>
+                        <Input type="text" placeholder="Search Ledger Name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} bsSize="sm" style={{ width: "230px" }} />
+                        <div className="d-flex gap-2">
+                            <Button color="primary" size="sm" onClick={fetchData} title="Refresh Data" style={{ whiteSpace: "nowrap" }}>
+                                <i className="bx bx-refresh mr-1"></i> Refresh
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Responsive Table Container */}
+                <div className="table-responsive" style={{ maxHeight: '60vh', border: '1px solid #EFF2F7', borderRadius: '4px' }}>
+                    <Table hover className="align-middle table-nowrap mb-0 table-sm text-nowrap">
+                        <thead className="table-light" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                            <tr>
+                                <th style={{ width: '40px', textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                                    <input type="checkbox" checked={selectedItems.size === filteredData.length && filteredData.length > 0} onChange={toggleSelectAll} />
+                                </th>
+                                <th style={{ backgroundColor: '#f8f9fa' }}>Ledger Name</th>
+                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', minWidth: '120px' }}>Dr Balance</th>
+                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', minWidth: '120px' }}>Cr Balance</th>
+                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', minWidth: '150px' }}>Net Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="5" className="text-center py-4"><Spinner color="primary" size="sm" /></td>
+                                </tr>
+                            ) : filteredData.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="text-center py-4 text-muted">No records found for this period.</td>
+                                </tr>
+                            ) : (
+                                filteredData.map((item, index) => (
+                                    <tr key={index} onClick={() => toggleSelectItem(index)} style={{ cursor: 'pointer', backgroundColor: selectedItems.has(index) ? 'rgba(0, 123, 255, 0.05)' : '' }}>
+                                        <td className="text-center" onClick={(e) => e.stopPropagation()}>
+                                            <input type="checkbox" checked={selectedItems.has(index)} onChange={() => toggleSelectItem(index)} />
+                                        </td>
+                                        <td className="fw-bold" style={{ whiteSpace: 'normal', minWidth: '200px' }}>{item.LedgerName}</td>
+                                        <td className="text-end text-danger fw-bold">₹{parseFloat(item.DrBalance || 0).toLocaleString()}</td>
+                                        <td className="text-end text-success fw-bold">₹{parseFloat(item.CrBalance || 0).toLocaleString()}</td>
+                                        <td className={`text-end fw-bold ${item.Balance >= 0 ? 'text-danger' : 'text-success'}`}>
+                                            ₹{Math.abs(item.Balance || 0).toLocaleString()} {item.Balance >= 0 ? 'Dr' : 'Cr'}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </Table>
+                </div>
+
+                {selectedItems.size > 0 && (
+                    <div className="mt-3 p-3 bg-light border rounded">
+                        <Row>
+                            <Col md={3}><span className="fw-bold text-primary">Selected: {selectedItems.size}</span></Col>
+                            <Col md={3} className="text-end"><span className="text-muted font-size-11 d-block">Total Dr</span><span className="fw-bold text-danger">₹{totalDr.toLocaleString()}</span></Col>
+                            <Col md={3} className="text-end"><span className="text-muted font-size-11 d-block">Total Cr</span><span className="fw-bold text-success">₹{totalCr.toLocaleString()}</span></Col>
+                            <Col md={3} className="text-end">
+                                <span className="text-muted font-size-11 d-block">Net Balance</span>
+                                <span className={`fw-bold ${totalNet >= 0 ? 'text-danger' : 'text-success'}`}>
+                                    ₹{Math.abs(totalNet).toLocaleString()} {totalNet >= 0 ? 'Dr' : 'Cr'}
+                                </span>
+                            </Col>
+                        </Row>
+                    </div>
+                )}
+            </CardBody>
+        </Card>
+    );
+};
+
+export default LedgerRegisterH;

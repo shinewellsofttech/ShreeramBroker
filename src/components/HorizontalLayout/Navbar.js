@@ -5,6 +5,7 @@ import withRouter from "components/Common/withRouter";
 import classname from "classnames";
 import ShreeRamLogo from "../../assets/images/contract/ShreeRam.jpeg";
 import MobileSidebar from "./MobileSidebar";
+import VoucherAccessModal from "../Common/VoucherAccessModal";
 
 //i18n
 import { withTranslation } from "react-i18next";
@@ -21,7 +22,8 @@ const Navbar = props => {
   const [reports, setreports] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogout, setShowLogout] = useState(window.innerWidth >= 992);
-  
+  const [accessModal, setAccessModal] = useState({ open: false, type: 'bro' });
+
   const navRef = useRef(null);
 
   useEffect(() => {
@@ -121,8 +123,8 @@ const Navbar = props => {
   return (
     <React.Fragment>
       {/* Mobile Sidebar */}
-      <MobileSidebar 
-        isOpen={mobileMenuOpen} 
+      <MobileSidebar
+        isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         t={props.t}
       />
@@ -137,66 +139,70 @@ const Navbar = props => {
           >
             {/* Mobile: Toggle Button + Logo + Title on same line */}
             <div className="d-flex align-items-center w-100 w-lg-auto" style={{ padding: '0', height: '28px', marginRight: '24px' }}>
-            {/* Mobile Toggle Button */}
-            <button
-              className="navbar-toggler d-lg-none"
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              aria-label="Toggle navigation"
-              style={{
-                border: '1px solid #dee2e6',
-                background: '#fff',
-                color: '#495057',
-                padding: '0.25rem 0.5rem',
-                borderRadius: '4px',
-                marginRight: '0.5rem',
-                position: 'relative',
-                zIndex: 100
-              }}
-            >
-              <i className="fa fa-fw fa-bars" style={{ fontSize: '14px' }} />
-            </button>
-         
+              {/* Mobile Toggle Button */}
+              <button
+                className="navbar-toggler d-lg-none"
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="Toggle navigation"
+                style={{
+                  border: '1px solid #dee2e6',
+                  background: '#fff',
+                  color: '#495057',
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '4px',
+                  marginRight: '0.5rem',
+                  position: 'relative',
+                  zIndex: 100
+                }}
+              >
+                <i className="fa fa-fw fa-bars" style={{ fontSize: '14px' }} />
+              </button>
+
               {/* Logo - increased size and spacing on both sides */}
-              <img 
-               src={ShreeRamLogo} 
-                alt="Shinewell Softtech Logo" 
-                style={{ 
-                  height: '28px', 
-                  width: 'auto', 
+              <img
+                src={ShreeRamLogo}
+                alt="Shinewell Softtech Logo"
+                onDoubleClick={() => setAccessModal({ open: true, type: 'bro' })}
+                style={{
+                  height: '28px',
+                  width: 'auto',
                   marginLeft: '20px',
                   marginRight: '28px',
-                  borderRadius: '4px'
-                }} 
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
               />
-              
+
               {/* Company Title */}
-              <span 
-                className="company-title" 
-                style={{ 
-                  fontSize: '12px', 
+              <span
+                className="company-title"
+                onDoubleClick={() => setAccessModal({ open: true, type: 'hidden' })}
+                style={{
+                  fontSize: '12px',
                   fontWeight: 'bold',
                   color: '#495057',
                   marginRight: '200px',
                   marginLeft: '4px',
                   whiteSpace: 'nowrap',
-                  lineHeight: '1.2'
+                  lineHeight: '1.2',
+                  cursor: 'pointer'
                 }}
               >
-                 {getCompanyName()}
+                {getCompanyName()}
               </span>
             </div>
 
-             
-             
-            
+
+
+
             <div className="collapse navbar-collapse d-none d-lg-flex" id="topnav-menu-content">
               <ul className="navbar-nav" style={{ padding: '0', height: '28px', alignItems: 'center' }}>
                 <li className="nav-item dropdown">
-                <a href="/dashboard" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ padding: '2px 6px', fontSize: '11px', height: '24px', display: 'flex', alignItems: 'center' }}>
-                      {props.t("Dashboard")}
-                    </a>
-                  
+                  <a href="/dashboard" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ padding: '2px 6px', fontSize: '11px', height: '24px', display: 'flex', alignItems: 'center' }}>
+                    {props.t("Dashboard")}
+                  </a>
+
                 </li>
 
                 {/* Vertical Layout Sidebar Content - Masters Section */}
@@ -231,7 +237,7 @@ const Navbar = props => {
                     <a href="/TransportMaster" target="_blank" rel="noopener noreferrer" className="dropdown-item" onClick={() => setmasters(false)}>
                       {props.t("Transport Master")}
                     </a>
-                 
+
                     {/* <a href="/StateMaster" target="_blank" rel="noopener noreferrer" className="dropdown-item">
                       {props.t("State Master")}
                     </a> */}
@@ -261,8 +267,6 @@ const Navbar = props => {
                     <a href="/UpdateGlobalOptions" target="_blank" rel="noopener noreferrer" className="dropdown-item" onClick={() => settransaction(false)}>
                       {props.t("Firm Master")}
                     </a>
-
-                   
                   </div>
                 </li>
 
@@ -283,15 +287,15 @@ const Navbar = props => {
                     {props.t("Reports")} <div className="arrow-down" style={{ fontSize: '8px' }}></div>
                   </a>
                   <div className={classname("dropdown-menu", { show: reports })}>
-                  <a href="/NewLedgerReport" target="_blank" rel="noopener noreferrer" className="dropdown-item" onClick={() => setreports(false)}>
+                    <a href="/NewLedgerReport" target="_blank" rel="noopener noreferrer" className="dropdown-item" onClick={() => setreports(false)}>
                       {props.t("Ledger List")}
                     </a>
 
                     <a href="/MultiPrint" target="_blank" rel="noopener noreferrer" className="dropdown-item" onClick={() => setreports(false)}>
                       {props.t("Multi Print")}
                     </a>
-                    
-                   
+
+
                     <a href="/ContractRegister" target="_blank" rel="noopener noreferrer" className="dropdown-item" onClick={() => setreports(false)}>
                       {props.t("Contract Register")}
                     </a>
@@ -311,12 +315,12 @@ const Navbar = props => {
                       {props.t("Reminder Data")}
                     </a>
 
-                    
+
                   </div>
                 </li>
               </ul>
             </div>
-            
+
             {/* Logout Button - Hide when toggle button is visible (mobile), show when toggle hidden (desktop) */}
             {showLogout && (
               <div className="navbar-nav ms-auto">
@@ -327,9 +331,9 @@ const Navbar = props => {
                     localStorage.removeItem("authUser");
                     window.location.href = "/logout";
                   }}
-                  style={{ 
-                    padding: '2px 6px', 
-                    fontSize: '10px', 
+                  style={{
+                    padding: '2px 6px',
+                    fontSize: '10px',
                     height: '22px',
                     display: 'flex',
                     alignItems: 'center',
@@ -344,6 +348,11 @@ const Navbar = props => {
           </nav>
         </div>
       </div>
+      <VoucherAccessModal
+        isOpen={accessModal.open}
+        type={accessModal.type}
+        toggle={() => setAccessModal({ ...accessModal, open: !accessModal.open })}
+      />
     </React.Fragment>
   );
 };

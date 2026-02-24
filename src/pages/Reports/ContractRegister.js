@@ -1498,21 +1498,30 @@ function ContractRegister() {
                       <Form.Check
                         type="checkbox"
                         checked={notLifted}
-                        onChange={e => setNotLifted(e.target.checked)}
+                        onChange={e => {
+                          setNotLifted(e.target.checked)
+                          setSelectedPeriods([])
+                        }}
                         className="form-check-input-sm"
                         label={<span style={{ color: '#000000', fontSize: '0.7rem', fontWeight: '500' }}>Black</span>}
                       />
                       <Form.Check
                         type="checkbox"
                         checked={partialLift}
-                        onChange={e => setPartialLift(e.target.checked)}
+                        onChange={e => {
+                          setPartialLift(e.target.checked)
+                          setSelectedPeriods([])
+                        }}
                         className="form-check-input-sm"
                         label={<span style={{ color: '#dc3545', fontSize: '0.7rem', fontWeight: '500' }}>Red</span>}
                       />
                       <Form.Check
                         type="checkbox"
                         checked={fullLift}
-                        onChange={e => setFullLift(e.target.checked)}
+                        onChange={e => {
+                          setFullLift(e.target.checked)
+                          setSelectedPeriods([])
+                        }}
                         className="form-check-input-sm"
                         label={<span style={{ color: '#0d6efd', fontSize: '0.7rem', fontWeight: '500' }}>Blue</span>}
                       />

@@ -2774,80 +2774,217 @@ const LedgerReport = () => {
     }
 
     const groupedData = getGroupedData(rowsForExport)
-    const selectedLedgerNames =
+    const ledgerLabel =
       ledgerDropdown.length > 0
-        ? ledgerDropdown.map(id => state.LedgerArray.find(l => l.Id === id)?.Name || "").join(", ")
+        ? ledgerDropdown.map(id => state.LedgerArray.find(l => l.Id === id)?.Name || "").filter(Boolean).join(", ")
         : "All Ledgers"
 
-    const calculateGroupTotals = items => {
-      const totals = { purQty: 0, selQty: 0, advPayment: 0, count: items.length }
-      items.forEach(item => {
-        totals.purQty += parseFloat(item.PurQty || 0)
-        totals.selQty += parseFloat(item.SelQty || 0)
-        totals.advPayment += parseFloat(item.AdvPayment || 0)
+    const calcTotals = items => {
+      const t = { purQty: 0, selQty: 0, advPayment: 0, count: items.length }
+      items.forEach(r => {
+        t.purQty += parseFloat(r.PurQty || 0)
+        t.selQty += parseFloat(r.SelQty || 0)
+        t.advPayment += parseFloat(r.AdvPayment || 0)
       })
-      return totals
+      return t
     }
 
-    const overallTotals = calculateGroupTotals(rowsForExport)
+    // Row background colour matching screen UI (grey=not started, blue=fully lifted, red=partial)
+    const getRowFill = row => {
+      const lifted = parseFloat(row.Lifted) || 0
+      const pq = parseFloat(row.PurQty) || 0
+      const sq = parseFloat(row.SelQty) || 0
+      if (lifted === 0) return [228, 228, 228]
+      if ((pq > 0 && lifted >= pq) || (sq > 0 && lifted >= sq)) return [214, 235, 255]
+      return [253, 231, 233]
+    }
+
+    const overall = calcTotals(rowsForExport)
 
     try {
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      // ── Landscape A4 gives ~277 mm usable width ──
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const pageW = doc.internal.pageSize.getWidth()  // 297 mm
+      const pageH = doc.internal.pageSize.getHeight() // 210 mm
       const filename = `Ledger_Report_${new Date().toISOString().split('T')[0]}.pdf`
 
-      doc.setFontSize(20)
-      doc.text('Ledger Report', 14, 12)
-      doc.setFontSize(13)
-      doc.text(`Ledger: ${selectedLedgerNames}`, 14, 18)
-      doc.text(`Period: ${fromDate.toLocaleDateString()} to ${toDate.toLocaleDateString()}`, 14, 23)
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28)
+      // ── Top header banner ──
+      doc.setFillColor(0, 0, 180)
+      doc.rect(0, 0, pageW, 20, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(15)
+      doc.setFont(undefined, 'bold')
+      doc.text('Ledger Report', 8, 9)
+      doc.setFontSize(7.5)
+      doc.setFont(undefined, 'normal')
+      doc.text(`Ledger: ${ledgerLabel}`, 8, 14)
+      doc.text(
+        `Period: ${fromDate.toLocaleDateString()} – ${toDate.toLocaleDateString()}   |   Generated: ${new Date().toLocaleString()}`,
+        8, 18.5
+      )
+      doc.setTextColor(0, 0, 0)
 
-      const head = [['Group', 'Contract No', 'Date', 'Seller', 'Buyer', 'Status', 'Item', 'Pur Qty', 'Sel Qty', 'Rate', 'Period', 'Adv Pay', 'Adv Date', 'Note']]
+      // ── Column definitions (total = 283 mm, margin 7 each side) ──
+      const cols = [
+        { header: 'Contract No', dataKey: 'ContractNo', width: 22 },
+        { header: 'Date', dataKey: 'ContractDate', width: 20 },
+        { header: 'Seller', dataKey: 'Seller', width: 35 },
+        { header: 'Buyer', dataKey: 'Buyer', width: 35 },
+        { header: 'S/P', dataKey: 'Status', width: 10 },
+        { header: 'Item', dataKey: 'Item', width: 24 },
+        { header: 'Pur Qty', dataKey: 'PurQty', width: 18 },
+        { header: 'Sel Qty', dataKey: 'SelQty', width: 18 },
+        { header: 'Rate', dataKey: 'Rate', width: 20 },
+        { header: 'Period', dataKey: 'ShipmentOrLifted', width: 18 },
+        { header: 'Adv Pay', dataKey: 'AdvPayment', width: 20 },
+        { header: 'Adv Date', dataKey: 'AdvDate', width: 20 },
+        { header: 'Note', dataKey: 'Note', width: 23 },
+      ]
+
+      const head = [cols.map(c => c.header)]
+      const columnStyles = {}
+      cols.forEach((col, i) => {
+        columnStyles[i] = {
+          cellWidth: col.width,
+          halign: (col.dataKey.includes('Qty') || col.dataKey === 'Rate' || col.dataKey === 'AdvPayment') ? 'right' : 'left',
+          overflow: 'ellipsize',
+        }
+      })
+
+      // ── Build body rows ──
+      // Each group: [header-span-row, ...data-rows, subtotal-span-row]
       const body = []
+      const rowMeta = [] // parallel array: { type: 'group'|'data'|'subtotal'|'overall', fill? }
+
       groupedData.forEach(group => {
-        group.items.forEach((row, idx) => {
+        const gt = calcTotals(group.items)
+
+        // Group header – colSpan across all columns
+        body.push([{
+          content: `  ${group.groupName}   (${group.count} record${group.count !== 1 ? 's' : ''})`,
+          colSpan: cols.length,
+          styles: {
+            fillColor: [75, 0, 130],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 8,
+            cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
+          },
+        }])
+        rowMeta.push({ type: 'group' })
+
+        // Data rows
+        group.items.forEach(row => {
           body.push([
-            idx === 0 ? group.groupName : '',
             row.ContractNo || '',
             row.ContractDate || '',
-            (row.Seller || '').substring(0, 12),
-            (row.Buyer || '').substring(0, 12),
+            (row.Seller || '').substring(0, 22),
+            (row.Buyer || '').substring(0, 22),
             row.Status || '',
-            (row.Item || '').substring(0, 10),
+            (row.Item || '').substring(0, 16),
             row.PurQty != null ? parseFloat(row.PurQty).toFixed(2) : '0.00',
             row.SelQty != null ? parseFloat(row.SelQty).toFixed(2) : '0.00',
             row.Rate != null ? parseFloat(row.Rate).toFixed(2) : '0.00',
-            (row.ShipmentOrLifted || '-').substring(0, 8),
+            (row.ShipmentOrLifted || '-').substring(0, 10),
             row.AdvPayment != null ? parseFloat(row.AdvPayment).toFixed(2) : '0.00',
             row.AdvDate || '',
-            (getCombinedNotes(row) || '').substring(0, 15)
+            (getCombinedNotes(row) || '-').substring(0, 18),
           ])
+          rowMeta.push({ type: 'data', fill: getRowFill(row) })
         })
+
+        // Subtotal row aligned with columns
+        body.push([
+          { content: 'Group Totals', colSpan: 6, styles: { halign: 'right' } },
+          gt.purQty.toFixed(2),
+          gt.selQty.toFixed(2),
+          { content: '', colSpan: 2 },
+          gt.advPayment.toFixed(2),
+          { content: `(${gt.count} cont.)`, colSpan: 2, styles: { halign: 'right' } }
+        ])
+        rowMeta.push({ type: 'subtotal' })
       })
 
-      body.push(
-        ['OVERALL TOTALS', '', '', '', '', '', '', overallTotals.purQty.toFixed(2), overallTotals.selQty.toFixed(2), '', '', overallTotals.advPayment.toFixed(2), '', ''],
-        ['Total Records: ' + rowsForExport.length + ' | Groups: ' + groupedData.length, '', '', '', '', '', '', '', '', '', '', '', '', '']
-      )
+      // Overall totals row aligned with columns
+      body.push([
+        { content: 'OVERALL TOTALS', colSpan: 6, styles: { halign: 'right' } },
+        overall.purQty.toFixed(2),
+        overall.selQty.toFixed(2),
+        { content: '', colSpan: 2 },
+        overall.advPayment.toFixed(2),
+        { content: `(${rowsForExport.length} total)`, colSpan: 2, styles: { halign: 'right' } }
+      ])
+      rowMeta.push({ type: 'overall' })
 
+      // ── Render autoTable ──
       doc.autoTable({
         head,
         body,
-        startY: 34,
-        margin: { left: 14 },
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [0, 0, 255] },
-        alternateRowStyles: { fillColor: [245, 245, 245] }
+        startY: 23,
+        margin: { left: 7, right: 7 },
+        tableWidth: 'auto',
+        styles: {
+          fontSize: 7,
+          cellPadding: 1.8,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.25,
+          valign: 'middle',
+          overflow: 'ellipsize',
+        },
+        headStyles: {
+          fillColor: [0, 0, 200],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 7.5,
+          halign: 'center',
+          cellPadding: 2.5,
+          lineColor: [255, 255, 255],
+          lineWidth: 0.4,
+        },
+        columnStyles,
+        willDrawCell: data => {
+          if (data.section !== 'body') return
+          const meta = rowMeta[data.row.index]
+          if (meta && meta.type === 'data' && meta.fill) {
+            // Apply status colour; cell styles already set via meta.fill
+            data.cell.styles.fillColor = meta.fill
+            data.cell.styles.textColor = [20, 20, 20]
+          } else if (meta && meta.type === 'subtotal') {
+            data.cell.styles.fillColor = [220, 220, 245]
+            data.cell.styles.textColor = [40, 40, 110]
+            data.cell.styles.fontStyle = 'bold'
+          } else if (meta && meta.type === 'overall') {
+            data.cell.styles.fillColor = [0, 0, 140]
+            data.cell.styles.textColor = [255, 255, 255]
+            data.cell.styles.fontStyle = 'bold'
+          }
+        },
+        didDrawPage: pageData => {
+          // Page footer
+          const totalPages = doc.internal.getNumberOfPages()
+          doc.setFontSize(6.5)
+          doc.setTextColor(130, 130, 130)
+          doc.text(
+            `Page ${pageData.pageNumber} of ${totalPages}   |   Ledger Report   |   ${new Date().toLocaleDateString()}`,
+            pageW / 2,
+            pageH - 4,
+            { align: 'center' }
+          )
+          doc.setTextColor(0, 0, 0)
+        },
       })
 
-      let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 40
+      // ── Remarks ──
       if (remarks && remarks.trim()) {
-        doc.setFontSize(14)
-        doc.text('Remarks', 14, finalY)
-        finalY += 6
-        doc.setFontSize(13)
-        const splitRemarks = doc.splitTextToSize(remarks.trim(), 180)
-        doc.text(splitRemarks, 14, finalY)
+        let fy = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 30) + 8
+        if (fy > pageH - 30) { doc.addPage(); fy = 20 }
+        doc.setFontSize(9)
+        doc.setFont(undefined, 'bold')
+        doc.text('Remarks:', 7, fy)
+        doc.setFont(undefined, 'normal')
+        doc.setFontSize(7.5)
+        const lines = doc.splitTextToSize(remarks.trim(), pageW - 14)
+        doc.text(lines, 7, fy + 5)
       }
 
       const pdfBlob = doc.output('blob')
@@ -2860,7 +2997,14 @@ const LedgerReport = () => {
         setPendingShareFile(file)
         setShowSharePDFModal(true)
       } else {
-        toast.warning('Share not available on this device. Use a mobile device or browser that supports sharing.')
+        // Fallback: direct download
+        const url = URL.createObjectURL(pdfBlob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        a.click()
+        URL.revokeObjectURL(url)
+        toast.success('PDF downloaded!')
       }
     } catch (error) {
       console.error('PDF generation error:', error)
@@ -3479,6 +3623,7 @@ const LedgerReport = () => {
                             ...prev,
                             Pending: !prev.Pending,
                           }))
+                          setSelectedPeriod([])
                         }}
                       />
                       <label
@@ -3502,6 +3647,7 @@ const LedgerReport = () => {
                             ...prev,
                             NotStarted: !prev.NotStarted,
                           }))
+                          setSelectedPeriod([])
                         }}
                       />
                       <label
@@ -3524,6 +3670,7 @@ const LedgerReport = () => {
                             ...prev,
                             Completed: e.target.checked,
                           }))
+                          setSelectedPeriod([])
                         }}
                       />
                       <label

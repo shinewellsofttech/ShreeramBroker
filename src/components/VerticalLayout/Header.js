@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import { connect } from "react-redux"
 import { Row, Col } from "reactstrap"
 import { Link } from "react-router-dom"
+import VoucherAccessModal from "../Common/VoucherAccessModal"
 
 // Reactstrap
 import { Dropdown, DropdownToggle, DropdownMenu } from "reactstrap"
@@ -40,6 +41,7 @@ const Header = props => {
   const [search, setsearch] = useState(false)
   const [megaMenu, setmegaMenu] = useState(false)
   const [socialDrp, setsocialDrp] = useState(false)
+  const [accessModal, setAccessModal] = useState({ open: false, type: 'bro' })
 
   function toggleFullscreen() {
     if (
@@ -84,14 +86,14 @@ const Header = props => {
         <div className="navbar-header">
           <div className="d-flex">
             <div className="navbar-brand-box d-lg-none d-md-block">
-              <Link to="/" className="logo logo-dark">
+              <Link to="/" className="logo logo-dark" onDoubleClick={() => setAccessModal({ open: true, type: 'bro' })}>
                 <span className="logo-sm">
                   {/* <img src={logo} alt="" height="22" /> */}
                   BROKER
                 </span>
               </Link>
 
-              <Link to="/" className="logo logo-light">
+              <Link to="/" className="logo logo-light" onDoubleClick={() => setAccessModal({ open: true, type: 'bro' })}>
                 <span className="logo-sm">
                   {/* <img src={logoLightSvg} alt="" height="22" /> */}
                   BROKER
@@ -109,7 +111,11 @@ const Header = props => {
               <i className="fa fa-fw fa-bars" />
             </button>
 
-            <span className="company-title">
+            <span
+              className="company-title"
+              onDoubleClick={() => setAccessModal({ open: true, type: 'hidden' })}
+              style={{ cursor: 'pointer' }}
+            >
               {getCompanyName()}
             </span>
           </div>
@@ -148,6 +154,11 @@ const Header = props => {
           </div>
         </div>
       </header>
+      <VoucherAccessModal
+        isOpen={accessModal.open}
+        type={accessModal.type}
+        toggle={() => setAccessModal({ ...accessModal, open: !accessModal.open })}
+      />
     </React.Fragment>
   )
 }

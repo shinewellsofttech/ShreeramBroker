@@ -16,6 +16,7 @@ export const API_WEB_URLS = {
    
   MASTER: "Masters",
   BrokerageCalculation: "BrokerageCalculation",
+    VoucherListBro: "VoucherListBro",
   VoucherList: "VoucherList",
   UserMaster: "UserMaster",
   UserMaster: "UserMaster",

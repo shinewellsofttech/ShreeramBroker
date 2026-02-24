@@ -214,11 +214,11 @@ const SidebarContent = props => {
                 <li>
                   <Link to="/LedgerReport">{props.t("Ledger")}</Link>
                 </li>
-                <li>  
+                <li>
                   <Link to="/DalaliReport">{props.t("Dalali")}</Link>
                 </li>
 
-                 
+
               </ul>
             </li>
 

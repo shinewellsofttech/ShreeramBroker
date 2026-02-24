@@ -11,7 +11,7 @@ import {
 import { API_WEB_URLS } from "../../constants/constAPI";
 import Breadcrumbs from "../../components/Common/Breadcrumb";
 
-function AddEdit_LedgerMaster() {
+function AddEdit_LedgerMaster({ isModal = false, modalId = 0, defaultGroup = 8, onSuccess = null, onCancel = null }) {
   const API_URL_SAVE = `${API_WEB_URLS.LedgerMaster}/0/token`;
   const API_URL = `${API_WEB_URLS.MASTER}/0/token/LedgerMaster`;
   const API_URL_EDIT = `${API_WEB_URLS.MASTER}/0/token/LedgerMasterEdit/Id`;
@@ -23,13 +23,13 @@ function AddEdit_LedgerMaster() {
     FillArrayL: [
       { Id: 4, Name: "Bank A/C" },
       { Id: 8, Name: "Cash A/C" },
- 
+
     ],
     CityArray: [],
     StateArray: [],
     FillArray: [],
     formData: {
-      F_LedgerGroupMaster: 8,
+      F_LedgerGroupMaster: isModal ? defaultGroup : 8,
       Name: "",
       Address: "",
       AccNo: "",
@@ -53,7 +53,7 @@ function AddEdit_LedgerMaster() {
   // Fetch data when editing
   useEffect(() => {
     const fetchData = async () => {
-      const Id = location.state?.Id || 0;
+      const Id = isModal ? modalId : (location.state?.Id || 0);
       setState((prevState) => ({
         ...prevState,
         id: Id,
@@ -65,7 +65,7 @@ function AddEdit_LedgerMaster() {
           console.log("Fetched Data:", data);
 
           // Update state with fetched data
-       
+
         } catch (error) {
           console.error("Error fetching data:", error);
         }
@@ -121,9 +121,15 @@ function AddEdit_LedgerMaster() {
       API_URL_SAVE,
       true,
       "memberid",
-      navigate,
+      isModal ? null : navigate,
       "/LedgerMaster"
-    );
+    ).then((res) => {
+      if (isModal && onSuccess) {
+        onSuccess();
+      }
+    }).catch((e) => {
+      console.error("Save failed", e);
+    });
   };
 
 
@@ -139,9 +145,9 @@ function AddEdit_LedgerMaster() {
 
   return (
     <div >
-      <Container fluid>
-        <Breadcrumbs title={breadCrumbTitle} breadcrumbItem={breadcrumbItem} />
-        
+      <Container fluid={!isModal}>
+        {!isModal && <Breadcrumbs title={breadCrumbTitle} breadcrumbItem={breadcrumbItem} />}
+
         <Row className="justify-content-center">
           <Col lg="10" xl="8">
             <Card className="shadow-sm border-0">
@@ -151,7 +157,7 @@ function AddEdit_LedgerMaster() {
                   {state.id > 0 ? "Edit Ledger Details" : "Add New Ledger"}
                 </h4>
               </CardHeader>
-              
+
               <CardBody className="p-4">
                 <Formik
                   initialValues={state.formData}
@@ -173,180 +179,182 @@ function AddEdit_LedgerMaster() {
                     };
                     return (
                       <Form>
-                      <Row>
-                        <Col lg="6" className="mb-3">
-                          <div className="form-group">
-                            <label className="form-label fw-semibold text-dark">
-                              <i className="fas fa-list me-1 text-primary"></i>
-                              Account Type
-                            </label>
-                            <Field
-                              as="select"
-                              className="form-select form-select-lg"
-                              name="F_LedgerGroupMaster"
-                              value={values.F_LedgerGroupMaster}
-                              onChange={handleAccountTypeChange}
-                            >
-                              {state.FillArrayL.map((item) => (
-                                <option key={item.Id} value={item.Id}>
-                                  {item.Name}
-                                </option>
-                              ))}
-                            </Field>
-                          </div>
-                        </Col>
-                      </Row>
-
-                      {/* Basic Information */}
-                      <Row>
-                        <Col lg="6" className="mb-3">
-                          <div className="form-group">
-                            <label className="form-label fw-semibold text-dark">
-                              <i className="fas fa-user me-1 text-primary"></i>
-                              Ledger Name
-                            </label>
-                            <Field
-                              className="form-control form-control-lg"
-                              type="text"
-                              name="Name"
-                              placeholder="Enter ledger name"
-                            />
-                          </div>
-                        </Col>
-
-                      </Row>
-
-                      {isBankAccount && (
-                        <>
-                          <Row>
-                            <Col lg="12" className="mb-3">
-                              <div className="form-group">
-                                <label className="form-label fw-semibold text-dark">
-                                  <i className="fas fa-map-marker-alt me-1 text-primary"></i>
-                                  Address
-                                </label>
-                                <Field
-                                  as="textarea"
-                                  className="form-control"
-                                  name="Address"
-                                  placeholder="Enter complete address"
-                                  rows="3"
-                                />
-                              </div>
-                            </Col>
-                          </Row>
-
+                        {!isModal && (
                           <Row>
                             <Col lg="6" className="mb-3">
                               <div className="form-group">
                                 <label className="form-label fw-semibold text-dark">
-                                  <i className="fas fa-bank me-1 text-primary"></i>
-                                  A/C No
+                                  <i className="fas fa-list me-1 text-primary"></i>
+                                  Account Type
                                 </label>
                                 <Field
-                                  className="form-control"
-                                  type="text"
-                                  name="AccNo"
-                                  placeholder="Enter account number"
-                                />
-                              </div>
-                            </Col>
-
-                            <Col lg="6" className="mb-3">
-                              <div className="form-group">
-                                <label className="form-label fw-semibold text-dark">
-                                  <i className="fas fa-university me-1 text-primary"></i>
-                                  IFSC Code
-                                </label>
-                                <Field
-                                  className="form-control"
-                                  type="text"
-                                  name="IFSC"
-                                  placeholder="Enter IFSC Code"
-                                />
+                                  as="select"
+                                  className="form-select form-select-lg"
+                                  name="F_LedgerGroupMaster"
+                                  value={values.F_LedgerGroupMaster}
+                                  onChange={handleAccountTypeChange}
+                                >
+                                  {state.FillArrayL.map((item) => (
+                                    <option key={item.Id} value={item.Id}>
+                                      {item.Name}
+                                    </option>
+                                  ))}
+                                </Field>
                               </div>
                             </Col>
                           </Row>
-                        </>
-                      )}
+                        )}
 
-                      {/* Status Toggle */}
-                      <Row>
-                        <Col lg="12" className="mb-3">
-                          <div className="form-group">
-                            <label className="form-label fw-semibold text-dark">
-                              <i className="fas fa-toggle-on me-1 text-primary"></i>
-                              Status
-                            </label>
-                            <div className="d-flex align-items-center">
-                              <Field name="IsActive">
-                                {({ field }) => (
-                                  <div className="form-check form-switch">
-                                    <input
-                                      {...field}
-                                      className="form-check-input"
-                                      type="checkbox"
-                                      id="IsActive"
-                                      checked={field.value}
-                                    />
-                                    <label className="form-check-label" htmlFor="IsActive">
-                                      {field.value ? (
-                                        <span className="text-success">
-                                          <i className="fas fa-check-circle me-1"></i>
-                                          Active
-                                        </span>
-                                      ) : (
-                                        <span className="text-danger">
-                                          <i className="fas fa-times-circle me-1"></i>
-                                          Inactive
-                                        </span>
-                                      )}
-                                    </label>
-                                  </div>
-                                )}
-                              </Field>
+                        {/* Basic Information */}
+                        <Row>
+                          <Col lg="6" className="mb-3">
+                            <div className="form-group">
+                              <label className="form-label fw-semibold text-dark">
+                                <i className="fas fa-user me-1 text-primary"></i>
+                                Ledger Name
+                              </label>
+                              <Field
+                                className="form-control form-control-lg"
+                                type="text"
+                                name="Name"
+                                placeholder="Enter ledger name"
+                              />
                             </div>
-                          </div>
-                        </Col>
-                      </Row>
+                          </Col>
 
-                      {/* Action Buttons */}
-                      <Row className="mt-4">
-                        <Col lg="12">
-                          <div className="d-flex gap-2 justify-content-end">
-                           
-                            <Button
-                              type="submit"
-                              color="primary"
-                              className="px-4"
-                              disabled={isSubmitting}
-                            >
-                              {isSubmitting ? (
-                                <>
-                                  <i className="fas fa-spinner fa-spin me-1"></i>
-                                  {state.id > 0 ? "Updating..." : "Saving..."}
-                                </>
-                              ) : (
-                                <>
-                                  <i className={`fas ${state.id > 0 ? 'fa-edit' : 'fa-save'} me-1`}></i>
-                                  {state.id > 0 ? "Update Ledger" : "Save Ledger"}
-                                </>
-                              )}
-                            </Button>
+                        </Row>
 
-                            <Button
-                              type="button"
-                              color="secondary"
-                              outline
-                              className="px-4"
-                              onClick={() => navigate("/LedgerMaster")}
-                            >
-                              <i className="fas fa-times me-1"></i>
-                              Cancel
-                            </Button>
-                          </div>
-                        </Col>
-                      </Row>
+                        {isBankAccount && (
+                          <>
+                            <Row>
+                              <Col lg="12" className="mb-3">
+                                <div className="form-group">
+                                  <label className="form-label fw-semibold text-dark">
+                                    <i className="fas fa-map-marker-alt me-1 text-primary"></i>
+                                    Address
+                                  </label>
+                                  <Field
+                                    as="textarea"
+                                    className="form-control"
+                                    name="Address"
+                                    placeholder="Enter complete address"
+                                    rows="3"
+                                  />
+                                </div>
+                              </Col>
+                            </Row>
+
+                            <Row>
+                              <Col lg="6" className="mb-3">
+                                <div className="form-group">
+                                  <label className="form-label fw-semibold text-dark">
+                                    <i className="fas fa-bank me-1 text-primary"></i>
+                                    A/C No
+                                  </label>
+                                  <Field
+                                    className="form-control"
+                                    type="text"
+                                    name="AccNo"
+                                    placeholder="Enter account number"
+                                  />
+                                </div>
+                              </Col>
+
+                              <Col lg="6" className="mb-3">
+                                <div className="form-group">
+                                  <label className="form-label fw-semibold text-dark">
+                                    <i className="fas fa-university me-1 text-primary"></i>
+                                    IFSC Code
+                                  </label>
+                                  <Field
+                                    className="form-control"
+                                    type="text"
+                                    name="IFSC"
+                                    placeholder="Enter IFSC Code"
+                                  />
+                                </div>
+                              </Col>
+                            </Row>
+                          </>
+                        )}
+
+                        {/* Status Toggle */}
+                        <Row>
+                          <Col lg="12" className="mb-3">
+                            <div className="form-group">
+                              <label className="form-label fw-semibold text-dark">
+                                <i className="fas fa-toggle-on me-1 text-primary"></i>
+                                Status
+                              </label>
+                              <div className="d-flex align-items-center">
+                                <Field name="IsActive">
+                                  {({ field }) => (
+                                    <div className="form-check form-switch">
+                                      <input
+                                        {...field}
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="IsActive"
+                                        checked={field.value}
+                                      />
+                                      <label className="form-check-label" htmlFor="IsActive">
+                                        {field.value ? (
+                                          <span className="text-success">
+                                            <i className="fas fa-check-circle me-1"></i>
+                                            Active
+                                          </span>
+                                        ) : (
+                                          <span className="text-danger">
+                                            <i className="fas fa-times-circle me-1"></i>
+                                            Inactive
+                                          </span>
+                                        )}
+                                      </label>
+                                    </div>
+                                  )}
+                                </Field>
+                              </div>
+                            </div>
+                          </Col>
+                        </Row>
+
+                        {/* Action Buttons */}
+                        <Row className="mt-4">
+                          <Col lg="12">
+                            <div className="d-flex gap-2 justify-content-end">
+
+                              <Button
+                                type="submit"
+                                color="primary"
+                                className="px-4"
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting ? (
+                                  <>
+                                    <i className="fas fa-spinner fa-spin me-1"></i>
+                                    {state.id > 0 ? "Updating..." : "Saving..."}
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className={`fas ${state.id > 0 ? 'fa-edit' : 'fa-save'} me-1`}></i>
+                                    {state.id > 0 ? "Update Ledger" : "Save Ledger"}
+                                  </>
+                                )}
+                              </Button>
+
+                              <Button
+                                type="button"
+                                color="secondary"
+                                outline
+                                className="px-4"
+                                onClick={() => isModal ? (onCancel && onCancel()) : navigate("/LedgerMaster")}
+                              >
+                                <i className="fas fa-times me-1"></i>
+                                Cancel
+                              </Button>
+                            </div>
+                          </Col>
+                        </Row>
                       </Form>
                     );
                   }}
