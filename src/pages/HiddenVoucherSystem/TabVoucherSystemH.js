@@ -28,17 +28,38 @@ const TabVoucherSystemH = () => {
                         padding-top: 46px;
                     }
                 }
+                .mobile-tabs {
+                    flex-wrap: nowrap;
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    scrollbar-width: none;
+                }
+                .mobile-tabs::-webkit-scrollbar {
+                    display: none;
+                }
+                .mobile-tabs .nav-link {
+                    white-space: nowrap;
+                    padding: 0.5rem 0.5rem;
+                    font-size: 14px;
+                }
+                @media (min-width: 769px) {
+                    .mobile-tabs .nav-link {
+                        padding: 0.5rem 1rem;
+                        font-size: 16px;
+                    }
+                }
             `}</style>
             <Container fluid>
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                    <Nav tabs className="flex-grow-1 border-bottom-0">
+                <div className="d-flex justify-content-between align-items-center mb-3 text-nowrap">
+                    <Nav tabs className="flex-grow-1 border-bottom-0 mobile-tabs">
                         <NavItem>
                             <NavLink
                                 className={classnames({ active: activeTab === 'voucher' }, "fw-bold")}
                                 onClick={() => toggleTab('voucher')}
                                 style={{ cursor: 'pointer' }}
                             >
-                                Voucher Register (H)
+                                <span className="d-none d-md-inline">Voucher Register (H)</span>
+                                <span className="d-inline d-md-none">Voucher (H)</span>
                             </NavLink>
                         </NavItem>
                         <NavItem>
@@ -47,7 +68,8 @@ const TabVoucherSystemH = () => {
                                 onClick={() => toggleTab('ledger')}
                                 style={{ cursor: 'pointer' }}
                             >
-                                Ledger Register (H)
+                                <span className="d-none d-md-inline">Ledger Register (H)</span>
+                                <span className="d-inline d-md-none">L. Reg (H)</span>
                             </NavLink>
                         </NavItem>
                         <NavItem>
@@ -56,17 +78,18 @@ const TabVoucherSystemH = () => {
                                 onClick={() => toggleTab('ledgerList')}
                                 style={{ cursor: 'pointer' }}
                             >
-                                Ledgers (H)
+                                <span className="d-none d-md-inline">Ledgers (H)</span>
+                                <span className="d-inline d-md-none">Ledgers (H)</span>
                             </NavLink>
                         </NavItem>
                     </Nav>
                     <button
-                        className="btn btn-danger d-flex align-items-center rounded-circle px-2 shadow-lg"
+                        className="btn btn-danger d-flex align-items-center rounded-circle px-2 shadow-lg flex-shrink-0"
                         onClick={() => setShowVoucherModal(true)}
                         title="Create New Voucher (H)"
-                        style={{ width: '45px', height: '45px', justifyContent: 'center', marginLeft: '10px' }}
+                        style={{ width: '40px', height: '40px', justifyContent: 'center', marginLeft: '5px' }}
                     >
-                        <i className="bx bx-plus font-size-24"></i>
+                        <i className="bx bx-plus font-size-22"></i>
                     </button>
                 </div>
 

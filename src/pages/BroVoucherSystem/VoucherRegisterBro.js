@@ -7,6 +7,9 @@ import { useDispatch } from 'react-redux';
 import { Fn_GetReport } from 'store/Functions';
 import { API_WEB_URLS } from 'constants/constAPI';
 import { useSelector } from 'react-redux';
+import jsPDF from 'jspdf';
+import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
+applyAutoTable(jsPDF);
 
 const formatDateLocal = (value) => {
     if (!value) return '';
@@ -146,6 +149,73 @@ const VoucherRegisterBro = ({ globalFromDate, globalToDate, onVoucherUpdate }) =
         }
     });
 
+    const handleSharePDF = async () => {
+        if (selectedItems.size === 0) return;
+
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text('Voucher Register', 14, 15);
+        doc.setFontSize(10);
+
+        const periodText = `Period: ${fromDate ? new Date(fromDate).toLocaleDateString('en-GB') : ''} to ${toDate ? new Date(toDate).toLocaleDateString('en-GB') : ''}`;
+        doc.text(periodText, 14, 22);
+
+        const tableColumn = ["Date", "No", "Dr Ledger", "Cr Ledger", "Qty", "Rate", "Amount"];
+        const tableRows = [];
+
+        let rowTotal = 0;
+
+        const selectedElements = filteredData.filter((_, idx) => selectedItems.has(idx));
+        selectedElements.forEach(item => {
+            const date = item.VoucherDate ? new Date(item.VoucherDate).toLocaleDateString('en-GB') : '';
+            const rateStr = item.Rate1 && item.Rate2 ? `${item.Rate1}-${item.Rate2}` : (item.Rate1 || item.Rate2 || '');
+            const rowData = [
+                date,
+                item.VoucherNo || '',
+                item.DrLedgerName || '',
+                item.CrLedgerName || '',
+                item.Qty || '',
+                rateStr,
+                (item.TotalAmount || 0).toFixed(2)
+            ];
+            rowTotal += (item.TotalAmount || 0);
+            tableRows.push(rowData);
+        });
+
+        tableRows.push([{ content: 'Total', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } }, { content: rowTotal.toFixed(2), styles: { fontStyle: 'bold' } }]);
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 28,
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            styles: { fontSize: 8, cellPadding: 2 },
+            columnStyles: {
+                6: { halign: 'right' }
+            }
+        });
+
+        const pdfBlob = doc.output('blob');
+
+        if (navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], "VoucherRegister.pdf", { type: "application/pdf" })] })) {
+            const file = new File([pdfBlob], `VoucherRegister_${new Date().getTime()}.pdf`, { type: 'application/pdf' });
+            try {
+                await navigator.share({
+                    title: 'Voucher Register',
+                    files: [file]
+                });
+            } catch (error) {
+                console.error("Error sharing PDF:", error);
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                window.open(pdfUrl, '_blank');
+            }
+        } else {
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            window.open(pdfUrl, '_blank');
+        }
+    };
+
     return (
         <Card>
             <CardBody>
@@ -177,9 +247,11 @@ const VoucherRegisterBro = ({ globalFromDate, globalToDate, onVoucherUpdate }) =
                             style={{ width: "230px" }}
                         />
                         {filteredData.length > 0 && (
-                            <Button color="info" size="sm" onClick={handleExportExcel} disabled={selectedItems.size === 0} style={{ whiteSpace: "nowrap" }}>
-                                <i className="bx bx-export mr-1"></i> Export {selectedItems.size > 0 && `(${selectedItems.size})`}
-                            </Button>
+                            <div className="d-flex gap-2">
+                                <Button color="danger" size="sm" onClick={handleSharePDF} disabled={selectedItems.size === 0} style={{ whiteSpace: "nowrap" }}>
+                                    <i className="bx bx-share-alt mr-1"></i> Share PDF
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -221,13 +293,13 @@ const VoucherRegisterBro = ({ globalFromDate, globalToDate, onVoucherUpdate }) =
                                         style={{ cursor: 'pointer', backgroundColor: selectedItems.has(index) ? 'rgba(0, 123, 255, 0.05)' : '' }}
                                     >
                                         <td className="text-center" onClick={(e) => toggleSelectItem(index, e)}>
-                                            <div className="custom-control custom-checkbox">
+                                            <div className="custom-control custom-checkbox position-relative" style={{ zIndex: 0 }}>
                                                 <input
                                                     type="checkbox"
                                                     className="custom-control-input"
                                                     id={`checkVoucher-${index}`}
                                                     checked={selectedItems.has(index)}
-                                                    onChange={(e) => toggleSelectItem(index, e)}
+                                                    readOnly
                                                 />
                                                 <label className="custom-control-label" htmlFor={`checkVoucher-${index}`}></label>
                                             </div>

@@ -222,7 +222,7 @@ const VoucherBro = ({ voucherId, onSaveSuccess }) => {
         try {
             setSubmitting(true);
             const obj = JSON.parse(localStorage.getItem("authUser"));
-            const API_URL_SAVE = API_WEB_URLS.MASTER + "/0/token/VoucherBro";
+            const API_URL_SAVE = 'VoucherBro/0/token';
 
             const submitFormData = new FormData();
             submitFormData.append("VoucherDate", formData.voucherDate || "");

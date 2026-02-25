@@ -748,6 +748,9 @@ const LedgerReport = () => {
     Note6: false,
   })
 
+  // State for Detailed view (Lifting data)
+  const [isDetailed, setIsDetailed] = useState(false)
+
   const API_URL = API_WEB_URLS.MASTER + "/0/token/PartyAccount"
   const API_URL_Get = `${API_WEB_URLS.GetLedgerReportApp}/0/token`
   const API_URL_PeriodData = `${API_WEB_URLS.PeriodData}/0/token`
@@ -2826,20 +2829,26 @@ const LedgerReport = () => {
 
       // ── Column definitions (total = 283 mm, margin 7 each side) ──
       const cols = [
-        { header: 'Contract No', dataKey: 'ContractNo', width: 22 },
-        { header: 'Date', dataKey: 'ContractDate', width: 20 },
-        { header: 'Seller', dataKey: 'Seller', width: 35 },
-        { header: 'Buyer', dataKey: 'Buyer', width: 35 },
-        { header: 'S/P', dataKey: 'Status', width: 10 },
-        { header: 'Item', dataKey: 'Item', width: 24 },
-        { header: 'Pur Qty', dataKey: 'PurQty', width: 18 },
-        { header: 'Sel Qty', dataKey: 'SelQty', width: 18 },
-        { header: 'Rate', dataKey: 'Rate', width: 20 },
-        { header: 'Period', dataKey: 'ShipmentOrLifted', width: 18 },
-        { header: 'Adv Pay', dataKey: 'AdvPayment', width: 20 },
-        { header: 'Adv Date', dataKey: 'AdvDate', width: 20 },
-        { header: 'Note', dataKey: 'Note', width: 23 },
+        { header: 'Contract No', dataKey: 'ContractNo', width: 17 },
+        { header: 'Date', dataKey: 'ContractDate', width: 16 },
+        { header: 'Seller', dataKey: 'Seller', width: 22 },
+        { header: 'Buyer', dataKey: 'Buyer', width: 22 },
+        { header: 'S/P', dataKey: 'Status', width: 8 },
+        { header: 'Item', dataKey: 'Item', width: 16 },
+        { header: 'Pur Qty', dataKey: 'PurQty', width: 14 },
+        { header: 'Sel Qty', dataKey: 'SelQty', width: 14 },
+        { header: 'Rate', dataKey: 'Rate', width: 14 },
+        { header: 'Period', dataKey: 'ShipmentOrLifted', width: 14 },
+        { header: 'Adv Pay', dataKey: 'AdvPayment', width: 14 },
+        { header: 'Adv Date', dataKey: 'AdvDate', width: 16 }
       ]
+
+      if (isDetailed) {
+        cols.push({ header: 'Lifting (Date|Qty|Lorry|BNo)', dataKey: 'DetailedLifting', width: 50 });
+        cols.push({ header: 'Note', dataKey: 'Note', width: 46 });
+      } else {
+        cols.push({ header: 'Note', dataKey: 'Note', width: 76 });
+      }
 
       const head = [cols.map(c => c.header)]
       const columnStyles = {}
@@ -2875,7 +2884,29 @@ const LedgerReport = () => {
 
         // Data rows
         group.items.forEach(row => {
-          body.push([
+          let lastColData = "";
+          let liftingString = "";
+
+          if (isDetailed && row.LiftingJson) {
+            try {
+              const liftingData = JSON.parse(row.LiftingJson);
+              if (Array.isArray(liftingData) && liftingData.length > 0) {
+                liftingString = liftingData.map(lift => {
+                  const date = lift.LiftDate?.substring(0, 5) || lift.LiftDate || "-";
+                  const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
+                  const lorry = lift.LorryNo || "-";
+                  const bno = lift.BNo || lift.InvoiceNo || "-";
+                  return `${date} | ${qty} | ${lorry} | ${bno}`;
+                }).join('\n');
+              } else { liftingString = "-"; }
+            } catch (e) { liftingString = "Invalid Data"; }
+          } else if (isDetailed) {
+            liftingString = "-";
+          }
+
+          lastColData = getCombinedNotes(row) || '-';
+
+          const rowPushData = [
             row.ContractNo || '',
             row.ContractDate || '',
             (row.Seller || '').substring(0, 22),
@@ -2888,8 +2919,16 @@ const LedgerReport = () => {
             (row.ShipmentOrLifted || '-').substring(0, 10),
             row.AdvPayment != null ? parseFloat(row.AdvPayment).toFixed(2) : '0.00',
             row.AdvDate || '',
-            (getCombinedNotes(row) || '-').substring(0, 18),
-          ])
+          ]
+
+          if (isDetailed) {
+            rowPushData.push(liftingString);
+            rowPushData.push(lastColData);
+          } else {
+            rowPushData.push(lastColData);
+          }
+
+          body.push(rowPushData)
           rowMeta.push({ type: 'data', fill: getRowFill(row) })
         })
 
@@ -3087,27 +3126,30 @@ const LedgerReport = () => {
     const workbook = new ExcelJS.Workbook()
     const worksheet = workbook.addWorksheet("Ledger Report")
 
+    // Determine the last column letter for merging based on isDetailed
+    const lastCol = isDetailed ? "T" : "S"
+
     // Add title and header info
     let currentRow = 1
-    worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
+    worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
     const titleRow = worksheet.getCell(`A${currentRow}`)
     titleRow.value = "Ledger Report"
     titleRow.font = { bold: true, size: 16 }
     titleRow.alignment = { horizontal: "center" }
     currentRow++
 
-    worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
+    worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
     const ledgerRow = worksheet.getCell(`A${currentRow}`)
     ledgerRow.value = `Ledger: ${selectedLedgerName}`
     ledgerRow.font = { bold: true }
     currentRow++
 
-    worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
+    worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
     const periodRow = worksheet.getCell(`A${currentRow}`)
     periodRow.value = `Period: ${fromDate.toLocaleDateString()} to ${toDate.toLocaleDateString()}`
     currentRow++
 
-    worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
+    worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
     const dateRow = worksheet.getCell(`A${currentRow}`)
     dateRow.value = `Generated on: ${new Date().toLocaleString()}`
     currentRow++
@@ -3133,9 +3175,14 @@ const LedgerReport = () => {
       "Adv Payment",
       "Adv Date",
       "Lifted",
-      "Contract",
-      "Note",
+      "Contract"
     ]
+    if (isDetailed) {
+      headers.push("Lifting");
+      headers.push("Note");
+    } else {
+      headers.push("Note");
+    }
 
     // Add each group with its data
     groupedData.forEach(group => {
@@ -3158,7 +3205,7 @@ const LedgerReport = () => {
       ).toFixed(2)
 
       // Add group header
-      worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
+      worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
       const groupHeaderCell = worksheet.getCell(`A${currentRow}`)
       groupHeaderCell.value = `${group.groupName} (${group.count} records)`
       groupHeaderCell.font = { bold: true, size: 12, color: { argb: "FF000000" } }
@@ -3197,6 +3244,28 @@ const LedgerReport = () => {
         const dataRow = worksheet.getRow(currentRow)
         const fontColor = getRowFontColor(row)
 
+        let lastColData = "";
+        let liftingString = "";
+
+        if (isDetailed && row.LiftingJson) {
+          try {
+            const liftingData = JSON.parse(row.LiftingJson);
+            if (Array.isArray(liftingData) && liftingData.length > 0) {
+              liftingString = liftingData.map(lift => {
+                const date = lift.LiftDate?.substring(0, 5) || lift.LiftDate || "-";
+                const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
+                const lorry = lift.LorryNo || "-";
+                const bno = lift.BNo || lift.InvoiceNo || "-";
+                return `${date} | ${qty} | ${lorry} | ${bno}`;
+              }).join('\n');
+            } else { liftingString = "-"; }
+          } catch (e) { liftingString = "Invalid Data"; }
+        } else if (isDetailed) {
+          liftingString = "-";
+        }
+
+        lastColData = getCombinedNotes(row) || "-";
+
         const rowData = [
           row.ContractNo || "",
           row.ContractDate || "",
@@ -3216,8 +3285,14 @@ const LedgerReport = () => {
           row.AdvDate || "",
           row.Lifted ? parseFloat(row.Lifted).toFixed(2) : "0.00",
           row.Contract || "",
-          getCombinedNotes(row),
         ]
+
+        if (isDetailed) {
+          rowData.push(liftingString);
+          rowData.push(lastColData);
+        } else {
+          rowData.push(lastColData);
+        }
 
         rowData.forEach((value, index) => {
           const cell = dataRow.getCell(index + 1)
@@ -3244,27 +3319,12 @@ const LedgerReport = () => {
 
       // Add group totals
       const totalsRow = worksheet.getRow(currentRow)
-      const totalsData = [
-        "Group Totals",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        groupTotals.purQty.toFixed(2),
-        groupTotals.selQty.toFixed(2),
-        "",
-        "",
-        "",
-        "",
-        groupTotals.advPayment.toFixed(2),
-        "",
-        "",
-        "",
-        "",
-      ]
+      const totalsData = new Array(headers.length).fill("")
+      totalsData[0] = "Group Totals"
+      totalsData[8] = groupTotals.purQty.toFixed(2)
+      totalsData[9] = groupTotals.selQty.toFixed(2)
+      totalsData[14] = groupTotals.advPayment.toFixed(2)
+
       totalsData.forEach((value, index) => {
         const cell = totalsRow.getCell(index + 1)
         cell.value = value
@@ -3279,27 +3339,12 @@ const LedgerReport = () => {
 
       // Add group averages
       const averagesRow = worksheet.getRow(currentRow)
-      const averagesData = [
-        "Group Averages",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        avgPurQty,
-        avgSelQty,
-        "",
-        "",
-        "",
-        "",
-        avgAdvPayment,
-        "",
-        "",
-        "",
-        "",
-      ]
+      const averagesData = new Array(headers.length).fill("")
+      averagesData[0] = "Group Averages"
+      averagesData[8] = avgPurQty
+      averagesData[9] = avgSelQty
+      averagesData[14] = avgAdvPayment
+
       averagesData.forEach((value, index) => {
         const cell = averagesRow.getCell(index + 1)
         cell.value = value
@@ -3314,27 +3359,10 @@ const LedgerReport = () => {
 
       // Add difference amount
       const diffRow = worksheet.getRow(currentRow)
-      const diffData = [
-        "Difference Amount (Sel*AvgSel - Pur*AvgPur)",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        differenceAmount,
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      ]
+      const diffData = new Array(headers.length).fill("")
+      diffData[0] = "Difference Amount (Sel*AvgSel - Pur*AvgPur)"
+      diffData[8] = differenceAmount
+
       diffData.forEach((value, index) => {
         const cell = diffRow.getCell(index + 1)
         cell.value = value
@@ -3352,27 +3380,12 @@ const LedgerReport = () => {
 
     // Add overall totals
     const overallTotalsRow = worksheet.getRow(currentRow)
-    const overallTotalsData = [
-      "OVERALL TOTALS",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      overallTotals.purQty.toFixed(2),
-      overallTotals.selQty.toFixed(2),
-      "",
-      "",
-      "",
-      "",
-      overallTotals.advPayment.toFixed(2),
-      "",
-      "",
-      "",
-      "",
-    ]
+    const overallTotalsData = new Array(headers.length).fill("")
+    overallTotalsData[0] = "OVERALL TOTALS"
+    overallTotalsData[8] = overallTotals.purQty.toFixed(2)
+    overallTotalsData[9] = overallTotals.selQty.toFixed(2)
+    overallTotalsData[14] = overallTotals.advPayment.toFixed(2)
+
     overallTotalsData.forEach((value, index) => {
       const cell = overallTotalsRow.getCell(index + 1)
       cell.value = value
@@ -3611,6 +3624,25 @@ const LedgerReport = () => {
                       minWidth: "fit-content",
                     }}
                   >
+                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0", paddingLeft: "1.5rem" }}>
+                      <input
+                        id="Detailed"
+                        type="checkbox"
+                        className="form-check-input"
+                        style={{ width: "12px", height: "12px", margin: "0" }}
+                        checked={isDetailed}
+                        onClick={() => setIsDetailed(!isDetailed)}
+                        readOnly
+                      />
+                      <label
+                        className="form-check-label small mb-0 mr-2"
+                        htmlFor="Detailed"
+                        style={{ fontSize: "0.55rem", color: "#198754", fontWeight: "bold", whiteSpace: "nowrap" }}
+                      >
+                        Detailed
+                      </label>
+                    </div>
+
                     <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0" }}>
                       <input
                         id="Pending"
@@ -4666,6 +4698,29 @@ const LedgerReport = () => {
                             >
                               Contract
                             </th>
+                            {isDetailed && (
+                              <th
+                                className="text-center align-middle"
+                                style={{
+                                  backgroundColor: "#0000FF",
+                                  color: "white",
+                                  height: "25px",
+                                  fontSize: "0.7rem",
+                                  fontWeight: "600",
+                                  padding: "0",
+                                  border: "1.5px solid black !important",
+                                  borderTop: "1.5px solid black !important",
+                                  borderRight: "1.5px solid black !important",
+                                  borderBottom: "1.5px solid black !important",
+                                  borderLeft: "1.5px solid black !important",
+                                  boxShadow: "none",
+                                  width: "260px",
+                                  minWidth: "230px"
+                                }}
+                              >
+                                Lifting
+                              </th>
+                            )}
                             <th
                               className="text-center align-middle"
                               style={{
@@ -5395,6 +5450,52 @@ const LedgerReport = () => {
                                       >
                                         {row.Contract || "-"}
                                       </td>
+                                      {isDetailed && (
+                                        <td
+                                          className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`}
+                                          style={{
+                                            verticalAlign: "top",
+                                            padding: "0",
+                                            border: "1.5px solid black",
+                                            color: row.Status === "S" ? "red" : "inherit",
+                                            fontWeight: row.Status === "S" ? "bold" : "inherit",
+                                          }}
+                                        >
+                                          {(() => {
+                                            if (!row.LiftingJson) return "-";
+                                            try {
+                                              const liftingData = JSON.parse(row.LiftingJson);
+                                              if (!Array.isArray(liftingData) || liftingData.length === 0) return "-";
+                                              return (
+                                                <div style={{ maxHeight: "150px", overflowY: "auto", width: "100%", margin: 0, padding: 0 }}>
+                                                  <table style={{ width: "100%", fontSize: "0.55rem", borderCollapse: "collapse", margin: 0, padding: 0, border: "none" }}>
+                                                    <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8f9fa", zIndex: 1, borderBottom: "1px solid #ccc" }}>
+                                                      <tr>
+                                                        <th style={{ padding: "2px", textAlign: "left", width: "20%", fontWeight: 600 }}>Date</th>
+                                                        <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Qty</th>
+                                                        <th style={{ padding: "2px", textAlign: "left", width: "35%", fontWeight: 600 }}>LorryNo</th>
+                                                        <th style={{ padding: "2px", textAlign: "left", width: "30%", fontWeight: 600 }}>BNo/InvNo</th>
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                      {liftingData.map((lift, idx) => (
+                                                        <tr key={idx} style={{ borderBottom: "1px dashed #eee" }}>
+                                                          <td style={{ padding: "2px", textAlign: "left" }}>{lift.LiftDate?.substring(0, 5) || lift.LiftDate || "-"}</td>
+                                                          <td style={{ padding: "2px", textAlign: "left" }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
+                                                          <td style={{ padding: "2px", textAlign: "left" }}>{lift.LorryNo || "-"}</td>
+                                                          <td style={{ padding: "2px", textAlign: "left" }}>{lift.BNo || lift.InvoiceNo || "-"}</td>
+                                                        </tr>
+                                                      ))}
+                                                    </tbody>
+                                                  </table>
+                                                </div>
+                                              );
+                                            } catch (e) {
+                                              return "Invalid Data";
+                                            }
+                                          })()}
+                                        </td>
+                                      )}
                                       <td
                                         className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`}
                                         style={{

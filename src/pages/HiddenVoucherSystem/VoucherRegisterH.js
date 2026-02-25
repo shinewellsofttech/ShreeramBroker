@@ -4,6 +4,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Fn_GetReport } from '../../store/Functions';
 import { API_WEB_URLS } from '../../constants/constAPI';
 import VoucherH from './VoucherH';
+import jsPDF from 'jspdf';
+import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
+applyAutoTable(jsPDF);
 
 const formatDateLocal = (value) => {
     if (!value) return '';
@@ -27,6 +30,15 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
     const [selectedItems, setSelectedItems] = useState(new Set());
     const [selectedVoucherId, setSelectedVoucherId] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+    const requestSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     const API_URL = `VoucherListNew/0/token`;
 
@@ -85,21 +97,47 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
         return data;
     }, [voucherData, searchQuery]);
 
+    const sortedData = useMemo(() => {
+        let sortableItems = [...filteredData];
+        if (sortConfig.key !== null) {
+            sortableItems.sort((a, b) => {
+                let aValue = a[sortConfig.key];
+                let bValue = b[sortConfig.key];
+
+                if (sortConfig.key === 'VoucherNo' || sortConfig.key === 'TotalAmount') {
+                    aValue = parseFloat(aValue || 0);
+                    bValue = parseFloat(bValue || 0);
+                } else if (sortConfig.key === 'VoucherDate') {
+                    aValue = new Date(aValue || 0).getTime();
+                    bValue = new Date(bValue || 0).getTime();
+                } else {
+                    aValue = (aValue || '').toString().toLowerCase();
+                    bValue = (bValue || '').toString().toLowerCase();
+                }
+
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [filteredData, sortConfig]);
+
     const toggleSelectAll = () => {
-        if (selectedItems.size === filteredData.length && filteredData.length > 0) {
+        if (selectedItems.size === sortedData.length && sortedData.length > 0) {
             setSelectedItems(new Set());
         } else {
-            setSelectedItems(new Set(filteredData.map((_, i) => i)));
+            setSelectedItems(new Set(sortedData.map(item => item.Id)));
         }
     };
 
-    const toggleSelectItem = (index, e) => {
+    const toggleSelectItem = (id, e) => {
         if (e) e.stopPropagation();
         const newSelected = new Set(selectedItems);
-        if (newSelected.has(index)) {
-            newSelected.delete(index);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
         } else {
-            newSelected.add(index);
+            newSelected.add(id);
         }
         setSelectedItems(newSelected);
     };
@@ -109,8 +147,9 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
         let csvContent = "data:text/csv;charset=utf-8,";
         csvContent += 'Voucher No,Date,Dr Ledger,Cr Ledger,Rate1,Rate2,Qty,Remark,Amount\n';
         let totalAmount = 0;
-        Array.from(selectedItems).forEach(idx => {
-            const item = filteredData[idx];
+
+        const selectedElements = sortedData.filter(item => selectedItems.has(item.Id));
+        selectedElements.forEach(item => {
             totalAmount += (item.TotalAmount || 0);
             const date = item.VoucherDate ? new Date(item.VoucherDate).toLocaleDateString() : '';
             const remark = item.Remark ? `"${item.Remark.replace(/"/g, '""')}"` : '';
@@ -127,10 +166,79 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
     };
 
     let totalSelectedAmount = 0;
-    selectedItems.forEach(idx => {
-        const item = filteredData[idx];
-        if (item) totalSelectedAmount += (item.TotalAmount || 0);
+    sortedData.forEach(item => {
+        if (selectedItems.has(item.Id)) totalSelectedAmount += (item.TotalAmount || 0);
     });
+
+    const getSortIcon = (key) => {
+        if (sortConfig.key !== key) return <i className="bx bx-sort text-muted ms-1" style={{ opacity: 0.5 }}></i>;
+        return sortConfig.direction === 'asc' ? <i className="bx bx-sort-up text-primary ms-1"></i> : <i className="bx bx-sort-down text-primary ms-1"></i>;
+    };
+
+    const handleSharePDF = async () => {
+        if (selectedItems.size === 0) return;
+
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text('Voucher Register', 14, 15);
+        doc.setFontSize(10);
+
+        const periodText = `Period: ${fromDate ? new Date(fromDate).toLocaleDateString('en-GB') : ''} to ${toDate ? new Date(toDate).toLocaleDateString('en-GB') : ''}`;
+        doc.text(periodText, 14, 22);
+
+        const tableColumn = ["Date", "No", "Dr Ledger", "Cr Ledger", "Qty", "Amount"];
+        const tableRows = [];
+
+        let rowTotal = 0;
+
+        const selectedElements = sortedData.filter(item => selectedItems.has(item.Id));
+        selectedElements.forEach(item => {
+            const date = item.VoucherDate ? new Date(item.VoucherDate).toLocaleDateString('en-GB') : '';
+            const rowData = [
+                date,
+                item.VoucherNo || '',
+                item.DrLedgerName || '',
+                item.CrLedgerName || '',
+                item.Qty || '',
+                (item.TotalAmount || 0).toFixed(2)
+            ];
+            rowTotal += (item.TotalAmount || 0);
+            tableRows.push(rowData);
+        });
+
+        tableRows.push([{ content: 'Total', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, { content: rowTotal.toFixed(2), styles: { fontStyle: 'bold' } }]);
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 28,
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            styles: { fontSize: 8, cellPadding: 2 },
+            columnStyles: {
+                5: { halign: 'right' }
+            }
+        });
+
+        const pdfBlob = doc.output('blob');
+
+        if (navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], "VoucherRegisterH.pdf", { type: "application/pdf" })] })) {
+            const file = new File([pdfBlob], `VoucherRegisterH_${new Date().getTime()}.pdf`, { type: 'application/pdf' });
+            try {
+                await navigator.share({
+                    title: 'Voucher Register',
+                    files: [file]
+                });
+            } catch (error) {
+                console.error("Error sharing PDF:", error);
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                window.open(pdfUrl, '_blank');
+            }
+        } else {
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            window.open(pdfUrl, '_blank');
+        }
+    };
 
     return (
         <Card>
@@ -143,14 +251,13 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
                             <Input type="date" value={formatDateLocal(toDate)} onChange={(e) => setToDate(e.target.value)} bsSize="sm" style={{ width: "130px" }} />
                         </div>
                         <Input type="text" placeholder="Search by No, Ledger, Remark..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} bsSize="sm" style={{ width: "230px" }} />
-                        <div className="d-flex gap-2">
-                            <Button color="info" size="sm" onClick={handleExportExcel} disabled={selectedItems.size === 0} style={{ whiteSpace: "nowrap" }}>
-                                Export {selectedItems.size > 0 && `(${selectedItems.size})`}
-                            </Button>
-                            <Button color="primary" size="sm" onClick={fetchData} title="Refresh Data">
-                                <i className="bx bx-refresh"></i>
-                            </Button>
-                        </div>
+                        {sortedData.length > 0 && (
+                            <div className="d-flex gap-2">
+                                <Button color="danger" size="sm" onClick={handleSharePDF} disabled={selectedItems.size === 0} style={{ whiteSpace: "nowrap" }}>
+                                    <i className="bx bx-share-alt mr-1"></i> Share PDF
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -160,15 +267,27 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
                         <thead className="table-light" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                             <tr>
                                 <th style={{ width: '40px', textAlign: 'center', backgroundColor: '#f8f9fa' }}>
-                                    <input type="checkbox" checked={selectedItems.size === filteredData.length && filteredData.length > 0} onChange={toggleSelectAll} />
+                                    <input type="checkbox" checked={selectedItems.size === sortedData.length && sortedData.length > 0} onChange={toggleSelectAll} />
                                 </th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>Date</th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>No</th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>Dr Ledger</th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>Cr Ledger</th>
-                                <th className="text-end" style={{ backgroundColor: '#f8f9fa' }}>Amount</th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>Details</th>
-                                <th className="text-center" style={{ backgroundColor: '#f8f9fa' }}>Action</th>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('VoucherDate')}>
+                                    Date {getSortIcon('VoucherDate')}
+                                </th>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('VoucherNo')}>
+                                    No {getSortIcon('VoucherNo')}
+                                </th>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('DrLedgerName')}>
+                                    Dr Ledger {getSortIcon('DrLedgerName')}
+                                </th>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('CrLedgerName')}>
+                                    Cr Ledger {getSortIcon('CrLedgerName')}
+                                </th>
+                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('TotalAmount')}>
+                                    Amount {getSortIcon('TotalAmount')}
+                                </th>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('Remark')}>
+                                    Details {getSortIcon('Remark')}
+                                </th>
+                                <th className="text-center" style={{ backgroundColor: '#f8f9fa', whiteSpace: 'nowrap' }}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -176,18 +295,18 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
                                 <tr>
                                     <td colSpan="8" className="text-center py-4"><Spinner color="primary" size="sm" /></td>
                                 </tr>
-                            ) : filteredData.length === 0 ? (
+                            ) : sortedData.length === 0 ? (
                                 <tr>
                                     <td colSpan="8" className="text-center py-4 text-muted">No vouchers found for this period.</td>
                                 </tr>
                             ) : (
-                                filteredData.map((item, index) => (
-                                    <tr key={index} onDoubleClick={() => handleEdit(item.Id)} style={{ cursor: 'pointer', backgroundColor: selectedItems.has(index) ? 'rgba(0, 123, 255, 0.05)' : '' }}>
-                                        <td className="text-center" onClick={(e) => toggleSelectItem(index, e)}>
-                                            <input type="checkbox" checked={selectedItems.has(index)} onChange={(e) => toggleSelectItem(index, e)} />
+                                sortedData.map((item) => (
+                                    <tr key={item.Id} onDoubleClick={() => handleEdit(item.Id)} style={{ cursor: 'pointer', backgroundColor: selectedItems.has(item.Id) ? 'rgba(0, 123, 255, 0.05)' : '' }}>
+                                        <td className="text-center" onClick={(e) => toggleSelectItem(item.Id, e)}>
+                                            <input type="checkbox" checked={selectedItems.has(item.Id)} readOnly />
                                         </td>
                                         <td>{item.VoucherDate ? new Date(item.VoucherDate).toLocaleDateString('en-GB') : '-'}</td>
-                                        <td><Badge color="soft-primary" className="font-size-12">#{item.VoucherNo}</Badge></td>
+                                        <td><Badge color="soft-primary" className="font-size-12 text-dark">#{item.VoucherNo}</Badge></td>
                                         <td className="fw-bold text-danger" style={{ whiteSpace: 'normal', minWidth: '150px' }}>{item.DrLedgerName}</td>
                                         <td className="fw-bold text-success" style={{ whiteSpace: 'normal', minWidth: '150px' }}>{item.CrLedgerName}</td>
                                         <td className="text-end">

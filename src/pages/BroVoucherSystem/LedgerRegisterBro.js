@@ -5,6 +5,9 @@ import { API_WEB_URLS } from '../../constants/constAPI';
 import { useDispatch } from 'react-redux';
 import { Fn_GetReport } from 'store/Functions';
 import { useSelector } from 'react-redux';
+import jsPDF from 'jspdf';
+import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
+applyAutoTable(jsPDF);
 
 const formatDateLocal = (value) => {
     if (!value) return '';
@@ -185,6 +188,71 @@ const LedgerRegisterBro = ({ globalFromDate, globalToDate }) => {
         }
     });
 
+    const handleSharePDF = async () => {
+        if (selectedItems.size === 0) return;
+
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text('Ledger Register', 14, 15);
+        doc.setFontSize(10);
+
+        const periodText = `Period: ${fromDate ? new Date(fromDate).toLocaleDateString('en-GB') : ''} to ${toDate ? new Date(toDate).toLocaleDateString('en-GB') : ''}`;
+        doc.text(periodText, 14, 22);
+
+        const tableColumn = ["Ledger Name", "Dr Balance", "Cr Balance", "Net Balance"];
+        const tableRows = [];
+
+        const selectedElements = filteredData.filter((_, idx) => selectedItems.has(idx));
+        selectedElements.forEach(item => {
+            const netBalStr = `${Math.abs(item.Balance || 0).toFixed(2)} ${item.Balance >= 0 ? 'Dr' : 'Cr'}`;
+            const rowData = [
+                item.LedgerName || '',
+                (item.DrBalance || 0).toFixed(2),
+                (item.CrBalance || 0).toFixed(2),
+                netBalStr
+            ];
+            tableRows.push(rowData);
+        });
+
+        tableRows.push([
+            { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } },
+            { content: totalDr.toFixed(2), styles: { fontStyle: 'bold', halign: 'right' } },
+            { content: totalCr.toFixed(2), styles: { fontStyle: 'bold', halign: 'right' } },
+            { content: `${Math.abs(totalNet).toFixed(2)} ${totalNet >= 0 ? 'Dr' : 'Cr'}`, styles: { fontStyle: 'bold', halign: 'right' } }
+        ]);
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 28,
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            styles: { fontSize: 8, cellPadding: 2 },
+            columnStyles: {
+                1: { halign: 'right' },
+                2: { halign: 'right' },
+                3: { halign: 'right' }
+            }
+        });
+
+        const pdfBlob = doc.output('blob');
+
+        if (navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], "LedgerRegister.pdf", { type: "application/pdf" })] })) {
+            const file = new File([pdfBlob], `LedgerRegister_${new Date().getTime()}.pdf`, { type: 'application/pdf' });
+            try {
+                await navigator.share({
+                    title: 'Ledger Register',
+                    files: [file]
+                });
+            } catch (error) {
+                console.error("Error sharing PDF:", error);
+                window.open(URL.createObjectURL(pdfBlob), '_blank');
+            }
+        } else {
+            window.open(URL.createObjectURL(pdfBlob), '_blank');
+        }
+    };
+
     return (
         <Card>
             <CardBody>
@@ -216,9 +284,11 @@ const LedgerRegisterBro = ({ globalFromDate, globalToDate }) => {
                             style={{ width: "230px" }}
                         />
                         {filteredData.length > 0 && (
-                            <Button color="info" size="sm" onClick={handleExportExcel} disabled={selectedItems.size === 0} style={{ whiteSpace: "nowrap" }}>
-                                <i className="bx bx-export mr-1"></i> Export {selectedItems.size > 0 && `(${selectedItems.size})`}
-                            </Button>
+                            <div className="d-flex gap-2">
+                                <Button color="danger" size="sm" onClick={handleSharePDF} disabled={selectedItems.size === 0} style={{ whiteSpace: "nowrap" }}>
+                                    <i className="bx bx-share-alt mr-1"></i> Share PDF
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -257,14 +327,14 @@ const LedgerRegisterBro = ({ globalFromDate, globalToDate }) => {
                                         onClick={() => toggleSelectItem(index)}
                                         style={{ cursor: 'pointer', backgroundColor: selectedItems.has(index) ? 'rgba(0, 123, 255, 0.05)' : '' }}
                                     >
-                                        <td className="text-center" onClick={(e) => e.stopPropagation()}>
-                                            <div className="custom-control custom-checkbox">
+                                        <td className="text-center" onClick={(e) => toggleSelectItem(index, e)}>
+                                            <div className="custom-control custom-checkbox position-relative" style={{ zIndex: 0 }}>
                                                 <input
                                                     type="checkbox"
                                                     className="custom-control-input"
                                                     id={`checkLedger-${index}`}
                                                     checked={selectedItems.has(index)}
-                                                    onChange={() => toggleSelectItem(index)}
+                                                    readOnly
                                                 />
                                                 <label className="custom-control-label" htmlFor={`checkLedger-${index}`}></label>
                                             </div>

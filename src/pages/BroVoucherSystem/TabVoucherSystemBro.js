@@ -28,45 +28,68 @@ const TabVoucherSystemBro = () => {
                         padding-top: 46px;
                     }
                 }
+                .mobile-tabs {
+                    flex-wrap: nowrap;
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    scrollbar-width: none;
+                }
+                .mobile-tabs::-webkit-scrollbar {
+                    display: none;
+                }
+                .mobile-tabs .nav-link {
+                    white-space: nowrap;
+                    padding: 0.5rem 0.5rem;
+                    font-size: 14px;
+                }
+                @media (min-width: 769px) {
+                    .mobile-tabs .nav-link {
+                        padding: 0.5rem 1rem;
+                        font-size: 16px;
+                    }
+                }
             `}</style>
             <Container fluid>
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                    <Nav tabs className="flex-grow-1">
+                <div className="d-flex justify-content-between align-items-center mb-3 text-nowrap">
+                    <Nav tabs className="flex-grow-1 mobile-tabs">
                         <NavItem>
                             <NavLink
-                                className={classnames({ active: activeTab === 'voucher' })}
+                                className={classnames({ active: activeTab === 'voucher' }, "fw-bold")}
                                 onClick={() => toggleTab('voucher')}
                                 style={{ cursor: 'pointer' }}
                             >
-                                Voucher Register
+                                <span className="d-none d-md-inline">Voucher Register</span>
+                                <span className="d-inline d-md-none">Voucher</span>
                             </NavLink>
                         </NavItem>
                         <NavItem>
                             <NavLink
-                                className={classnames({ active: activeTab === 'ledger' })}
+                                className={classnames({ active: activeTab === 'ledger' }, "fw-bold")}
                                 onClick={() => toggleTab('ledger')}
                                 style={{ cursor: 'pointer' }}
                             >
-                                Ledger Register
+                                <span className="d-none d-md-inline">Ledger Register</span>
+                                <span className="d-inline d-md-none">L. Reg</span>
                             </NavLink>
                         </NavItem>
                         <NavItem>
                             <NavLink
-                                className={classnames({ active: activeTab === 'ledgerListNew' })}
+                                className={classnames({ active: activeTab === 'ledgerListNew' }, "fw-bold")}
                                 onClick={() => toggleTab('ledgerListNew')}
                                 style={{ cursor: 'pointer' }}
                             >
-                                Ledger
+                                <span className="d-none d-md-inline">Ledger</span>
+                                <span className="d-inline d-md-none">Ledger</span>
                             </NavLink>
                         </NavItem>
                     </Nav>
                     <button
-                        className="btn btn-primary d-flex align-items-center rounded-circle px-2 ml-2"
+                        className="btn btn-primary d-flex align-items-center rounded-circle px-2 ml-2 flex-shrink-0"
                         onClick={() => setShowVoucherModal(true)}
                         title="Create New Voucher"
-                        style={{ width: '40px', height: '40px', justifyContent: 'center', marginLeft: '10px' }}
+                        style={{ width: '40px', height: '40px', justifyContent: 'center', marginLeft: '5px' }}
                     >
-                        <i className="bx bx-plus font-size-20"></i>
+                        <i className="bx bx-plus font-size-22"></i>
                     </button>
                 </div>
 

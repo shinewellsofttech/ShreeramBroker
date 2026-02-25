@@ -3,6 +3,9 @@ import { Row, Col, Card, CardBody, Input, Button, Table, Spinner, Badge, FormGro
 import { useDispatch, useSelector } from 'react-redux';
 import { Fn_GetReport } from '../../store/Functions';
 import { API_WEB_URLS } from '../../constants/constAPI';
+import jsPDF from 'jspdf';
+import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
+applyAutoTable(jsPDF);
 
 const formatDateLocal = (value) => {
     if (!value) return '';
@@ -99,6 +102,71 @@ const LedgerRegisterH = () => {
         }
     });
 
+    const handleSharePDF = async () => {
+        if (selectedItems.size === 0) return;
+
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text('Ledger Register', 14, 15);
+        doc.setFontSize(10);
+
+        const periodText = `Period: ${fromDate ? new Date(fromDate).toLocaleDateString('en-GB') : ''} to ${toDate ? new Date(toDate).toLocaleDateString('en-GB') : ''}`;
+        doc.text(periodText, 14, 22);
+
+        const tableColumn = ["Ledger Name", "Dr Balance", "Cr Balance", "Net Balance"];
+        const tableRows = [];
+
+        const selectedElements = filteredData.filter((_, idx) => selectedItems.has(idx));
+        selectedElements.forEach(item => {
+            const netBalStr = `${Math.abs(item.Balance || 0).toLocaleString()} ${item.Balance >= 0 ? 'Dr' : 'Cr'}`;
+            const rowData = [
+                item.LedgerName || '',
+                (item.DrBalance || 0).toLocaleString(),
+                (item.CrBalance || 0).toLocaleString(),
+                netBalStr
+            ];
+            tableRows.push(rowData);
+        });
+
+        tableRows.push([
+            { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } },
+            { content: totalDr.toLocaleString(), styles: { fontStyle: 'bold', halign: 'right' } },
+            { content: totalCr.toLocaleString(), styles: { fontStyle: 'bold', halign: 'right' } },
+            { content: `${Math.abs(totalNet).toLocaleString()} ${totalNet >= 0 ? 'Dr' : 'Cr'}`, styles: { fontStyle: 'bold', halign: 'right' } }
+        ]);
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 28,
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            styles: { fontSize: 8, cellPadding: 2 },
+            columnStyles: {
+                1: { halign: 'right' },
+                2: { halign: 'right' },
+                3: { halign: 'right' }
+            }
+        });
+
+        const pdfBlob = doc.output('blob');
+
+        if (navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], "LedgerRegisterH.pdf", { type: "application/pdf" })] })) {
+            const file = new File([pdfBlob], `LedgerRegisterH_${new Date().getTime()}.pdf`, { type: 'application/pdf' });
+            try {
+                await navigator.share({
+                    title: 'Ledger Register',
+                    files: [file]
+                });
+            } catch (error) {
+                console.error("Error sharing PDF:", error);
+                window.open(URL.createObjectURL(pdfBlob), '_blank');
+            }
+        } else {
+            window.open(URL.createObjectURL(pdfBlob), '_blank');
+        }
+    };
+
     return (
         <Card>
             <CardBody>
@@ -111,9 +179,11 @@ const LedgerRegisterH = () => {
                         </div>
                         <Input type="text" placeholder="Search Ledger Name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} bsSize="sm" style={{ width: "230px" }} />
                         <div className="d-flex gap-2">
-                            <Button color="primary" size="sm" onClick={fetchData} title="Refresh Data" style={{ whiteSpace: "nowrap" }}>
-                                <i className="bx bx-refresh mr-1"></i> Refresh
-                            </Button>
+                            {filteredData.length > 0 && (
+                                <Button color="danger" size="sm" onClick={handleSharePDF} disabled={selectedItems.size === 0} style={{ whiteSpace: "nowrap" }}>
+                                    <i className="bx bx-share-alt mr-1"></i> Share PDF
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -144,8 +214,8 @@ const LedgerRegisterH = () => {
                             ) : (
                                 filteredData.map((item, index) => (
                                     <tr key={index} onClick={() => toggleSelectItem(index)} style={{ cursor: 'pointer', backgroundColor: selectedItems.has(index) ? 'rgba(0, 123, 255, 0.05)' : '' }}>
-                                        <td className="text-center" onClick={(e) => e.stopPropagation()}>
-                                            <input type="checkbox" checked={selectedItems.has(index)} onChange={() => toggleSelectItem(index)} />
+                                        <td className="text-center" onClick={(e) => { e.stopPropagation(); toggleSelectItem(index); }}>
+                                            <input type="checkbox" checked={selectedItems.has(index)} readOnly />
                                         </td>
                                         <td className="fw-bold" style={{ whiteSpace: 'normal', minWidth: '200px' }}>{item.LedgerName}</td>
                                         <td className="text-end text-danger fw-bold">₹{parseFloat(item.DrBalance || 0).toLocaleString()}</td>
