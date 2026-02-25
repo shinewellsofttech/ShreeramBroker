@@ -1435,15 +1435,18 @@ function ContractRegister() {
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: 'calc(100vh - 70px)',
-      padding: 0,
-      margin: 0,
-      overflow: 'hidden',
-      gap: 0
-    }}>
+    <div
+      className="contract-register-container"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: 'calc(100vh - 70px)',
+        padding: 0,
+        margin: 0,
+        overflow: 'hidden',
+        gap: 0
+      }}
+    >
 
       {/* Filter Form */}
       <Card className="shadow-sm border-0" style={{ flexShrink: 0, marginBottom: '0.25rem' }}>
@@ -1573,61 +1576,6 @@ function ContractRegister() {
                 </Col>
                 <Col xs="auto" style={{ flex: "0 0 auto" }}>
                   <div
-                    onClick={openItemModal}
-                    style={{
-                      backgroundColor: "#E3F2FD",
-                      color: "#333",
-                      border: "1px solid #2196F3",
-                      borderRadius: "6px",
-                      height: "28px",
-                      padding: "2px 8px",
-                      fontSize: "0.65rem",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      width: '90px',
-                      maxWidth: '90px'
-                    }}
-                  >
-                    <span>
-                      {selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "")
-                        ? `${selectedItems.filter(item => item !== "").length} selected`
-                        : "Commodity"}
-                    </span>
-                    <i className="fas fa-chevron-down ms-2"></i>
-                  </div>
-                </Col>
-
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <div
-                    onClick={openPeriodModal}
-                    style={{
-                      backgroundColor: "#E3F2FD",
-                      color: "#333",
-                      border: "1px solid #2196F3",
-                      borderRadius: "6px",
-                      height: "28px",
-                      padding: "2px 8px",
-                      fontSize: "0.65rem",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      width: '90px',
-                      maxWidth: '90px'
-                    }}
-                  >
-                    <span>
-                      {selectedPeriods && selectedPeriods.length > 0
-                        ? `${selectedPeriods.length} selected`
-                        : "Period"}
-                    </span>
-                    <i className="fas fa-chevron-down ms-2"></i>
-                  </div>
-                </Col>
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <div
                     onClick={openLedgerModal}
                     style={{
                       backgroundColor: "#E3F2FD",
@@ -1696,20 +1644,6 @@ function ContractRegister() {
                 </Col>
                 <Col xs="auto" style={{ flex: "0 0 auto" }}>
                   <Button
-                    variant="outline-danger"
-                    size="sm"
-                    onClick={handlePDFExport}
-                    className="d-flex align-items-center"
-                    style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                    disabled={selectedRows.length === 0}
-                    title="Export selected rows to PDF"
-                  >
-                    <FileText className="me-1" size={14} />
-                    PDF
-                  </Button>
-                </Col>
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <Button
                     variant="outline-info"
                     size="sm"
                     onClick={handleLink}
@@ -1741,29 +1675,29 @@ function ContractRegister() {
                   </Button>
                 </Col>
 
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <Form.Label className="fw-semibold mb-1 small" style={{ visibility: 'hidden' }}>Total</Form.Label>
+                <Col xs="auto" style={{ flex: "0 0 auto", display: 'flex', alignItems: 'center' }}>
                   <div style={{
                     border: '2px solid #0d6efd',
                     borderRadius: '4px',
-                    padding: '0.3rem 0.6rem',
+                    padding: '0 0.6rem',
                     backgroundColor: '#e7f1ff',
                     display: 'flex',
+                    alignItems: 'center',
                     gap: '0.5rem',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    height: '28px',
+                    minHeight: '28px'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', fontSize: '0.7rem' }}>
-                      <span style={{ color: '#6c757d', fontWeight: '600' }}>Contracts:</span>
-                      <span style={{ color: '#0d6efd', fontWeight: 'bold' }}>{selectedRows.length.toLocaleString()}</span>
-                      <span style={{ color: '#0d6efd' }}>|</span>
-                      <span style={{ color: '#6c757d', fontWeight: '600' }}>Qty:</span>
-                      <span style={{ color: '#0d6efd', fontWeight: 'bold' }}>
-                        {filteredTableData
-                          .filter(row => selectedRows.includes(row.Id))
-                          .reduce((sum, row) => sum + (parseFloat(row.Qty) || 0), 0)
-                          .toLocaleString()}
-                      </span>
-                    </div>
+                    <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.7rem' }}>Contracts:</span>
+                    <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.7rem' }}>{selectedRows.length.toLocaleString()}</span>
+                    <span style={{ color: '#0d6efd', fontSize: '0.7rem' }}>|</span>
+                    <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.7rem' }}>Qty:</span>
+                    <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.7rem' }}>
+                      {filteredTableData
+                        .filter(row => selectedRows.includes(row.Id))
+                        .reduce((sum, row) => sum + (parseFloat(row.Qty) || 0), 0)
+                        .toLocaleString()}
+                    </span>
                   </div>
                 </Col>
               </Row>
@@ -1773,10 +1707,10 @@ function ContractRegister() {
       </Card>
 
 
-      {/* Table Data Section - Full Height Layout */}
+      {/* Table Data Section - Full Height Layout; only table scrolls */}
       {(showTable || (filteredTableData && filteredTableData.length > 0)) && (
         <div
-          className="row"
+          className="row contract-register-table-section"
           style={{
             flex: "1 1 auto",
             marginBottom: "0",
@@ -1813,7 +1747,7 @@ function ContractRegister() {
                   <>
                     <div
                       ref={tableContainerRef}
-                      className="table-responsive position-relative"
+                      className="table-responsive position-relative contract-register-table-scroll"
                       style={{
                         flex: "1 1 auto",
                         overflowY: "auto",
@@ -2349,6 +2283,108 @@ function ContractRegister() {
                           })}
                         </tbody>
                       </Table>
+                    </div>
+
+                    {/* Bottom bar - Period, Commodity, PDF (like LedgerReport) */}
+                    <div
+                      className="bottom-filters-bar"
+                      style={{
+                        backgroundColor: "#6C244C",
+                        color: "white",
+                        borderRadius: 0,
+                        fontSize: "0.8rem",
+                        fontWeight: "bold",
+                        marginTop: 0,
+                        marginBottom: 0,
+                        paddingTop: "6px",
+                        paddingBottom: "6px",
+                        flexShrink: 0,
+                        width: "100%",
+                        overflowX: "auto",
+                        overflowY: "hidden",
+                      }}
+                    >
+                      <div
+                        className="d-flex align-items-center"
+                        style={{
+                          padding: "6px 12px",
+                          gap: "8px",
+                          flexWrap: "nowrap",
+                          minWidth: "fit-content",
+                        }}
+                      >
+                        <div className="d-flex align-items-center" style={{ flex: "0 0 auto" }}>
+                          <i className="fas fa-filter me-2"></i>
+                        </div>
+                        <div style={{ flex: "0 0 auto", minWidth: "90px", maxWidth: "120px" }}>
+                          <div
+                            onClick={openPeriodModal}
+                            className="bottom-filter-control"
+                            style={{
+                              backgroundColor: "#E3F2FD",
+                              color: "#333",
+                              border: "1px solid #2196F3",
+                              borderRadius: "6px",
+                              height: "32px",
+                              minHeight: "32px",
+                              padding: "0 8px",
+                              fontSize: "0.65rem",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span>
+                              {selectedPeriods && selectedPeriods.length > 0
+                                ? `${selectedPeriods.length} selected`
+                                : "Period"}
+                            </span>
+                            <i className="fas fa-chevron-down ms-2"></i>
+                          </div>
+                        </div>
+                        <div style={{ flex: "0 0 auto", minWidth: "90px", maxWidth: "120px" }}>
+                          <div
+                            onClick={openItemModal}
+                            className="bottom-filter-control"
+                            style={{
+                              backgroundColor: "#E3F2FD",
+                              color: "#333",
+                              border: "1px solid #2196F3",
+                              borderRadius: "6px",
+                              height: "32px",
+                              minHeight: "32px",
+                              padding: "0 8px",
+                              fontSize: "0.65rem",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span>
+                              {selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "")
+                                ? `${selectedItems.filter(item => item !== "").length} selected`
+                                : "Commodity"}
+                            </span>
+                            <i className="fas fa-chevron-down ms-2"></i>
+                          </div>
+                        </div>
+                        <div className="d-flex align-items-center" style={{ gap: "8px", flex: "0 0 auto" }}>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={handlePDFExport}
+                            className="d-flex align-items-center shadow-sm"
+                            style={{ fontSize: "0.6rem", whiteSpace: "nowrap", height: "32px", minHeight: "32px", padding: "0 10px" }}
+                            disabled={selectedRows.length === 0}
+                            title="Export selected rows to PDF"
+                          >
+                            <FileText className="me-1" size={14} />
+                            PDF
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </>
                 ) : (

@@ -47,9 +47,97 @@
   }
 }
 
+// Layout: only table area scrolls (like LedgerReport)
 .contract-register-container {
-  overflow: visible;
+  overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
+
+  .contract-register-table-section {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+
+    .col-12 {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card {
+      min-height: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-body {
+      min-height: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 0;
+      gap: 0;
+    }
+
+    .contract-register-table-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .bottom-filters-bar {
+      flex-shrink: 0;
+    }
+  }
+}
+
+// Mobile: bottom bar (Period, Commodity, PDF) above app footer – same as LedgerReport
+@media (max-width: 768px) {
+  .contract-register-container {
+    height: calc(100vh - 115px - env(safe-area-inset-bottom, 0px)) !important;
+    height: calc(100dvh - 115px - env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(100vh - 115px - env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(100dvh - 115px - env(safe-area-inset-bottom, 0px)) !important;
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .contract-register-container .contract-register-table-section .card-body {
+    padding-bottom: 32px !important;
+  }
+
+  .contract-register-container .contract-register-table-scroll {
+    -webkit-overflow-scrolling: touch !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .contract-register-container .bottom-filters-bar {
+    flex-shrink: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    border-top: 2px solid #5a2d5a !important;
+    min-height: 40px !important;
+  }
+
+  .contract-register-container .bottom-filters-bar::-webkit-scrollbar {
+    height: 6px;
+  }
+  .contract-register-container .bottom-filters-bar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+  .contract-register-container .bottom-filters-bar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+  }
 }
 
 .contract-register {
