@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Row, Col, Card, CardBody, Input, Button, Table, Spinner, FormGroup, Label, Modal, ModalHeader, ModalBody } from 'reactstrap';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import axios from 'axios';
 
 import VoucherBro from './VoucherBro';
@@ -222,20 +224,26 @@ const VoucherRegisterBro = ({ globalFromDate, globalToDate, onVoucherUpdate }) =
                 <div style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: "10px", marginBottom: "15px" }}>
                     <div className="d-flex align-items-center gap-2" style={{ minWidth: "max-content" }}>
                         <div className="d-flex align-items-center">
-                            <Input
-                                type="date"
-                                value={formatDateLocal(fromDate)}
-                                onChange={(e) => setFromDate(e.target.value)}
-                                bsSize="sm"
-                                style={{ width: "130px" }}
+                            <DatePicker
+                                selected={fromDate ? new Date(fromDate) : null}
+                                onChange={(date) => setFromDate(date)}
+                                className="form-control form-control-sm"
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="From Date"
+                                openToDate={new Date()}
+                                portalId="root-portal"
+                                popperPlacement="bottom-start"
                             />
                             <span className="mx-2 font-size-12 fw-medium text-muted">To</span>
-                            <Input
-                                type="date"
-                                value={formatDateLocal(toDate)}
-                                onChange={(e) => setToDate(e.target.value)}
-                                bsSize="sm"
-                                style={{ width: "130px" }}
+                            <DatePicker
+                                selected={toDate ? new Date(toDate) : null}
+                                onChange={(date) => setToDate(date)}
+                                className="form-control form-control-sm"
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="To Date"
+                                openToDate={new Date()}
+                                portalId="root-portal"
+                                popperPlacement="bottom-start"
                             />
                         </div>
                         <Input

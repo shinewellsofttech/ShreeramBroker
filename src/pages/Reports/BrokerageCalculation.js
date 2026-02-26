@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Fn_GetReport, Fn_FillListData } from 'store/Functions';
 import { Card, CardBody, Col, Container, Row, Table, Input, Modal, ModalHeader, ModalBody, ModalFooter, Button, Label, Spinner } from 'reactstrap';
 import { Filter } from 'react-feather';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
@@ -1095,12 +1097,17 @@ const getDalaliData = async () => {
                             <div style={{ overflowX: "auto", overflowY: "visible", minHeight: '32px' }}>
                                 <Row className="align-items-end" style={{ flexWrap: "nowrap", minWidth: "fit-content", gap: 0, margin: 0, marginBottom: '4px' }}>
                                     <Col xs="auto" style={{ flex: "0 0 auto", padding: 0, margin: 0 }}>
-                                        <div style={{ width: '75px' }}>
-                                            <Input
-                                                type="date"
-                                                value={state.FromDate ? formatDateLocal(state.FromDate) : ''}
-                                                onChange={(e) => handleDateChange('FromDate', e.target.value)}
+                                        <div style={{ width: '85px' }}>
+                                            <DatePicker
+                                                selected={state.FromDate ? new Date(state.FromDate) : null}
+                                                onChange={(date) => handleDateChange('FromDate', date)}
                                                 disabled={isLoadingDetailed}
+                                                dateFormat="dd/MM/yyyy"
+                                                placeholderText="From Date"
+                                                className="form-control form-control-sm custom-datepicker"
+                                                openToDate={new Date()}
+                                                portalId="root-portal"
+                                                popperPlacement="bottom-start"
                                                 style={{
                                                     fontSize: '0.7rem',
                                                     height: '28px',
@@ -1110,20 +1117,8 @@ const getDalaliData = async () => {
                                                     border: '1px solid #2196F3',
                                                     borderRadius: '0.25rem',
                                                     color: '#333',
-                                                    width: '60px',
-                                                    minWidth: '60px',
-                                                    maxWidth: '60px',
                                                     boxSizing: 'border-box',
                                                     display: 'block'
-                                                }}
-                                                onFocus={(e) => {
-                                                    e.target.style.backgroundColor = '#E3F2FD';
-                                                    e.target.style.borderColor = '#2196F3';
-                                                    e.target.style.boxShadow = '0 0 0 0.2rem rgba(33, 150, 243, 0.25)';
-                                                    e.target.style.outline = 'none';
-                                                }}
-                                                onBlur={(e) => {
-                                                    e.target.style.boxShadow = 'none';
                                                 }}
                                             />
                                         </div>
@@ -1132,12 +1127,17 @@ const getDalaliData = async () => {
                                         <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>To</span>
                                     </Col>
                                     <Col xs="auto" style={{ flex: "0 0 auto", padding: 0, margin: 0 }}>
-                                        <div style={{ width: '75px' }}>
-                                            <Input
-                                                type="date"
-                                                value={state.ToDate ? formatDateLocal(state.ToDate) : ''}
-                                                onChange={(e) => handleDateChange('ToDate', e.target.value)}
+                                        <div style={{ width: '85px' }}>
+                                            <DatePicker
+                                                selected={state.ToDate ? new Date(state.ToDate) : null}
+                                                onChange={(date) => handleDateChange('ToDate', date)}
                                                 disabled={isLoadingDetailed}
+                                                dateFormat="dd/MM/yyyy"
+                                                placeholderText="To Date"
+                                                className="form-control form-control-sm custom-datepicker"
+                                                openToDate={new Date()}
+                                                portalId="root-portal"
+                                                popperPlacement="bottom-start"
                                                 style={{
                                                     fontSize: '0.7rem',
                                                     height: '28px',
@@ -1147,20 +1147,8 @@ const getDalaliData = async () => {
                                                     border: '1px solid #2196F3',
                                                     borderRadius: '0.25rem',
                                                     color: '#333',
-                                                    width: '60px',
-                                                    minWidth: '60px',
-                                                    maxWidth: '60px',
                                                     boxSizing: 'border-box',
                                                     display: 'block'
-                                                }}
-                                                onFocus={(e) => {
-                                                    e.target.style.backgroundColor = '#E3F2FD';
-                                                    e.target.style.borderColor = '#2196F3';
-                                                    e.target.style.boxShadow = '0 0 0 0.2rem rgba(33, 150, 243, 0.25)';
-                                                    e.target.style.outline = 'none';
-                                                }}
-                                                onBlur={(e) => {
-                                                    e.target.style.boxShadow = 'none';
                                                 }}
                                             />
                                         </div>
