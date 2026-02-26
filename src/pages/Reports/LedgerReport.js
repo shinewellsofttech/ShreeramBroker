@@ -652,8 +652,7 @@ const LedgerReport = () => {
   const [tempSelectedParties, setTempSelectedParties] = useState([])
   const [tempSelectedItems, setTempSelectedItems] = useState([])
   const [tempSelectedPeriod, setTempSelectedPeriod] = useState([])
-  const [showFromDateModal, setShowFromDateModal] = useState(false)
-  const [showToDateModal, setShowToDateModal] = useState(false)
+
 
   const [toDate, setToDate] = useState(new Date()) // Default to date: Today's date
   const [loading, setLoading] = useState(false)
@@ -3721,52 +3720,30 @@ const LedgerReport = () => {
                 <Col xs="auto" lg={2} md={2} style={{ flex: "0 0 auto", marginLeft: "4px" }}>
                   <FormGroup className="mb-0">
                     <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setShowFromDateModal(true)}
-                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setShowFromDateModal(true) }}
-                        className="form-control form-control-sm"
-                        style={{
-                          backgroundColor: "#E3F2FD",
-                          fontSize: "0.6rem",
-                          fontWeight: "bold",
-                          border: "1px solid #2196F3",
-                          height: "28px",
-                          padding: "2px 2px",
-                          width: "4.5rem",
-                          minWidth: "4.5rem",
-                          color: "#333",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                        }}
-                      >
-                        {formatDateForInput(fromDate)}
+                      <div style={{ width: '95px', height: '28px' }}>
+                        <DatePicker
+                          selected={fromDate}
+                          onChange={date => setFromDate(date)}
+                          className="form-control form-control-sm custom-datepicker"
+                          dateFormat="dd/MM/yyyy"
+                          placeholderText="From Date"
+                          portalId="root-portal"
+                          popperPlacement="bottom-start"
+                          openToDate={new Date()}
+                        />
                       </div>
                       <span style={{ fontSize: "0.6rem", fontWeight: "500", color: "#1976D2", margin: "0 2px" }}>To</span>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setShowToDateModal(true)}
-                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setShowToDateModal(true) }}
-                        className="form-control form-control-sm"
-                        style={{
-                          backgroundColor: "#E3F2FD",
-                          fontSize: "0.6rem",
-                          fontWeight: "bold",
-                          border: "1px solid #2196F3",
-                          height: "28px",
-                          padding: "2px 2px",
-                          width: "4.5rem",
-                          minWidth: "4.5rem",
-                          color: "#333",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                        }}
-                      >
-                        {formatDateForInput(toDate)}
+                      <div style={{ width: '95px', height: '28px' }}>
+                        <DatePicker
+                          selected={toDate}
+                          onChange={date => setToDate(date)}
+                          className="form-control form-control-sm custom-datepicker"
+                          dateFormat="dd/MM/yyyy"
+                          placeholderText="To Date"
+                          portalId="root-portal"
+                          popperPlacement="bottom-start"
+                          openToDate={new Date()}
+                        />
                       </div>
                     </div>
                   </FormGroup>
@@ -6664,45 +6641,7 @@ const LedgerReport = () => {
         </ModalBody>
       </Modal>
 
-      {/* From Date Calendar Modal - opens to today's date view, value changes only on user selection */}
-      <Modal show={showFromDateModal} onHide={() => setShowFromDateModal(false)} centered size="sm" style={{ zIndex: 12000 }}>
-        <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title className="small">From Date</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="d-flex justify-content-center">
-          <DatePicker
-            selected={fromDate ? new Date(fromDate) : null}
-            onChange={date => {
-              if (date) setFromDate(date)
-              setShowFromDateModal(false)
-            }}
-            openToDate={new Date()}
-            dateFormat="dd/MM/yyyy"
-            inline
-            calendarClassName="border-0"
-          />
-        </Modal.Body>
-      </Modal>
 
-      {/* To Date Calendar Modal - opens to today's date view, value changes only on user selection */}
-      <Modal show={showToDateModal} onHide={() => setShowToDateModal(false)} centered size="sm" style={{ zIndex: 12000 }}>
-        <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title className="small">To Date</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="d-flex justify-content-center">
-          <DatePicker
-            selected={toDate ? new Date(toDate) : null}
-            onChange={date => {
-              if (date) setToDate(date)
-              setShowToDateModal(false)
-            }}
-            openToDate={new Date()}
-            dateFormat="dd/MM/yyyy"
-            inline
-            calendarClassName="border-0"
-          />
-        </Modal.Body>
-      </Modal>
 
       {/* Voucher Modal */}
       <Modal
