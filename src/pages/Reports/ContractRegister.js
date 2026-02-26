@@ -166,6 +166,129 @@ function ContractRegister() {
     }
   }, [])
 
+  // Custom CSS injection to match LedgerReport fixed layout
+  useEffect(() => {
+    const style = document.createElement("style")
+    style.textContent = `
+      .table th,
+      .table td {
+        border: 1.5px solid black !important;
+      }
+      .table thead tr th {
+        border: 1.5px solid black !important;
+      }
+      .table tbody tr td {
+        border: 1.5px solid black !important;
+      }
+      
+      /* Remove all gaps between card sections */
+      .card.shadow-sm,
+      .card-body {
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+      }
+      
+      .row {
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+      }
+      
+      /* Ensure page fills viewport */
+      html, body {
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow-x: hidden !important;
+      }
+      
+      /* Mobile: lock body scroll */
+      @media (max-width: 768px) {
+        body.contract-register-mobile {
+          overflow: hidden !important;
+          height: 100% !important;
+        }
+        
+        .contract-register-container {
+          height: calc(100vh - 110px - env(safe-area-inset-bottom, 0px)) !important;
+          height: calc(100dvh - 110px - env(safe-area-inset-bottom, 0px)) !important;
+          max-height: calc(100vh - 110px - env(safe-area-inset-bottom, 0px)) !important;
+          overflow: hidden !important;
+          display: flex !important;
+          flex-direction: column !important;
+        }
+        
+        .contract-register-table-section {
+          flex: 1 1 auto !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+          display: flex !important;
+          flex-direction: column !important;
+        }
+        
+        .contract-register-table-scroll {
+          flex: 1 1 auto !important;
+          min-height: 0 !important;
+          overflow-y: auto !important;
+          overflow-x: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+        
+        .contract-register-container .table-responsive thead th {
+          position: sticky !important;
+          top: 0 !important;
+          z-index: 12 !important;
+          background-color: #0000FF !important;
+        }
+        
+        .bottom-filters-bar {
+          flex-shrink: 0 !important;
+          border-top: 2px solid #5a2d5a !important;
+          min-height: 44px !important;
+          z-index: 20 !important;
+        }
+        
+        .bottom-filter-scroll-container {
+          -webkit-overflow-scrolling: touch !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: rgba(255, 255, 255, 0.3) transparent !important;
+        }
+        
+        .bottom-filter-scroll-container::-webkit-scrollbar {
+          height: 3px !important;
+        }
+        
+        .bottom-filter-scroll-container::-webkit-scrollbar-thumb {
+          background-color: rgba(255, 255, 255, 0.3) !important;
+          border-radius: 10px !important;
+        }
+      }
+    `
+    document.head.appendChild(style)
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
+
+  // On mobile: lock body scroll
+  useEffect(() => {
+    const isMobile = () => window.innerWidth <= 768
+    if (isMobile()) {
+      document.body.classList.add("contract-register-mobile")
+    }
+    const handleResize = () => {
+      if (!isMobile()) {
+        document.body.classList.remove("contract-register-mobile")
+      } else {
+        document.body.classList.add("contract-register-mobile")
+      }
+    }
+    window.addEventListener("resize", handleResize)
+    return () => {
+      document.body.classList.remove("contract-register-mobile")
+      window.removeEventListener("resize", handleResize)
+    }
+  }, [])
+
   useEffect(() => {
     if (!state.FillArray) return
 
@@ -1444,7 +1567,8 @@ function ContractRegister() {
         padding: 0,
         margin: 0,
         overflow: 'hidden',
-        gap: 0
+        gap: 0,
+        backgroundColor: '#f4f7f6'
       }}
     >
 
@@ -1574,33 +1698,7 @@ function ContractRegister() {
                     />
                   </div>
                 </Col>
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <div
-                    onClick={openLedgerModal}
-                    style={{
-                      backgroundColor: "#E3F2FD",
-                      color: "#333",
-                      border: "1px solid #2196F3",
-                      borderRadius: "6px",
-                      height: "28px",
-                      padding: "2px 8px",
-                      fontSize: "0.65rem",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      minWidth: "120px",
-                      maxWidth: "120px"
-                    }}
-                  >
-                    <span>
-                      {selectedLedgerIds && selectedLedgerIds.length > 0
-                        ? `${selectedLedgerIds.length} selected`
-                        : "Ledger"}
-                    </span>
-                    <i className="fas fa-chevron-down ms-2"></i>
-                  </div>
-                </Col>
+
 
                 <Col xs="auto" style={{ flex: "0 0 auto" }}>
                   <Button
@@ -1710,60 +1808,63 @@ function ContractRegister() {
       {/* Table Data Section - Full Height Layout; only table scrolls */}
       {(showTable || (filteredTableData && filteredTableData.length > 0)) && (
         <div
-          className="row contract-register-table-section"
+          className="contract-register-table-section"
           style={{
             flex: "1 1 auto",
             marginBottom: "0",
             marginTop: "0",
             minHeight: "0",
             overflow: "hidden",
+            display: "flex",
+            flexDirection: "column"
           }}
         >
           <div
-            className="col-12"
             style={{
-              height: "100%",
+              flex: "1 1 auto",
               display: "flex",
               flexDirection: "column",
               padding: "0",
+              minHeight: "0",
+              overflow: "hidden"
             }}
           >
             <div
               className="card"
-              style={{ height: "100%", marginBottom: "0", border: "none" }}
+              style={{ flex: "1 1 auto", marginBottom: "0", border: "none", display: "flex", flexDirection: "column", minHeight: "0", overflow: "hidden" }}
             >
               <div
                 className="card-body"
                 style={{
-                  height: "100%",
+                  flex: "1 1 auto",
                   display: "flex",
                   flexDirection: "column",
                   padding: "0",
                   overflow: "hidden",
                   margin: "0",
+                  minHeight: "0"
                 }}
               >
                 {filteredTableData.length > 0 ? (
                   <>
-                    <div
-                      ref={tableContainerRef}
-                      className="table-responsive position-relative contract-register-table-scroll"
-                      style={{
-                        flex: "1 1 auto",
-                        overflowY: "auto",
-                        border: "1px solid #dee2e6",
-                        borderRadius: "0",
-                        minHeight: "0",
-                        height: "100%",
-                      }}
-                    >
+                      <div
+                        ref={tableContainerRef}
+                        className="table-responsive position-relative contract-register-table-scroll"
+                        style={{
+                          flex: "1 1 auto",
+                          overflow: "auto",
+                          border: "1px solid #dee2e6",
+                          borderRadius: "0",
+                          minHeight: "0",
+                        }}
+                      >
                       <Table
                         className="table mb-0 table-hover"
                         style={{
                           fontSize: "0.7rem",
                           borderSpacing: "0",
                           borderCollapse: "collapse",
-                          border: "1.5px solid black !important",
+                          minWidth: "1200px"
                         }}
                       >
                         <thead
@@ -1771,12 +1872,9 @@ function ContractRegister() {
                             position: "sticky",
                             top: 0,
                             zIndex: 10,
-                            border: "1.5px solid black !important",
                           }}
                         >
-                          <tr
-                            style={{ border: "1.5px solid black !important" }}
-                          >
+                          <tr>
                             <th
                               className="text-center align-middle"
                               style={{
@@ -1790,7 +1888,6 @@ function ContractRegister() {
                                 width: "50px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                             >
                               <div className="d-flex justify-content-center align-items-center">
@@ -1811,16 +1908,15 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                               onClick={() => handleSort("ContractNo")}
                             >
                               <div className="d-flex justify-content-between align-items-center">
                                 <span>Contract No</span>
-                                <div className="d-flex flex-column">
+                                <div className="d-flex flex-column" style={{ marginLeft: "4px" }}>
                                   <i
                                     className={`fas fa-sort-up ${sortConfig.key === "ContractNo" &&
                                       sortConfig.direction === "asc"
@@ -1854,16 +1950,15 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                               onClick={() => handleSort("Date")}
                             >
                               <div className="d-flex justify-content-between align-items-center">
                                 <span>Date</span>
-                                <div className="d-flex flex-column">
+                                <div className="d-flex flex-column" style={{ marginLeft: "4px" }}>
                                   <i
                                     className={`fas fa-sort-up ${sortConfig.key === "Date" &&
                                       sortConfig.direction === "asc"
@@ -1897,16 +1992,15 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                               onClick={() => handleSort("SellerLedger")}
                             >
                               <div className="d-flex justify-content-between align-items-center">
                                 <span>Seller</span>
-                                <div className="d-flex flex-column">
+                                <div className="d-flex flex-column" style={{ marginLeft: "4px" }}>
                                   <i
                                     className={`fas fa-sort-up ${sortConfig.key === "SellerLedger" &&
                                       sortConfig.direction === "asc"
@@ -1940,16 +2034,15 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                               onClick={() => handleSort("BuyerLedger")}
                             >
                               <div className="d-flex justify-content-between align-items-center">
                                 <span>Buyer</span>
-                                <div className="d-flex flex-column">
+                                <div className="d-flex flex-column" style={{ marginLeft: "4px" }}>
                                   <i
                                     className={`fas fa-sort-up ${sortConfig.key === "BuyerLedger" &&
                                       sortConfig.direction === "asc"
@@ -1983,9 +2076,8 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                             >
                               Item
@@ -1998,9 +2090,8 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                             >
                               Period
@@ -2013,9 +2104,8 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                             >
                               Qty
@@ -2028,9 +2118,8 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                             >
                               Rate
@@ -2043,9 +2132,8 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                             >
                               Lifted Qty
@@ -2058,9 +2146,8 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                             >
                               Adv Payment
@@ -2073,9 +2160,8 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                             >
                               Adv Date
@@ -2088,9 +2174,8 @@ function ContractRegister() {
                                 height: "25px",
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
-                                padding: "0",
+                                padding: "0 8px",
                                 border: "1.5px solid black !important",
-                                boxShadow: "none",
                               }}
                             >
                               Vessel
@@ -2296,37 +2381,34 @@ function ContractRegister() {
                         fontWeight: "bold",
                         marginTop: 0,
                         marginBottom: 0,
-                        paddingTop: "6px",
-                        paddingBottom: "6px",
+                        paddingTop: "4px",
+                        paddingBottom: "4px",
                         flexShrink: 0,
                         width: "100%",
-                        overflowX: "auto",
-                        overflowY: "hidden",
                       }}
                     >
                       <div
-                        className="d-flex align-items-center"
+                        className="d-flex align-items-center bottom-filter-scroll-container"
                         style={{
-                          padding: "6px 12px",
+                          padding: "4px 12px",
                           gap: "8px",
                           flexWrap: "nowrap",
-                          minWidth: "fit-content",
+                          overflowX: "auto",
+                          width: "100%",
                         }}
                       >
                         <div className="d-flex align-items-center" style={{ flex: "0 0 auto" }}>
-                          <i className="fas fa-filter me-2"></i>
+                          <i className="fas fa-filter me-2" style={{ fontSize: "14px" }}></i>
                         </div>
-                        <div style={{ flex: "0 0 auto", minWidth: "90px", maxWidth: "120px" }}>
+                        <div style={{ flex: "0 0 auto", minWidth: "100px" }}>
                           <div
                             onClick={openPeriodModal}
-                            className="bottom-filter-control"
                             style={{
                               backgroundColor: "#E3F2FD",
                               color: "#333",
                               border: "1px solid #2196F3",
                               borderRadius: "6px",
-                              height: "32px",
-                              minHeight: "32px",
+                              height: "28px",
                               padding: "0 8px",
                               fontSize: "0.65rem",
                               cursor: "pointer",
@@ -2343,17 +2425,40 @@ function ContractRegister() {
                             <i className="fas fa-chevron-down ms-2"></i>
                           </div>
                         </div>
-                        <div style={{ flex: "0 0 auto", minWidth: "90px", maxWidth: "120px" }}>
+                        <div style={{ flex: "0 0 auto", minWidth: "100px" }}>
                           <div
-                            onClick={openItemModal}
-                            className="bottom-filter-control"
+                            onClick={openLedgerModal}
                             style={{
                               backgroundColor: "#E3F2FD",
                               color: "#333",
                               border: "1px solid #2196F3",
                               borderRadius: "6px",
-                              height: "32px",
-                              minHeight: "32px",
+                              height: "28px",
+                              padding: "0 8px",
+                              fontSize: "0.65rem",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span>
+                              {selectedLedgerIds && selectedLedgerIds.length > 0
+                                ? `${selectedLedgerIds.length} selected`
+                                : "Ledger"}
+                            </span>
+                            <i className="fas fa-chevron-down ms-2"></i>
+                          </div>
+                        </div>
+                        <div style={{ flex: "0 0 auto", minWidth: "100px" }}>
+                          <div
+                            onClick={openItemModal}
+                            style={{
+                              backgroundColor: "#E3F2FD",
+                              color: "#333",
+                              border: "1px solid #2196F3",
+                              borderRadius: "6px",
+                              height: "28px",
                               padding: "0 8px",
                               fontSize: "0.65rem",
                               cursor: "pointer",
@@ -2376,9 +2481,8 @@ function ContractRegister() {
                             size="sm"
                             onClick={handlePDFExport}
                             className="d-flex align-items-center shadow-sm"
-                            style={{ fontSize: "0.6rem", whiteSpace: "nowrap", height: "32px", minHeight: "32px", padding: "0 10px" }}
+                            style={{ fontSize: "0.65rem", height: "28px", padding: "0 10px" }}
                             disabled={selectedRows.length === 0}
-                            title="Export selected rows to PDF"
                           >
                             <FileText className="me-1" size={14} />
                             PDF
