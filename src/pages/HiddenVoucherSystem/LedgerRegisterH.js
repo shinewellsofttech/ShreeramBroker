@@ -8,6 +8,8 @@ import { API_WEB_URLS } from '../../constants/constAPI';
 import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
+import useColumnResize from '../../helpers/useColumnResize'
+import '../../helpers/columnResize.css'
 
 const formatDateLocal = (value) => {
     if (!value) return '';
@@ -24,6 +26,15 @@ const LedgerRegisterH = () => {
     const globalDates = useSelector(state => state.GlobalDates);
 
     const [ledgerData, setLedgerData] = useState([]);
+
+    // Column resize feature
+    const { columnWidths, handleResizeMouseDown } = useColumnResize('ledgerRegisterH_columnWidths', {
+        Checkbox: 40,
+        LedgerName: 250,
+        DrBalance: 120,
+        CrBalance: 120,
+        NetBalance: 150,
+    })
     const [loading, setLoading] = useState(false);
     const [fromDate, setFromDate] = useState(globalDates?.fromDate || '');
     const [toDate, setToDate] = useState(globalDates?.toDate || '');
@@ -210,16 +221,29 @@ const LedgerRegisterH = () => {
 
                 {/* Responsive Table Container */}
                 <div className="table-responsive" style={{ maxHeight: '60vh', border: '1px solid #EFF2F7', borderRadius: '4px' }}>
-                    <Table hover className="align-middle table-nowrap mb-0 table-sm text-nowrap">
+                    <Table hover className="align-middle table-nowrap mb-0 table-sm text-nowrap resizable-table" style={{ tableLayout: 'fixed' }}>
                         <thead className="table-light" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                             <tr>
-                                <th style={{ width: '40px', textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                                <th style={{ width: `${columnWidths.Checkbox}px`, textAlign: 'center', backgroundColor: '#f8f9fa', position: 'relative', overflow: 'hidden' }}>
                                     <input type="checkbox" checked={selectedItems.size === filteredData.length && filteredData.length > 0} onChange={toggleSelectAll} />
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
                                 </th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>Ledger Name</th>
-                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', minWidth: '120px' }}>Dr Balance</th>
-                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', minWidth: '120px' }}>Cr Balance</th>
-                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', minWidth: '150px' }}>Net Balance</th>
+                                <th style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.LedgerName}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Ledger Name
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'LedgerName')} onTouchStart={e => handleResizeMouseDown(e, 'LedgerName')} />
+                                </th>
+                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.DrBalance}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Dr Balance
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'DrBalance')} onTouchStart={e => handleResizeMouseDown(e, 'DrBalance')} />
+                                </th>
+                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.CrBalance}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Cr Balance
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'CrBalance')} onTouchStart={e => handleResizeMouseDown(e, 'CrBalance')} />
+                                </th>
+                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.NetBalance}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Net Balance
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'NetBalance')} onTouchStart={e => handleResizeMouseDown(e, 'NetBalance')} />
+                                </th>
                             </tr>
                         </thead>
                         <tbody>

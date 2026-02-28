@@ -9,6 +9,8 @@ import VoucherH from './VoucherH';
 import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
+import useColumnResize from '../../helpers/useColumnResize'
+import '../../helpers/columnResize.css'
 
 const formatDateLocal = (value) => {
     if (!value) return '';
@@ -25,6 +27,18 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
     const globalDates = useSelector(state => state.GlobalDates);
 
     const [voucherData, setVoucherData] = useState([]);
+
+    // Column resize feature
+    const { columnWidths, handleResizeMouseDown } = useColumnResize('voucherRegisterH_columnWidths', {
+        Checkbox: 40,
+        Date: 90,
+        No: 70,
+        DrLedger: 150,
+        CrLedger: 150,
+        Amount: 120,
+        Details: 250,
+        Action: 60,
+    })
     const [loading, setLoading] = useState(false);
     const [fromDate, setFromDate] = useState(globalDates?.fromDate || '');
     const [toDate, setToDate] = useState(globalDates?.toDate || '');
@@ -283,31 +297,41 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
 
                 {/* Responsive Table Container */}
                 <div className="table-responsive" style={{ maxHeight: '60vh', border: '1px solid #EFF2F7', borderRadius: '4px' }}>
-                    <Table hover className="align-middle table-nowrap mb-0 table-sm text-nowrap">
+                    <Table hover className="align-middle table-nowrap mb-0 table-sm text-nowrap resizable-table" style={{ tableLayout: 'fixed' }}>
                         <thead className="table-light" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                             <tr>
-                                <th style={{ width: '40px', textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                                <th style={{ width: `${columnWidths.Checkbox}px`, textAlign: 'center', backgroundColor: '#f8f9fa', position: 'relative', overflow: 'hidden' }}>
                                     <input type="checkbox" checked={selectedItems.size === sortedData.length && sortedData.length > 0} onChange={toggleSelectAll} />
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
                                 </th>
-                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('VoucherDate')}>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap', width: `${columnWidths.Date}px`, position: 'relative', overflow: 'hidden' }} onClick={() => requestSort('VoucherDate')}>
                                     Date {getSortIcon('VoucherDate')}
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Date')} onTouchStart={e => handleResizeMouseDown(e, 'Date')} />
                                 </th>
-                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('VoucherNo')}>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap', width: `${columnWidths.No}px`, position: 'relative', overflow: 'hidden' }} onClick={() => requestSort('VoucherNo')}>
                                     No {getSortIcon('VoucherNo')}
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'No')} onTouchStart={e => handleResizeMouseDown(e, 'No')} />
                                 </th>
-                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('DrLedgerName')}>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap', width: `${columnWidths.DrLedger}px`, position: 'relative', overflow: 'hidden' }} onClick={() => requestSort('DrLedgerName')}>
                                     Dr Ledger {getSortIcon('DrLedgerName')}
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'DrLedger')} onTouchStart={e => handleResizeMouseDown(e, 'DrLedger')} />
                                 </th>
-                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('CrLedgerName')}>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap', width: `${columnWidths.CrLedger}px`, position: 'relative', overflow: 'hidden' }} onClick={() => requestSort('CrLedgerName')}>
                                     Cr Ledger {getSortIcon('CrLedgerName')}
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'CrLedger')} onTouchStart={e => handleResizeMouseDown(e, 'CrLedger')} />
                                 </th>
-                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('TotalAmount')}>
+                                <th className="text-end" style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap', width: `${columnWidths.Amount}px`, position: 'relative', overflow: 'hidden' }} onClick={() => requestSort('TotalAmount')}>
                                     Amount {getSortIcon('TotalAmount')}
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Amount')} onTouchStart={e => handleResizeMouseDown(e, 'Amount')} />
                                 </th>
-                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => requestSort('Remark')}>
+                                <th style={{ backgroundColor: '#f8f9fa', cursor: 'pointer', whiteSpace: 'nowrap', width: `${columnWidths.Details}px`, position: 'relative', overflow: 'hidden' }} onClick={() => requestSort('Remark')}>
                                     Details {getSortIcon('Remark')}
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Details')} onTouchStart={e => handleResizeMouseDown(e, 'Details')} />
                                 </th>
-                                <th className="text-center" style={{ backgroundColor: '#f8f9fa', whiteSpace: 'nowrap' }}>Action</th>
+                                <th className="text-center" style={{ backgroundColor: '#f8f9fa', whiteSpace: 'nowrap', width: `${columnWidths.Action}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Action
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Action')} onTouchStart={e => handleResizeMouseDown(e, 'Action')} />
+                                </th>
                             </tr>
                         </thead>
                         <tbody>

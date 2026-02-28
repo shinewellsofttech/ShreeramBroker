@@ -11,6 +11,8 @@ import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
 import { toast } from 'react-toastify';
+import useColumnResize from '../../helpers/useColumnResize'
+import '../../helpers/columnResize.css'
 
 function BrokerageCalculation() {
     const dispatch = useDispatch();
@@ -19,6 +21,19 @@ function BrokerageCalculation() {
     // State and ref for scroll to top button
     const [showScrollTop, setShowScrollTop] = useState(false);
     const tableContainerRef = useRef(null);
+
+    // Column resize feature
+    const { columnWidths, handleResizeMouseDown } = useColumnResize('brokerageCalculation_columnWidths', {
+        Checkbox: 36,
+        SrNo: 40,
+        LedgerName: 150,
+        SellQty: 80,
+        PurQty: 80,
+        TotalBrokerage: 100,
+        CrAmount: 90,
+        DrAmount: 90,
+        Balance: 100,
+    })
     
     const [state, setState] = useState({
         FillArray: [],
@@ -934,17 +949,19 @@ const getDalaliData = async () => {
                 }), { sellerQty: 0, buyerQty: 0, brokerage: 0, crAmount: 0, drAmount: 0, balance: 0 });
             }
 
-            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const doc = new jsPDF({ orientation: isDetailed ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
             const filename = `Brokerage_Register_${isDetailed ? 'Detailed' : 'Normal'}_${new Date().toISOString().split('T')[0]}.pdf`;
 
+            const marginX = isDetailed ? 7 : 14;
+
             doc.setFontSize(20);
-            doc.text(`Brokerage Register - ${isDetailed ? 'Detailed View' : 'Normal View'}`, 14, 12);
+            doc.text(`Brokerage Register - ${isDetailed ? 'Detailed View' : 'Normal View'}`, marginX, 12);
             doc.setFontSize(13);
-            doc.text(`From: ${state.FromDate ? new Date(state.FromDate).toLocaleDateString('en-GB') : '-'}  To: ${state.ToDate ? new Date(state.ToDate).toLocaleDateString('en-GB') : '-'}`, 14, 19);
-            doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB')}  |  Selected: ${selectedRows.length} row(s)`, 14, 25);
+            doc.text(`From: ${state.FromDate ? new Date(state.FromDate).toLocaleDateString('en-GB') : '-'}  To: ${state.ToDate ? new Date(state.ToDate).toLocaleDateString('en-GB') : '-'}`, marginX, 19);
+            doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB')}  |  Selected: ${selectedRows.length} row(s)`, marginX, 25);
 
             if (isDetailed) {
-                const head = [['Sr', 'Ledger/Item', 'Sell Qty', 'Pur Qty', 'Brokerage', 'Cr Amt', 'Dr Amt', 'Balance', 'Dalali Sell Qty', 'Dalali Sell Amt', 'Dalali Pur Qty', 'Dalali Pur Amt', 'Dalali Rate', 'Dalali Total']];
+                const head = [['Sr', 'Ledger/Item', 'Sell Qty', 'Pur Qty', 'Brokerage', 'Cr Amt', 'Dr Amt', 'Balance', 'Dal Sell Qty', 'Dal Sell Amt', 'Dal Pur Qty', 'Dal Pur Amt', 'Dal Rate', 'Dal Total']];
                 const body = [];
                 pdfData.forEach((ledger, ledgerIndex) => {
                     if (selectedRows.includes(`ledger_${ledger.LedgerId}`)) {
@@ -974,19 +991,49 @@ const getDalaliData = async () => {
                         ]);
                     });
                 });
-                body.push(['TOTAL', '', pdfTotals.sellerQty.toFixed(2), pdfTotals.buyerQty.toFixed(2), pdfTotals.brokerage.toFixed(2), pdfTotals.crAmount.toFixed(2), pdfTotals.drAmount.toFixed(2), pdfTotals.balance.toFixed(2), pdfTotals.dalaliSellerQty.toFixed(2), pdfTotals.dalaliSellerAmount.toFixed(2), pdfTotals.dalaliBuyerQty.toFixed(2), pdfTotals.dalaliBuyerAmount.toFixed(2), '', pdfTotals.dalaliTotal.toFixed(2)]);
+                body.push([
+                    { content: 'TOTAL', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } },
+                    pdfTotals.sellerQty.toFixed(2),
+                    pdfTotals.buyerQty.toFixed(2),
+                    pdfTotals.brokerage.toFixed(2),
+                    pdfTotals.crAmount.toFixed(2),
+                    pdfTotals.drAmount.toFixed(2),
+                    pdfTotals.balance.toFixed(2),
+                    pdfTotals.dalaliSellerQty.toFixed(2),
+                    pdfTotals.dalaliSellerAmount.toFixed(2),
+                    pdfTotals.dalaliBuyerQty.toFixed(2),
+                    pdfTotals.dalaliBuyerAmount.toFixed(2),
+                    '',
+                    pdfTotals.dalaliTotal.toFixed(2)
+                ]);
 
                 doc.autoTable({
                     head,
                     body,
                     startY: 31,
-                    margin: { left: 14 },
-                    styles: { fontSize: 11 },
-                    headStyles: { fillColor: [40, 167, 69] },
+                    margin: { left: marginX, right: marginX },
+                    styles: { fontSize: 8, cellPadding: 1, overflow: 'linebreak' },
+                    headStyles: { fillColor: [40, 167, 69], halign: 'center', valign: 'middle' },
+                    columnStyles: {
+                        0: { cellWidth: 10, halign: 'center' },
+                        1: { cellWidth: 'auto' },
+                        2: { halign: 'right' },
+                        3: { halign: 'right' },
+                        4: { halign: 'right' },
+                        5: { halign: 'right' },
+                        6: { halign: 'right' },
+                        7: { halign: 'right' },
+                        8: { halign: 'right' },
+                        9: { halign: 'right' },
+                        10: { halign: 'right' },
+                        11: { halign: 'right' },
+                        12: { halign: 'right' },
+                        13: { halign: 'right' }
+                    },
                     alternateRowStyles: { fillColor: [248, 249, 250] }
                 });
             } else {
-                const head = [['Sr', 'Ledger Name', 'Sell Qty', 'Pur Qty', 'Total Brokerage', 'Cr Amount', 'Dr Amount', 'Balance']];
+                const head = [['Sr', 'Ledger Name', 'Sell Qty', 'Pur Qty', 'Brokerage', 'Cr Amount', 'Dr Amount', 'Balance']];
                 const body = pdfData.map((item, index) => [
                     String(index + 1),
                     item.LedgerName || '',
@@ -997,15 +1044,33 @@ const getDalaliData = async () => {
                     (item.DrAmountTotal || 0).toFixed(2),
                     (item.LedgerBalance || 0).toFixed(2)
                 ]);
-                body.push(['TOTAL', '', pdfTotals.sellerQty.toFixed(2), pdfTotals.buyerQty.toFixed(2), pdfTotals.brokerage.toFixed(2), pdfTotals.crAmount.toFixed(2), pdfTotals.drAmount.toFixed(2), pdfTotals.balance.toFixed(2)]);
+                body.push([
+                    { content: 'TOTAL', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } },
+                    pdfTotals.sellerQty.toFixed(2),
+                    pdfTotals.buyerQty.toFixed(2),
+                    pdfTotals.brokerage.toFixed(2),
+                    pdfTotals.crAmount.toFixed(2),
+                    pdfTotals.drAmount.toFixed(2),
+                    pdfTotals.balance.toFixed(2)
+                ]);
 
                 doc.autoTable({
                     head,
                     body,
                     startY: 31,
-                    margin: { left: 14 },
-                    styles: { fontSize: 13 },
-                    headStyles: { fillColor: [40, 167, 69] },
+                    margin: { left: marginX, right: marginX },
+                    styles: { fontSize: 10, cellPadding: 1.5, overflow: 'linebreak' },
+                    headStyles: { fillColor: [40, 167, 69], halign: 'center', valign: 'middle' },
+                    columnStyles: {
+                        0: { cellWidth: 10, halign: 'center' },
+                        1: { cellWidth: 'auto' },
+                        2: { halign: 'right' },
+                        3: { halign: 'right' },
+                        4: { halign: 'right' },
+                        5: { halign: 'right' },
+                        6: { halign: 'right' },
+                        7: { halign: 'right' }
+                    },
                     alternateRowStyles: { fillColor: [248, 249, 250] }
                 });
             }
@@ -1013,11 +1078,11 @@ const getDalaliData = async () => {
             let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 40;
             if (remarks && remarks.trim()) {
                 doc.setFontSize(14);
-                doc.text('Remarks', 14, finalY);
+                doc.text('Remarks', marginX, finalY);
                 finalY += 6;
                 doc.setFontSize(13);
-                const splitRemarks = doc.splitTextToSize(remarks.trim(), 180);
-                doc.text(splitRemarks, 14, finalY);
+                const splitRemarks = doc.splitTextToSize(remarks.trim(), doc.internal.pageSize.getWidth() - (marginX * 2));
+                doc.text(splitRemarks, marginX, finalY);
             }
 
             const pdfBlob = doc.output('blob');
@@ -1248,10 +1313,10 @@ const getDalaliData = async () => {
                                 className="table-responsive" 
                                 style={{maxHeight: '65vh', overflowY: 'auto', paddingBottom: '1rem'}}
                             >
-                                <Table size="sm" className="table table-bordered mb-0">
+                                <Table size="sm" className="table table-bordered mb-0 resizable-table" style={{ tableLayout: 'fixed' }}>
                                     <thead className="table-light">
                                         <tr>
-                                            <th rowSpan={isDetailed ? 2 : 1} style={compactCellStyle} className="text-center">
+                                            <th rowSpan={isDetailed ? 2 : 1} style={{ ...compactCellStyle, width: `${columnWidths.Checkbox}px`, position: 'relative', overflow: 'hidden' }} className="text-center">
                                                 <Input
                                                     type="checkbox"
                                                     checked={selectAll}
@@ -1262,9 +1327,16 @@ const getDalaliData = async () => {
                                                     onChange={() => {}}
                                                     style={{ margin: 0, cursor: 'pointer' }}
                                                 />
+                                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
                                             </th>
-                                            <th rowSpan={isDetailed ? 2 : 1} style={compactCellStyle}>Sr. No.</th>
-                                            <th rowSpan={isDetailed ? 2 : 1} style={compactCellStyle}>{isDetailed ? 'Ledger/Item Name' : 'Ledger Name'}</th>
+                                            <th rowSpan={isDetailed ? 2 : 1} style={{ ...compactCellStyle, width: `${columnWidths.SrNo}px`, position: 'relative', overflow: 'hidden' }}>
+                                                Sr. No.
+                                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'SrNo')} onTouchStart={e => handleResizeMouseDown(e, 'SrNo')} />
+                                            </th>
+                                            <th rowSpan={isDetailed ? 2 : 1} style={{ ...compactCellStyle, width: `${columnWidths.LedgerName}px`, position: 'relative', overflow: 'hidden' }}>
+                                                {isDetailed ? 'Ledger/Item Name' : 'Ledger Name'}
+                                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'LedgerName')} onTouchStart={e => handleResizeMouseDown(e, 'LedgerName')} />
+                                            </th>
                                             {isDetailed ? (
                                                 <>
                                                     <th colSpan="2" className="text-center" style={compactCellStyle}>Brokerage Qty</th>
@@ -1275,12 +1347,30 @@ const getDalaliData = async () => {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <th className="text-end" style={compactCellStyle}>Sell Qty</th>
-                                                    <th className="text-end" style={compactCellStyle}>Pur Qty</th>
-                                                    <th className="text-end" style={compactCellStyle}>Total Brokerage</th>
-                                                    <th className="text-end" style={compactCellStyle}>Cr Amount</th>
-                                                    <th className="text-end" style={compactCellStyle}>Dr Amount</th>
-                                                    <th className="text-end" style={compactCellStyle}>Balance</th>
+                                                    <th className="text-end" style={{ ...compactCellStyle, width: `${columnWidths.SellQty}px`, position: 'relative', overflow: 'hidden' }}>
+                                                        Sell Qty
+                                                        <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'SellQty')} onTouchStart={e => handleResizeMouseDown(e, 'SellQty')} />
+                                                    </th>
+                                                    <th className="text-end" style={{ ...compactCellStyle, width: `${columnWidths.PurQty}px`, position: 'relative', overflow: 'hidden' }}>
+                                                        Pur Qty
+                                                        <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'PurQty')} onTouchStart={e => handleResizeMouseDown(e, 'PurQty')} />
+                                                    </th>
+                                                    <th className="text-end" style={{ ...compactCellStyle, width: `${columnWidths.TotalBrokerage}px`, position: 'relative', overflow: 'hidden' }}>
+                                                        Total Brokerage
+                                                        <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'TotalBrokerage')} onTouchStart={e => handleResizeMouseDown(e, 'TotalBrokerage')} />
+                                                    </th>
+                                                    <th className="text-end" style={{ ...compactCellStyle, width: `${columnWidths.CrAmount}px`, position: 'relative', overflow: 'hidden' }}>
+                                                        Cr Amount
+                                                        <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'CrAmount')} onTouchStart={e => handleResizeMouseDown(e, 'CrAmount')} />
+                                                    </th>
+                                                    <th className="text-end" style={{ ...compactCellStyle, width: `${columnWidths.DrAmount}px`, position: 'relative', overflow: 'hidden' }}>
+                                                        Dr Amount
+                                                        <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'DrAmount')} onTouchStart={e => handleResizeMouseDown(e, 'DrAmount')} />
+                                                    </th>
+                                                    <th className="text-end" style={{ ...compactCellStyle, width: `${columnWidths.Balance}px`, position: 'relative', overflow: 'hidden' }}>
+                                                        Balance
+                                                        <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Balance')} onTouchStart={e => handleResizeMouseDown(e, 'Balance')} />
+                                                    </th>
                                                 </>
                                             )}
                                         </tr>

@@ -28,6 +28,8 @@ import ExcelJS from 'exceljs'
 import jsPDF from 'jspdf'
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable'
 applyAutoTable(jsPDF)
+import useColumnResize from '../../helpers/useColumnResize'
+import '../../helpers/columnResize.css'
 
 function ContractRegister() {
   const dispatch = useDispatch()
@@ -38,6 +40,23 @@ function ContractRegister() {
   // State and ref for scroll to top button
   const [showScrollTop, setShowScrollTop] = useState(false)
   const tableContainerRef = useRef(null)
+
+  // Column resize feature
+  const { columnWidths, handleResizeMouseDown } = useColumnResize('contractRegister_columnWidths', {
+    Checkbox: 40,
+    ContractNo: 100,
+    Date: 85,
+    Seller: 120,
+    Buyer: 120,
+    Item: 90,
+    Period: 120,
+    Qty: 70,
+    Rate: 70,
+    LiftedQty: 80,
+    AdvPayment: 80,
+    AdvDate: 80,
+    Vessel: 80,
+  })
 
   const [selectedItems, setSelectedItems] = useState([])
   const [itemOptions, setItemOptions] = useState([{ value: "", label: "All" }])
@@ -1859,12 +1878,13 @@ function ContractRegister() {
                         }}
                       >
                       <Table
-                        className="table mb-0 table-hover"
+                        className="table mb-0 table-hover resizable-table"
                         style={{
                           fontSize: "0.7rem",
                           borderSpacing: "0",
                           borderCollapse: "collapse",
-                          minWidth: "1200px"
+                          minWidth: "1200px",
+                          tableLayout: "fixed",
                         }}
                       >
                         <thead
@@ -1884,10 +1904,12 @@ function ContractRegister() {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "6px 12px",
-                                minWidth: "50px",
-                                width: "50px",
+                                width: `${columnWidths.Checkbox}px`,
+                                minWidth: "30px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               <div className="d-flex justify-content-center align-items-center">
@@ -1899,6 +1921,7 @@ function ContractRegister() {
                                   style={{ margin: 0 }}
                                 />
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -1909,8 +1932,12 @@ function ContractRegister() {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0 8px",
+                                width: `${columnWidths.ContractNo}px`,
+                                minWidth: "30px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("ContractNo")}
                             >
@@ -1941,6 +1968,7 @@ function ContractRegister() {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContractNo')} onTouchStart={e => handleResizeMouseDown(e, 'ContractNo')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -1951,8 +1979,12 @@ function ContractRegister() {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0 8px",
+                                width: `${columnWidths.Date}px`,
+                                minWidth: "30px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("Date")}
                             >
@@ -1983,6 +2015,7 @@ function ContractRegister() {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Date')} onTouchStart={e => handleResizeMouseDown(e, 'Date')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -1993,8 +2026,12 @@ function ContractRegister() {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0 8px",
+                                width: `${columnWidths.Seller}px`,
+                                minWidth: "30px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("SellerLedger")}
                             >
@@ -2025,6 +2062,7 @@ function ContractRegister() {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Seller')} onTouchStart={e => handleResizeMouseDown(e, 'Seller')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -2035,8 +2073,12 @@ function ContractRegister() {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0 8px",
+                                width: `${columnWidths.Buyer}px`,
+                                minWidth: "30px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("BuyerLedger")}
                             >
@@ -2067,118 +2109,39 @@ function ContractRegister() {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Buyer')} onTouchStart={e => handleResizeMouseDown(e, 'Buyer')} />
                             </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                border: "1.5px solid black !important",
-                              }}
-                            >
+                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Item}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
                               Item
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Item')} onTouchStart={e => handleResizeMouseDown(e, 'Item')} />
                             </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                border: "1.5px solid black !important",
-                              }}
-                            >
+                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Period}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
                               Period
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Period')} onTouchStart={e => handleResizeMouseDown(e, 'Period')} />
                             </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                border: "1.5px solid black !important",
-                              }}
-                            >
+                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Qty}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
                               Qty
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Qty')} onTouchStart={e => handleResizeMouseDown(e, 'Qty')} />
                             </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                border: "1.5px solid black !important",
-                              }}
-                            >
+                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Rate}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
                               Rate
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Rate')} onTouchStart={e => handleResizeMouseDown(e, 'Rate')} />
                             </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                border: "1.5px solid black !important",
-                              }}
-                            >
+                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.LiftedQty}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
                               Lifted Qty
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'LiftedQty')} onTouchStart={e => handleResizeMouseDown(e, 'LiftedQty')} />
                             </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                border: "1.5px solid black !important",
-                              }}
-                            >
+                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.AdvPayment}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
                               Adv Payment
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvPayment')} onTouchStart={e => handleResizeMouseDown(e, 'AdvPayment')} />
                             </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                border: "1.5px solid black !important",
-                              }}
-                            >
+                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.AdvDate}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
                               Adv Date
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvDate')} onTouchStart={e => handleResizeMouseDown(e, 'AdvDate')} />
                             </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                border: "1.5px solid black !important",
-                              }}
-                            >
+                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Vessel}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
                               Vessel
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Vessel')} onTouchStart={e => handleResizeMouseDown(e, 'Vessel')} />
                             </th>
                           </tr>
                         </thead>

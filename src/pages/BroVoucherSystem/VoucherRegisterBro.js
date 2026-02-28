@@ -12,6 +12,8 @@ import { useSelector } from 'react-redux';
 import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
+import useColumnResize from '../../helpers/useColumnResize'
+import '../../helpers/columnResize.css'
 
 const formatDateLocal = (value) => {
     if (!value) return '';
@@ -26,6 +28,17 @@ const formatDateLocal = (value) => {
 const VoucherRegisterBro = ({ globalFromDate, globalToDate, onVoucherUpdate }) => {
     const globalDates = useSelector(state => state.GlobalDates);
     const [voucherData, setVoucherData] = useState([]);
+
+    // Column resize feature
+    const { columnWidths, handleResizeMouseDown } = useColumnResize('voucherRegisterBro_columnWidths', {
+        Checkbox: 40,
+        VoucherNo: 80,
+        Date: 90,
+        DrLedger: 150,
+        CrLedger: 150,
+        Amount: 100,
+        Action: 60,
+    })
     const [loading, setLoading] = useState(false);
     const [fromDate, setFromDate] = useState(globalDates?.fromDate || '');
     const [toDate, setToDate] = useState(globalDates?.toDate || '');
@@ -265,10 +278,10 @@ const VoucherRegisterBro = ({ globalFromDate, globalToDate, onVoucherUpdate }) =
                 </div>
 
                 <div className="table-responsive" style={{ maxHeight: '60vh', border: '1px solid #EFF2F7', borderRadius: '4px' }}>
-                    <Table hover className="align-middle table-nowrap mb-0 table-sm text-nowrap">
+                    <Table hover className="align-middle table-nowrap mb-0 table-sm text-nowrap resizable-table" style={{ tableLayout: 'fixed' }}>
                         <thead className="table-light" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                             <tr>
-                                <th style={{ width: '40px', textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                                <th style={{ width: `${columnWidths.Checkbox}px`, textAlign: 'center', backgroundColor: '#f8f9fa', position: 'relative', overflow: 'hidden' }}>
                                     <div className="custom-control custom-checkbox">
                                         <input
                                             type="checkbox"
@@ -279,13 +292,32 @@ const VoucherRegisterBro = ({ globalFromDate, globalToDate, onVoucherUpdate }) =
                                         />
                                         <label className="custom-control-label" htmlFor="selectAllCheckVoucherHead"></label>
                                     </div>
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
                                 </th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>Voucher No</th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>Date</th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>Dr Ledger</th>
-                                <th style={{ backgroundColor: '#f8f9fa' }}>Cr Ledger</th>
-                                <th className="text-right" style={{ backgroundColor: '#f8f9fa' }}>Amount (₹)</th>
-                                <th className="text-center" style={{ width: '80px', backgroundColor: '#f8f9fa' }}>Action</th>
+                                <th style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.VoucherNo}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Voucher No
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'VoucherNo')} onTouchStart={e => handleResizeMouseDown(e, 'VoucherNo')} />
+                                </th>
+                                <th style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.Date}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Date
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Date')} onTouchStart={e => handleResizeMouseDown(e, 'Date')} />
+                                </th>
+                                <th style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.DrLedger}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Dr Ledger
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'DrLedger')} onTouchStart={e => handleResizeMouseDown(e, 'DrLedger')} />
+                                </th>
+                                <th style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.CrLedger}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Cr Ledger
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'CrLedger')} onTouchStart={e => handleResizeMouseDown(e, 'CrLedger')} />
+                                </th>
+                                <th className="text-right" style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.Amount}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Amount (₹)
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Amount')} onTouchStart={e => handleResizeMouseDown(e, 'Amount')} />
+                                </th>
+                                <th className="text-center" style={{ backgroundColor: '#f8f9fa', width: `${columnWidths.Action}px`, position: 'relative', overflow: 'hidden' }}>
+                                    Action
+                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Action')} onTouchStart={e => handleResizeMouseDown(e, 'Action')} />
+                                </th>
                             </tr>
                         </thead>
                         <tbody>

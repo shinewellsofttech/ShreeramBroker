@@ -19,6 +19,8 @@ import { Fn_FillListData, Fn_DeleteData } from "../../store/Functions";
 import { toast } from "react-toastify";
 import { Download, FileText, Search, Trash2 } from "react-feather";
 import ExcelJS from "exceljs";
+import useColumnResize from '../../helpers/useColumnResize'
+import '../../helpers/columnResize.css'
 
 const LinkRegisterShow = () => {
   const [gridData, setGridData] = useState([]);
@@ -26,6 +28,16 @@ const LinkRegisterShow = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
+
+  // Column resize feature
+  const { columnWidths, handleResizeMouseDown } = useColumnResize('linkRegisterShow_columnWidths', {
+      Checkbox: 30,
+      CreatedOn: 160,
+      Period: 80,
+      LinkQty: 100,
+      ContractChain: 400,
+      Actions: 90,
+  })
   const dispatch = useDispatch();
 
   const API_URL = API_WEB_URLS.MASTER + "/0/token/LinkRegister";
@@ -519,22 +531,38 @@ const LinkRegisterShow = () => {
                   </Alert>
                 ) : (
                     <div className="table-responsive">
-                    <Table bordered hover className="mb-0">
+                    <Table bordered hover className="mb-0 resizable-table" style={{ tableLayout: 'fixed' }}>
                       <thead className="table-success">
                         <tr>
-                          <th className="text-center" style={{ width: '30px', padding: '8px 4px' }}>
+                          <th className="text-center" style={{ width: `${columnWidths.Checkbox}px`, padding: '8px 4px', position: 'relative', overflow: 'hidden' }}>
                             <Input
                               type="checkbox"
                               checked={selectAll}
                               onChange={handleSelectAll}
                               title="Select All"
                             />
+                            <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
                           </th>
-                          <th className="text-center" style={{ width: '160px', minWidth: '160px' }}>Created On</th>
-                          <th className="text-center" style={{ width: '80px', minWidth: '80px' }}>Period</th>
-                          <th className="text-center" style={{ width: '100px', minWidth: '100px' }}>Link Qty</th>
-                          <th style={{ width: 'auto' }}>Contract Chain</th>
-                          <th className="text-center" style={{ width: '90px', minWidth: '90px' }}>Actions</th>
+                          <th className="text-center" style={{ width: `${columnWidths.CreatedOn}px`, position: 'relative', overflow: 'hidden' }}>
+                            Created On
+                            <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'CreatedOn')} onTouchStart={e => handleResizeMouseDown(e, 'CreatedOn')} />
+                          </th>
+                          <th className="text-center" style={{ width: `${columnWidths.Period}px`, position: 'relative', overflow: 'hidden' }}>
+                            Period
+                            <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Period')} onTouchStart={e => handleResizeMouseDown(e, 'Period')} />
+                          </th>
+                          <th className="text-center" style={{ width: `${columnWidths.LinkQty}px`, position: 'relative', overflow: 'hidden' }}>
+                            Link Qty
+                            <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'LinkQty')} onTouchStart={e => handleResizeMouseDown(e, 'LinkQty')} />
+                          </th>
+                          <th style={{ width: `${columnWidths.ContractChain}px`, position: 'relative', overflow: 'hidden' }}>
+                            Contract Chain
+                            <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContractChain')} onTouchStart={e => handleResizeMouseDown(e, 'ContractChain')} />
+                          </th>
+                          <th className="text-center" style={{ width: `${columnWidths.Actions}px`, position: 'relative', overflow: 'hidden' }}>
+                            Actions
+                            <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Actions')} onTouchStart={e => handleResizeMouseDown(e, 'Actions')} />
+                          </th>
                         </tr>
                       </thead>
                       <tbody>

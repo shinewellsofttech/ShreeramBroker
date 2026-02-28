@@ -26,6 +26,8 @@ import "./ContractRegister.scss"
 import * as XLSX from 'xlsx'
 import ExcelJS from 'exceljs'
 import MultiSelectDropdown from "../../components/Common/MultiSelectDropdown"
+import useColumnResize from '../../helpers/useColumnResize'
+import '../../helpers/columnResize.css'
 
 function LinkCreateRegister() {
   const dispatch = useDispatch()
@@ -62,6 +64,24 @@ function LinkCreateRegister() {
   // selectedRows maintains the order of selection
   const [selectedRows, setSelectedRows] = useState([])
   const [selectAll, setSelectAll] = useState(false)
+
+  // Column resize feature
+  const { columnWidths, handleResizeMouseDown } = useColumnResize('linkCreateRegister_columnWidths', {
+      Checkbox: 50,
+      ContractNo: 90,
+      Date: 80,
+      Seller: 120,
+      Buyer: 120,
+      Item: 100,
+      Period: 80,
+      Qty: 70,
+      LinkedQty: 80,
+      Rate: 70,
+      LiftedQty: 80,
+      AdvPayment: 90,
+      AdvDate: 80,
+      Vessel: 80,
+  })
 
   // Sorting state
   const [sortConfig, setSortConfig] = useState({
@@ -1508,12 +1528,13 @@ function LinkCreateRegister() {
                         }}
                       >
                         <Table
-                          className="table mb-0 table-hover"
+                          className="table mb-0 table-hover resizable-table"
                           style={{
                             fontSize: "0.7rem",
                             borderSpacing: "0",
                             borderCollapse: "collapse",
                             border: "1.5px solid black !important",
+                            tableLayout: "fixed",
                           }}
                         >
                           <thead
@@ -1536,11 +1557,12 @@ function LinkCreateRegister() {
                                   fontSize: "0.7rem",
                                   fontWeight: "600",
                                   padding: "6px 12px",
-                                  minWidth: "50px",
-                                  width: "50px",
+                                  width: `${columnWidths.Checkbox}px`,
                                   cursor: "pointer",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 <div className="d-flex justify-content-center align-items-center">
@@ -1552,6 +1574,7 @@ function LinkCreateRegister() {
                                     style={{ margin: 0 }}
                                   />
                                 </div>
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1565,6 +1588,9 @@ function LinkCreateRegister() {
                                   cursor: "pointer",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.ContractNo}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                                 onClick={() => handleSort("ContractNo")}
                               >
@@ -1595,6 +1621,7 @@ function LinkCreateRegister() {
                                     ></i>
                                   </div>
                                 </div>
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContractNo')} onTouchStart={e => handleResizeMouseDown(e, 'ContractNo')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1608,6 +1635,9 @@ function LinkCreateRegister() {
                                   cursor: "pointer",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.Date}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                                 onClick={() => handleSort("Date")}
                               >
@@ -1638,6 +1668,7 @@ function LinkCreateRegister() {
                                     ></i>
                                   </div>
                                 </div>
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Date')} onTouchStart={e => handleResizeMouseDown(e, 'Date')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1651,6 +1682,9 @@ function LinkCreateRegister() {
                                   cursor: "pointer",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.Seller}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                                 onClick={() => handleSort("SellerLedger")}
                               >
@@ -1681,6 +1715,7 @@ function LinkCreateRegister() {
                                     ></i>
                                   </div>
                                 </div>
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Seller')} onTouchStart={e => handleResizeMouseDown(e, 'Seller')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1694,6 +1729,9 @@ function LinkCreateRegister() {
                                   cursor: "pointer",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.Buyer}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                                 onClick={() => handleSort("BuyerLedger")}
                               >
@@ -1724,6 +1762,7 @@ function LinkCreateRegister() {
                                     ></i>
                                   </div>
                                 </div>
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Buyer')} onTouchStart={e => handleResizeMouseDown(e, 'Buyer')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1736,9 +1775,13 @@ function LinkCreateRegister() {
                                   padding: "0",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.Item}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 Item
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Item')} onTouchStart={e => handleResizeMouseDown(e, 'Item')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1751,9 +1794,13 @@ function LinkCreateRegister() {
                                   padding: "0",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.Period}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 Period
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Period')} onTouchStart={e => handleResizeMouseDown(e, 'Period')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1766,9 +1813,13 @@ function LinkCreateRegister() {
                                   padding: "0",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.Qty}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 Qty
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Qty')} onTouchStart={e => handleResizeMouseDown(e, 'Qty')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1781,9 +1832,13 @@ function LinkCreateRegister() {
                                   padding: "0",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.LinkedQty}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 LinkedQty
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'LinkedQty')} onTouchStart={e => handleResizeMouseDown(e, 'LinkedQty')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1796,9 +1851,13 @@ function LinkCreateRegister() {
                                   padding: "0",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.Rate}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 Rate
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Rate')} onTouchStart={e => handleResizeMouseDown(e, 'Rate')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1811,9 +1870,13 @@ function LinkCreateRegister() {
                                   padding: "0",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.LiftedQty}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 Lifted Qty
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'LiftedQty')} onTouchStart={e => handleResizeMouseDown(e, 'LiftedQty')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1826,9 +1889,13 @@ function LinkCreateRegister() {
                                   padding: "0",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.AdvPayment}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 Adv Payment
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvPayment')} onTouchStart={e => handleResizeMouseDown(e, 'AdvPayment')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1841,9 +1908,13 @@ function LinkCreateRegister() {
                                   padding: "0",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.AdvDate}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 Adv Date
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvDate')} onTouchStart={e => handleResizeMouseDown(e, 'AdvDate')} />
                               </th>
                               <th
                                 className="text-center align-middle"
@@ -1856,9 +1927,13 @@ function LinkCreateRegister() {
                                   padding: "0",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
+                                  width: `${columnWidths.Vessel}px`,
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 Vessel
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Vessel')} onTouchStart={e => handleResizeMouseDown(e, 'Vessel')} />
                               </th>
                             </tr>
                           </thead>

@@ -6,6 +6,8 @@ import { VoucherForm } from 'pages/Transaction/Voucher';
 import { Button, Card, CardBody, Col, Container, Row, Table, Input, Modal, ModalBody, ModalFooter, ModalHeader, Form } from 'reactstrap';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import useColumnResize from '../../helpers/useColumnResize'
+import '../../helpers/columnResize.css'
 
 function VoucherList() {
     const dispatch = useDispatch();
@@ -14,6 +16,18 @@ function VoucherList() {
     // State and ref for scroll to top button
     const [showScrollTop, setShowScrollTop] = useState(false);
     const tableContainerRef = useRef(null);
+
+    // Column resize feature
+    const { columnWidths, handleResizeMouseDown } = useColumnResize('voucherList_columnWidths', {
+        Checkbox: 36,
+        SrNo: 50,
+        VoucherDate: 90,
+        CrLedgerName: 160,
+        DrLedgerName: 160,
+        Narration: 180,
+        Amount: 100,
+        Action: 50,
+    })
 
     const [state, setState] = useState({
         FillArray: [],
@@ -352,11 +366,11 @@ function VoucherList() {
                                     className="table-responsive"
                                     style={{ flex: 1, minHeight: 0, overflow: 'auto', paddingBottom: '0.5rem' }}
                                 >
-                                    <Table size="sm" className="table table-bordered table-striped mb-0">
+                                    <Table size="sm" className="table table-bordered table-striped mb-0 resizable-table" style={{ tableLayout: 'fixed' }}>
                                         <thead className="table-light">
                                             <tr>
                                                 {/* Select-all checkbox */}
-                                                <th style={checkboxCellStyle}>
+                                                <th style={{ ...checkboxCellStyle, width: `${columnWidths.Checkbox}px`, position: 'relative', overflow: 'hidden' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={selectAll}
@@ -365,14 +379,36 @@ function VoucherList() {
                                                         style={{ cursor: 'pointer' }}
                                                         title="Select all"
                                                     />
+                                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
                                                 </th>
-                                                <th style={compactCellStyle}>Sr. No.</th>
-                                                <th style={compactCellStyle}>Voucher Date</th>
-                                                <th style={compactCellStyle}>Cr Ledger Name</th>
-                                                <th style={compactCellStyle}>Dr Ledger Name</th>
-                                                <th style={compactCellStyle}>Narration</th>
-                                                <th className="text-end" style={compactCellStyle}>Amount</th>
-                                                <th style={compactCellStyle}>Action</th>
+                                                <th style={{ ...compactCellStyle, width: `${columnWidths.SrNo}px`, position: 'relative', overflow: 'hidden' }}>
+                                                    Sr. No.
+                                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'SrNo')} onTouchStart={e => handleResizeMouseDown(e, 'SrNo')} />
+                                                </th>
+                                                <th style={{ ...compactCellStyle, width: `${columnWidths.VoucherDate}px`, position: 'relative', overflow: 'hidden' }}>
+                                                    Voucher Date
+                                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'VoucherDate')} onTouchStart={e => handleResizeMouseDown(e, 'VoucherDate')} />
+                                                </th>
+                                                <th style={{ ...compactCellStyle, width: `${columnWidths.CrLedgerName}px`, position: 'relative', overflow: 'hidden' }}>
+                                                    Cr Ledger Name
+                                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'CrLedgerName')} onTouchStart={e => handleResizeMouseDown(e, 'CrLedgerName')} />
+                                                </th>
+                                                <th style={{ ...compactCellStyle, width: `${columnWidths.DrLedgerName}px`, position: 'relative', overflow: 'hidden' }}>
+                                                    Dr Ledger Name
+                                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'DrLedgerName')} onTouchStart={e => handleResizeMouseDown(e, 'DrLedgerName')} />
+                                                </th>
+                                                <th style={{ ...compactCellStyle, width: `${columnWidths.Narration}px`, position: 'relative', overflow: 'hidden' }}>
+                                                    Narration
+                                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Narration')} onTouchStart={e => handleResizeMouseDown(e, 'Narration')} />
+                                                </th>
+                                                <th className="text-end" style={{ ...compactCellStyle, width: `${columnWidths.Amount}px`, position: 'relative', overflow: 'hidden' }}>
+                                                    Amount
+                                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Amount')} onTouchStart={e => handleResizeMouseDown(e, 'Amount')} />
+                                                </th>
+                                                <th style={{ ...compactCellStyle, width: `${columnWidths.Action}px`, position: 'relative', overflow: 'hidden' }}>
+                                                    Action
+                                                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Action')} onTouchStart={e => handleResizeMouseDown(e, 'Action')} />
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody>

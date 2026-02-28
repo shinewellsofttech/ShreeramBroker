@@ -32,10 +32,27 @@ import "react-datepicker/dist/react-datepicker.css"
 import DalaliModal from "./DalaliModal"
 import LedgerReport from "./LedgerReport"
 import { toast } from "react-toastify"
+import useColumnResize from '../../helpers/useColumnResize'
+import '../../helpers/columnResize.css'
 
 function NewLedgerReport() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+
+  // Column resize feature
+  const { columnWidths, handleResizeMouseDown } = useColumnResize('newLedgerReport_columnWidths', {
+      Checkbox: 40,
+      Ledger: 150,
+      SellerQty: 80,
+      BuyerQty: 80,
+      DalaliRate: 80,
+      TotalSellerAmt: 100,
+      TotalBuyerAmt: 100,
+      AvgSellerRate: 90,
+      AvgBuyerRate: 90,
+      Total: 80,
+      Action: 100,
+  })
 
   // Get global dates from Redux store
   const globalDates = useSelector(state => state.GlobalDates)
@@ -877,10 +894,10 @@ function NewLedgerReport() {
       {(showTable || (state.FillArray && state.FillArray.length > 0)) && (
         <div className="table-scroll-container">
           {getFilteredAndSortedData().length > 0 ? (
-            <Table bordered hover size="sm" className="mb-0" style={{ marginBottom: 0 }}>
+            <Table bordered hover size="sm" className="mb-0 resizable-table" style={{ marginBottom: 0, tableLayout: 'fixed' }}>
               <thead className="table-success text-center" style={{ position: "sticky", top: 0, zIndex: 10 }}>
                 <tr>
-                  <th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.Checkbox}px` }}>
                     <input
                       type="checkbox"
                       checked={selectAll}
@@ -899,17 +916,48 @@ function NewLedgerReport() {
                         </div>
                       </div>
                     )}
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
                   </th>
-                  <th>Ledger</th>
-                  <th>Seller Qty</th>
-                  <th>Buyer Qty</th>
-                  <th>Dalali Rate</th>
-                  <th>Total Seller Amt</th>
-                  <th>Total Buyer Amt</th>
-                  <th>Avg Seller Rate</th>
-                  <th>Avg Buyer Rate</th>
-                  <th>Total</th>
-                  <th>Action</th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.Ledger}px` }}>
+                    Ledger
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Ledger')} onTouchStart={e => handleResizeMouseDown(e, 'Ledger')} />
+                  </th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.SellerQty}px` }}>
+                    Seller Qty
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'SellerQty')} onTouchStart={e => handleResizeMouseDown(e, 'SellerQty')} />
+                  </th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.BuyerQty}px` }}>
+                    Buyer Qty
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'BuyerQty')} onTouchStart={e => handleResizeMouseDown(e, 'BuyerQty')} />
+                  </th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.DalaliRate}px` }}>
+                    Dalali Rate
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'DalaliRate')} onTouchStart={e => handleResizeMouseDown(e, 'DalaliRate')} />
+                  </th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.TotalSellerAmt}px` }}>
+                    Total Seller Amt
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'TotalSellerAmt')} onTouchStart={e => handleResizeMouseDown(e, 'TotalSellerAmt')} />
+                  </th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.TotalBuyerAmt}px` }}>
+                    Total Buyer Amt
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'TotalBuyerAmt')} onTouchStart={e => handleResizeMouseDown(e, 'TotalBuyerAmt')} />
+                  </th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.AvgSellerRate}px` }}>
+                    Avg Seller Rate
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AvgSellerRate')} onTouchStart={e => handleResizeMouseDown(e, 'AvgSellerRate')} />
+                  </th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.AvgBuyerRate}px` }}>
+                    Avg Buyer Rate
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AvgBuyerRate')} onTouchStart={e => handleResizeMouseDown(e, 'AvgBuyerRate')} />
+                  </th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.Total}px` }}>
+                    Total
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Total')} onTouchStart={e => handleResizeMouseDown(e, 'Total')} />
+                  </th>
+                  <th style={{ position: 'relative', overflow: 'hidden', width: `${columnWidths.Action}px` }}>
+                    Action
+                    <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Action')} onTouchStart={e => handleResizeMouseDown(e, 'Action')} />
+                  </th>
                 </tr>
               </thead>
               <tbody>

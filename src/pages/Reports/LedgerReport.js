@@ -530,6 +530,38 @@ const LedgerReport = () => {
           font-size: 0.6rem !important;
         }
       }
+      /* Column resize handle styles */
+      .col-resize-handle {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        cursor: col-resize;
+        background: transparent;
+        z-index: 20;
+        touch-action: none;
+      }
+      .col-resize-handle:hover,
+      .col-resize-handle.active {
+        background: rgba(255, 255, 0, 0.5);
+      }
+      .col-resize-handle::after {
+        content: '';
+        position: absolute;
+        right: 2px;
+        top: 25%;
+        bottom: 25%;
+        width: 2px;
+        background: rgba(255,255,255,0.5);
+        border-radius: 1px;
+      }
+      /* Ensure td cells handle overflow for fixed table layout */
+      .table td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
     `
     document.head.appendChild(style)
     return () => {
@@ -556,6 +588,105 @@ const LedgerReport = () => {
       window.removeEventListener("resize", handleResize)
     }
   }, [])
+
+  // ─── Column Resize Feature ───────────────────────────────────────
+  const COLUMN_DEFAULT_WIDTHS = {
+    ContractNo: 110,
+    ContractDate: 90,
+    Seller: 120,
+    Buyer: 120,
+    Status: 45,
+    Unit: 55,
+    Item: 90,
+    PurQty: 70,
+    SelQty: 70,
+    Vessel: 80,
+    Rate: 65,
+    ContPeriod: 85,
+    DeliveryPort: 90,
+    AdvPayment: 80,
+    AdvDate: 80,
+    Lifted: 65,
+    Contract: 70,
+    Lifting: 260,
+    Note: 120,
+  }
+
+  const LOCALSTORAGE_KEY = 'ledgerReport_columnWidths'
+
+  const getInitialColumnWidths = () => {
+    try {
+      const saved = localStorage.getItem(LOCALSTORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        // Merge with defaults so new columns get a default width
+        return { ...COLUMN_DEFAULT_WIDTHS, ...parsed }
+      }
+    } catch (e) {
+      console.warn('Failed to load column widths from localStorage', e)
+    }
+    return { ...COLUMN_DEFAULT_WIDTHS }
+  }
+
+  const [columnWidths, setColumnWidths] = useState(getInitialColumnWidths)
+  const resizingCol = useRef(null)  // { key, startX, startWidth }
+  const resizeActiveRef = useRef(false)
+
+  const handleResizeMouseDown = (e, colKey) => {
+    e.preventDefault()
+    e.stopPropagation()
+    resizingCol.current = {
+      key: colKey,
+      startX: e.clientX || (e.touches && e.touches[0].clientX),
+      startWidth: columnWidths[colKey] || COLUMN_DEFAULT_WIDTHS[colKey] || 80,
+    }
+    resizeActiveRef.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!resizeActiveRef.current || !resizingCol.current) return
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX)
+      const diff = clientX - resizingCol.current.startX
+      const newWidth = Math.max(30, resizingCol.current.startWidth + diff)
+      setColumnWidths(prev => ({
+        ...prev,
+        [resizingCol.current.key]: newWidth,
+      }))
+    }
+
+    const handleMouseUp = () => {
+      if (!resizeActiveRef.current) return
+      resizeActiveRef.current = false
+      resizingCol.current = null
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      // Save to localStorage
+      setColumnWidths(prev => {
+        try {
+          localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(prev))
+        } catch (e) {
+          console.warn('Failed to save column widths to localStorage', e)
+        }
+        return prev
+      })
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    document.addEventListener('touchmove', handleMouseMove, { passive: false })
+    document.addEventListener('touchend', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.removeEventListener('touchmove', handleMouseMove)
+      document.removeEventListener('touchend', handleMouseUp)
+    }
+  }, [])
+  // ─── End Column Resize Feature ──────────────────────────────────
 
   // Scroll event handler for table container
   const handleTableScroll = () => {
@@ -2285,13 +2416,23 @@ const LedgerReport = () => {
       })
 
       if (matchingItems.length > 0) {
+        const mappedItems = matchingItems.map(item => {
+          let newStatus = item.Status || "-";
+          if (item.Seller && item.Seller.toLowerCase().includes(ledgerName.toLowerCase())) {
+            newStatus = "S";
+          } else if (item.Buyer && item.Buyer.toLowerCase().includes(ledgerName.toLowerCase())) {
+            newStatus = "P";
+          }
+          return { ...item, Status: newStatus };
+        });
+
         allGroups.push({
           isGroup: true,
           groupName: ledgerName,
           ledgerName: ledgerName,
           ledgerIndex: index + 1,
-          count: matchingItems.length,
-          items: matchingItems,
+          count: mappedItems.length,
+          items: mappedItems,
           groupByField: "ledger",
         })
       }
@@ -2845,12 +2986,12 @@ const LedgerReport = () => {
       ]
 
       if (isDetailed) {
-        cols.push({ header: 'Lifting (Date|Qty|Lorry|BNo)', dataKey: 'DetailedLifting', width: 50 });
-        cols.push({ header: 'Note', dataKey: 'Note', width: 46 });
+        cols.push({ header: 'Lifting (Date|Lorry|BNo|Qty|Rate)', dataKey: 'DetailedLifting', width: 62 });
+        cols.push({ header: 'Note', dataKey: 'Note', width: 34 });
       } else {
         cols.push({ header: 'Note', dataKey: 'Note', width: 76 });
       }
-
+      
       const head = [cols.map(c => c.header)]
       const columnStyles = {}
       cols.forEach((col, i) => {
@@ -2897,7 +3038,8 @@ const LedgerReport = () => {
                   const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
                   const lorry = lift.LorryNo || "-";
                   const bno = lift.BNo || lift.InvoiceNo || "-";
-                  return `${date} | ${qty} | ${lorry} | ${bno}`;
+                  const lRate = lift.LastRate || "-";
+                  return `${date} | ${lorry} | ${bno} | ${qty} | ${lRate}`;
                 }).join('\n');
               } else { liftingString = "-"; }
             } catch (e) { liftingString = "Invalid Data"; }
@@ -3257,7 +3399,8 @@ const LedgerReport = () => {
                 const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
                 const lorry = lift.LorryNo || "-";
                 const bno = lift.BNo || lift.InvoiceNo || "-";
-                return `${date} | ${qty} | ${lorry} | ${bno}`;
+                const lRate = lift.LastRate || "-";
+                return `${date} | ${lorry} | ${bno} | ${qty} | ${lRate}`;
               }).join('\n');
             } else { liftingString = "-"; }
           } catch (e) { liftingString = "Invalid Data"; }
@@ -4085,6 +4228,7 @@ const LedgerReport = () => {
                           borderSpacing: "0",
                           borderCollapse: "collapse",
                           border: "1.5px solid black !important",
+                          tableLayout: "fixed",
                         }}
                       >
                         <thead
@@ -4107,15 +4251,13 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "6px 12px",
-                                minWidth: "50px",
-                                width: "50px",
+                                width: `${columnWidths.ContractNo}px`,
+                                minWidth: "30px",
                                 cursor: "pointer",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("ContractNo")}
                             >
@@ -4165,6 +4307,7 @@ const LedgerReport = () => {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContractNo')} onTouchStart={e => handleResizeMouseDown(e, 'ContractNo')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4176,13 +4319,12 @@ const LedgerReport = () => {
                                 fontWeight: "600",
                                 padding: "0",
                                 cursor: "pointer",
-
+                                width: `${columnWidths.ContractDate}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("ContractDate")}
                             >
@@ -4213,6 +4355,7 @@ const LedgerReport = () => {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContractDate')} onTouchStart={e => handleResizeMouseDown(e, 'ContractDate')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4224,8 +4367,12 @@ const LedgerReport = () => {
                                 fontWeight: "600",
                                 padding: "0",
                                 cursor: "pointer",
+                                width: `${columnWidths.Seller}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("Seller")}
                             >
@@ -4251,6 +4398,7 @@ const LedgerReport = () => {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Seller')} onTouchStart={e => handleResizeMouseDown(e, 'Seller')} />
                             </th>
 
                             <th
@@ -4263,8 +4411,12 @@ const LedgerReport = () => {
                                 fontWeight: "600",
                                 padding: "0",
                                 cursor: "pointer",
+                                width: `${columnWidths.Buyer}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("Buyer")}
                             >
@@ -4290,6 +4442,7 @@ const LedgerReport = () => {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Buyer')} onTouchStart={e => handleResizeMouseDown(e, 'Buyer')} />
                             </th>
 
                             <th
@@ -4302,12 +4455,12 @@ const LedgerReport = () => {
                                 fontWeight: "600",
                                 padding: "0",
                                 cursor: "pointer",
+                                width: `${columnWidths.Status}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("Status")}
                             >
@@ -4338,6 +4491,7 @@ const LedgerReport = () => {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Status')} onTouchStart={e => handleResizeMouseDown(e, 'Status')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4349,12 +4503,12 @@ const LedgerReport = () => {
                                 fontWeight: "600",
                                 padding: "0",
                                 cursor: "pointer",
+                                width: `${columnWidths.Unit}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("Unit")}
                             >
@@ -4385,6 +4539,7 @@ const LedgerReport = () => {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Unit')} onTouchStart={e => handleResizeMouseDown(e, 'Unit')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4397,12 +4552,12 @@ const LedgerReport = () => {
                                 padding: "0",
                                 cursor: "pointer",
                                 textAlign: "center",
+                                width: `${columnWidths.Item}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("Item")}
                             >
@@ -4433,6 +4588,7 @@ const LedgerReport = () => {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Item')} onTouchStart={e => handleResizeMouseDown(e, 'Item')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4444,12 +4600,12 @@ const LedgerReport = () => {
                                 fontWeight: "600",
                                 padding: "0",
                                 cursor: "pointer",
+                                width: `${columnWidths.PurQty}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("PurQty")}
                             >
@@ -4480,6 +4636,7 @@ const LedgerReport = () => {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'PurQty')} onTouchStart={e => handleResizeMouseDown(e, 'PurQty')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4491,12 +4648,12 @@ const LedgerReport = () => {
                                 fontWeight: "600",
                                 padding: "0",
                                 cursor: "pointer",
+                                width: `${columnWidths.SelQty}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                               onClick={() => handleSort("SelQty")}
                             >
@@ -4527,6 +4684,7 @@ const LedgerReport = () => {
                                   ></i>
                                 </div>
                               </div>
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'SelQty')} onTouchStart={e => handleResizeMouseDown(e, 'SelQty')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4537,15 +4695,16 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0",
+                                width: `${columnWidths.Vessel}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               Vessel
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Vessel')} onTouchStart={e => handleResizeMouseDown(e, 'Vessel')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4556,15 +4715,16 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0",
+                                width: `${columnWidths.Rate}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               Rate
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Rate')} onTouchStart={e => handleResizeMouseDown(e, 'Rate')} />
                             </th>
 
                             <th
@@ -4576,15 +4736,16 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0",
+                                width: `${columnWidths.ContPeriod}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               Cont Period
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContPeriod')} onTouchStart={e => handleResizeMouseDown(e, 'ContPeriod')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4595,15 +4756,16 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0",
+                                width: `${columnWidths.DeliveryPort}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               Delivery Port
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'DeliveryPort')} onTouchStart={e => handleResizeMouseDown(e, 'DeliveryPort')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4614,15 +4776,16 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0",
+                                width: `${columnWidths.AdvPayment}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               Adv Payment
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvPayment')} onTouchStart={e => handleResizeMouseDown(e, 'AdvPayment')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4633,15 +4796,16 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0",
+                                width: `${columnWidths.AdvDate}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               Adv Date
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvDate')} onTouchStart={e => handleResizeMouseDown(e, 'AdvDate')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4652,15 +4816,16 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0",
+                                width: `${columnWidths.Lifted}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               Lifted
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Lifted')} onTouchStart={e => handleResizeMouseDown(e, 'Lifted')} />
                             </th>
                             <th
                               className="text-center align-middle"
@@ -4671,15 +4836,16 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0",
+                                width: `${columnWidths.Contract}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               Contract
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Contract')} onTouchStart={e => handleResizeMouseDown(e, 'Contract')} />
                             </th>
                             {isDetailed && (
                               <th
@@ -4691,17 +4857,16 @@ const LedgerReport = () => {
                                   fontSize: "0.7rem",
                                   fontWeight: "600",
                                   padding: "0",
+                                  width: `${columnWidths.Lifting}px`,
+                                  minWidth: "30px",
                                   border: "1.5px solid black !important",
-                                  borderTop: "1.5px solid black !important",
-                                  borderRight: "1.5px solid black !important",
-                                  borderBottom: "1.5px solid black !important",
-                                  borderLeft: "1.5px solid black !important",
                                   boxShadow: "none",
-                                  width: "260px",
-                                  minWidth: "230px"
+                                  position: "relative",
+                                  overflow: "hidden",
                                 }}
                               >
                                 Lifting
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Lifting')} onTouchStart={e => handleResizeMouseDown(e, 'Lifting')} />
                               </th>
                             )}
                             <th
@@ -4713,15 +4878,16 @@ const LedgerReport = () => {
                                 fontSize: "0.7rem",
                                 fontWeight: "600",
                                 padding: "0",
+                                width: `${columnWidths.Note}px`,
+                                minWidth: "30px",
                                 border: "1.5px solid black !important",
-                                borderTop: "1.5px solid black !important",
-                                borderRight: "1.5px solid black !important",
-                                borderBottom: "1.5px solid black !important",
-                                borderLeft: "1.5px solid black !important",
                                 boxShadow: "none",
+                                position: "relative",
+                                overflow: "hidden",
                               }}
                             >
                               Note
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Note')} onTouchStart={e => handleResizeMouseDown(e, 'Note')} />
                             </th>
                           </tr>
                         </thead>
@@ -5054,18 +5220,8 @@ const LedgerReport = () => {
                                         style={{
                                           verticalAlign: "middle",
                                           textAlign: "center",
-                                          width: "50px",
                                           padding: "6px 12px",
-                                          minWidth: "50px",
                                           border:
-                                            "1.5px solid black !important",
-                                          borderTop:
-                                            "1.5px solid black !important",
-                                          borderRight:
-                                            "1.5px solid black !important",
-                                          borderBottom:
-                                            "1.5px solid black !important",
-                                          borderLeft:
                                             "1.5px solid black !important",
                                           boxShadow: "none",
                                           color: row.Status === "S" ? "red" : "inherit",
@@ -5454,19 +5610,21 @@ const LedgerReport = () => {
                                                   <table style={{ width: "100%", fontSize: "0.55rem", borderCollapse: "collapse", margin: 0, padding: 0, border: "none" }}>
                                                     <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8f9fa", zIndex: 1, borderBottom: "1px solid #ccc" }}>
                                                       <tr>
-                                                        <th style={{ padding: "2px", textAlign: "left", width: "20%", fontWeight: 600 }}>Date</th>
+                                                        <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Date</th>
+                                                        <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>LorryNo</th>
+                                                        <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>BNo/InvNo</th>
                                                         <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Qty</th>
-                                                        <th style={{ padding: "2px", textAlign: "left", width: "35%", fontWeight: 600 }}>LorryNo</th>
-                                                        <th style={{ padding: "2px", textAlign: "left", width: "30%", fontWeight: 600 }}>BNo/InvNo</th>
+                                                        <th style={{ padding: "2px", textAlign: "left", width: "20%", fontWeight: 600 }}>Rate</th>
                                                       </tr>
                                                     </thead>
                                                     <tbody>
                                                       {liftingData.map((lift, idx) => (
                                                         <tr key={idx} style={{ borderBottom: "1px dashed #eee" }}>
                                                           <td style={{ padding: "2px", textAlign: "left" }}>{lift.LiftDate?.substring(0, 5) || lift.LiftDate || "-"}</td>
-                                                          <td style={{ padding: "2px", textAlign: "left" }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
                                                           <td style={{ padding: "2px", textAlign: "left" }}>{lift.LorryNo || "-"}</td>
                                                           <td style={{ padding: "2px", textAlign: "left" }}>{lift.BNo || lift.InvoiceNo || "-"}</td>
+                                                          <td style={{ padding: "2px", textAlign: "left" }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
+                                                          <td style={{ padding: "2px", textAlign: "left" }}>{lift.LastRate || "-"}</td>
                                                         </tr>
                                                       ))}
                                                     </tbody>
