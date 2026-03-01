@@ -6,6 +6,7 @@ import { VoucherForm } from 'pages/Transaction/Voucher';
 import { Button, Card, CardBody, Col, Container, Row, Table, Input, Modal, ModalBody, ModalFooter, ModalHeader, Form } from 'reactstrap';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont';
 import useColumnResize from '../../helpers/useColumnResize'
 import '../../helpers/columnResize.css'
 
@@ -199,7 +200,7 @@ function VoucherList() {
     }, [dispatch, state.FromDate, state.ToDate, refreshKey]);
 
     // ── PDF Generation (generates file, stores as pendingShareFile) ────────
-    const handlePDFExport = () => {
+    const handlePDFExport = async () => {
         if (selectedRows.length === 0) {
             alert('Please select at least one row to generate PDF');
             return;
@@ -209,8 +210,11 @@ function VoucherList() {
 
         try {
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            await registerHindiFont(doc);
+            setHindiFont(doc);
             const filename = `Voucher_Register_${new Date().toISOString().split('T')[0]}.pdf`;
 
+            setHindiFont(doc, 'bold');
             doc.setFontSize(18);
             doc.text('Voucher Register', 14, 15);
             doc.setFontSize(11);
@@ -236,7 +240,7 @@ function VoucherList() {
                 body,
                 startY: 33,
                 margin: { left: 14, right: 14 },
-                styles: { fontSize: 9, cellPadding: 2 },
+                styles: { fontSize: 9, cellPadding: 2, font: 'NotoSansDevanagari' },
                 headStyles: { fillColor: [13, 110, 253], textColor: 255, fontStyle: 'bold' },
                 alternateRowStyles: { fillColor: [245, 248, 255] },
                 foot: [],

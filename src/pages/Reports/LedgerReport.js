@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react"
+﻿import React, { useState, useEffect, useRef } from "react"
 import {
   Row,
   Col,
@@ -40,6 +40,7 @@ import { FileText } from "react-feather"
 import jsPDF from "jspdf"
 import { applyPlugin as applyAutoTable } from "jspdf-autotable"
 applyAutoTable(jsPDF)
+import { registerHindiFont, setHindiFont } from "../../helpers/pdfHindiFont"
 import useFilterLayout from "../../helpers/useFilterLayout"
 import "../../helpers/filterLayout.css"
 
@@ -776,7 +777,7 @@ const LedgerReport = () => {
               <label className="form-check-label small mb-0" htmlFor="NotStarted" style={{ fontSize: "0.55rem", color: "#000000", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-clock" style={{ fontSize: "0.5rem" }}></i>Bk:{state.NotStarted ? "Y" : "N"}</label>
             </div>
             <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
-              <input id="Completed" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} onChange={e => { setState(prev => ({ ...prev, Completed: e.target.checked })); setSelectedPeriod([]); }} checked={state.Completed} />
+              <input id="Completed" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={state.Completed} onClick={() => { setState(prev => ({ ...prev, Completed: !prev.Completed })); setSelectedPeriod([]); }} />
               <label className="form-check-label small mb-0" htmlFor="Completed" style={{ fontSize: "0.55rem", color: "#007bff", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>Bl:{state.Completed ? "Y" : "N"}</label>
             </div>
           </div>
@@ -937,29 +938,16 @@ const LedgerReport = () => {
         {filterOrder.map(filterId => (
           <div
             key={filterId}
-            className="filter-item"
             data-filter-id={filterId}
-            draggable
-            onDragStart={e => dragStart(e, filterId)}
-            onDragOver={e => dragOver(e, filterId)}
-            onDrop={e => drop(e, filterId)}
-            onDragEnd={dragEnd}
-            onTouchStart={e => {
-              // Only trigger drag on the drag handle
-              if (e.target.closest('.filter-drag-handle')) {
-                touchDragStart(e, filterId);
-              }
-            }}
-            onTouchMove={touchDragMove}
-            onTouchEnd={touchDragEnd}
             style={{
               width: `${filterWidths[filterId] || 100}px`,
               flexShrink: 0,
               position: "relative",
+              cursor: "default",
+              touchAction: "auto",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-              <div className="filter-drag-handle" title="Drag to reorder"></div>
               <div style={{ flex: 1, overflow: "hidden" }}>
                 {renderContent(filterId)}
               </div>
@@ -3242,6 +3230,8 @@ const LedgerReport = () => {
     try {
       // ── Landscape A4 gives ~277 mm usable width ──
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      await registerHindiFont(doc)
+      setHindiFont(doc)
       const pageW = doc.internal.pageSize.getWidth()  // 297 mm
       const pageH = doc.internal.pageSize.getHeight() // 210 mm
       const filename = `Ledger_Report_${new Date().toISOString().split('T')[0]}.pdf`
@@ -3251,10 +3241,10 @@ const LedgerReport = () => {
       doc.rect(0, 0, pageW, 20, 'F')
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(15)
-      doc.setFont(undefined, 'bold')
+      setHindiFont(doc, 'bold')
       doc.text('Ledger Report', 8, 9)
       doc.setFontSize(7.5)
-      doc.setFont(undefined, 'normal')
+      setHindiFont(doc, 'normal')
       doc.text(`Ledger: ${ledgerLabel}`, 8, 14)
       doc.text(
         `Period: ${fromDate.toLocaleDateString()} – ${toDate.toLocaleDateString()}   |   Generated: ${new Date().toLocaleString()}`,
@@ -3399,6 +3389,7 @@ const LedgerReport = () => {
         margin: { left: 7, right: 7 },
         tableWidth: 'auto',
         styles: {
+          font: 'NotoSansDevanagari',
           fontSize: 7,
           cellPadding: 1.8,
           lineColor: [200, 200, 200],
@@ -3454,9 +3445,9 @@ const LedgerReport = () => {
         let fy = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 30) + 8
         if (fy > pageH - 30) { doc.addPage(); fy = 20 }
         doc.setFontSize(9)
-        doc.setFont(undefined, 'bold')
+        setHindiFont(doc, 'bold')
         doc.text('Remarks:', 7, fy)
-        doc.setFont(undefined, 'normal')
+        setHindiFont(doc, 'normal')
         doc.setFontSize(7.5)
         const lines = doc.splitTextToSize(remarks.trim(), pageW - 14)
         doc.text(lines, 7, fy + 5)

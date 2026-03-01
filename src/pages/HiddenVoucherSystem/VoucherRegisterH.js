@@ -9,6 +9,7 @@ import VoucherH from './VoucherH';
 import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
+import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont';
 import useColumnResize from '../../helpers/useColumnResize'
 import '../../helpers/columnResize.css'
 
@@ -195,6 +196,9 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
         if (selectedItems.size === 0) return;
 
         const doc = new jsPDF();
+        await registerHindiFont(doc);
+        setHindiFont(doc);
+        setHindiFont(doc, 'bold');
         doc.setFontSize(16);
         doc.text('Voucher Register', 14, 15);
         doc.setFontSize(10);
@@ -230,7 +234,7 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
             startY: 28,
             theme: 'grid',
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            styles: { fontSize: 8, cellPadding: 2 },
+            styles: { fontSize: 8, cellPadding: 2, font: 'NotoSansDevanagari' },
             columnStyles: {
                 5: { halign: 'right' }
             }

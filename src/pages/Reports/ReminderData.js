@@ -25,6 +25,7 @@ import EditContract from "../Transaction/EditContract";
 import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
+import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont';
 
 function ReminderData({ hideDateFilters = false, onTotalChange }) {
   const dispatch = useDispatch();
@@ -486,8 +487,11 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
 
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      await registerHindiFont(doc);
+      setHindiFont(doc);
       const filename = `ReminderData_${new Date().toISOString().split('T')[0]}.pdf`;
 
+      setHindiFont(doc, 'bold');
       doc.setFontSize(18);
       doc.text('Reminder Data Report', 14, 15);
       doc.setFontSize(10);
@@ -512,7 +516,7 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
         body,
         startY: 32,
         margin: { left: 14 },
-        styles: { fontSize: 8 },
+        styles: { fontSize: 8, font: 'NotoSansDevanagari' },
         headStyles: { fillColor: [40, 167, 69] },
         alternateRowStyles: { fillColor: [245, 245, 245] }
       });
@@ -520,9 +524,11 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
       let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 40;
 
       if (remarks && remarks.trim()) {
+        setHindiFont(doc, 'bold');
         doc.setFontSize(12);
         doc.text('Remarks', 14, finalY);
         finalY += 6;
+        setHindiFont(doc, 'normal');
         doc.setFontSize(10);
         const splitRemarks = doc.splitTextToSize(remarks.trim(), 180);
         doc.text(splitRemarks, 14, finalY);

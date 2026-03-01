@@ -28,8 +28,11 @@ import ExcelJS from 'exceljs'
 import jsPDF from 'jspdf'
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable'
 applyAutoTable(jsPDF)
+import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont'
 import useColumnResize from '../../helpers/useColumnResize'
 import '../../helpers/columnResize.css'
+import useFilterLayout from '../../helpers/useFilterLayout'
+import '../../helpers/filterLayout.css'
 
 function ContractRegister() {
   const dispatch = useDispatch()
@@ -57,6 +60,58 @@ function ContractRegister() {
     AdvDate: 80,
     Vessel: 80,
   })
+
+  // ─── Filter Layout Feature (resizable, reorderable, gap control) ───
+  const TOP_FILTER_DEFAULTS = [
+    { id: 'checkboxes', defaultWidth: 260 },
+    { id: 'dates', defaultWidth: 210 },
+    { id: 'clear', defaultWidth: 60 },
+    { id: 'print', defaultWidth: 80 },
+    { id: 'excel', defaultWidth: 70 },
+    { id: 'link', defaultWidth: 60 },
+    { id: 'exit', defaultWidth: 60 },
+    { id: 'summary', defaultWidth: 250 },
+  ];
+
+  const BOTTOM_FILTER_DEFAULTS = [
+    { id: 'period', defaultWidth: 130 },
+    { id: 'ledger', defaultWidth: 130 },
+    { id: 'commodity', defaultWidth: 130 },
+    { id: 'pdf', defaultWidth: 80 },
+  ];
+
+  const {
+    filterOrder: topFilterOrder,
+    filterWidths: topFilterWidths,
+    gap: topGap,
+    setGap: setTopGap,
+    handleDragStart: topDragStart,
+    handleDragOver: topDragOver,
+    handleDrop: topDrop,
+    handleDragEnd: topDragEnd,
+    handleTouchDragStart: topTouchDragStart,
+    handleTouchDragMove: topTouchDragMove,
+    handleTouchDragEnd: topTouchDragEnd,
+    handleFilterResizeMouseDown: topResizeDown,
+    resetLayout: resetTopLayout,
+  } = useFilterLayout('contractRegister_topFilters', TOP_FILTER_DEFAULTS);
+
+  const {
+    filterOrder: bottomFilterOrder,
+    filterWidths: bottomFilterWidths,
+    gap: bottomGap,
+    setGap: setBottomGap,
+    handleDragStart: bottomDragStart,
+    handleDragOver: bottomDragOver,
+    handleDrop: bottomDrop,
+    handleDragEnd: bottomDragEnd,
+    handleTouchDragStart: bottomTouchDragStart,
+    handleTouchDragMove: bottomTouchDragMove,
+    handleTouchDragEnd: bottomTouchDragEnd,
+    handleFilterResizeMouseDown: bottomResizeDown,
+    resetLayout: resetBottomLayout,
+  } = useFilterLayout('contractRegister_bottomFilters', BOTTOM_FILTER_DEFAULTS);
+  // ─── End Filter Layout Setup ───
 
   const [selectedItems, setSelectedItems] = useState([])
   const [itemOptions, setItemOptions] = useState([{ value: "", label: "All" }])
@@ -1237,6 +1292,8 @@ function ContractRegister() {
 
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      await registerHindiFont(doc)
+      setHindiFont(doc)
       const filename = `Contract_Register_${new Date().toISOString().split('T')[0]}.pdf`
 
       doc.setFontSize(22)
@@ -1266,7 +1323,7 @@ function ContractRegister() {
         body,
         startY: 32,
         margin: { left: 14 },
-        styles: { fontSize: 12 },
+        styles: { font: 'NotoSansDevanagari', fontSize: 12 },
         headStyles: { fillColor: [40, 167, 69] },
         alternateRowStyles: { fillColor: [245, 245, 245] }
       })
@@ -1576,6 +1633,184 @@ function ContractRegister() {
     }
   }
 
+  // ─── Filter Content Renderers ─────────────────────────────────
+  const renderTopFilterContent = (filterId) => {
+    switch (filterId) {
+      case 'checkboxes':
+        return (
+          <div
+            style={{
+              border: "1px solid #2196F3",
+              borderRadius: "4px",
+              padding: "2px 1px",
+              backgroundColor: "#E3F2FD",
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "nowrap",
+              gap: "0",
+              height: "28px",
+              width: "100%",
+            }}
+          >
+           
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0", paddingLeft: "1.5rem" }}>
+              <input id="crNotLifted" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={notLifted} onChange={e => { setNotLifted(e.target.checked); setSelectedPeriods([]); }} />
+              <label className="form-check-label small mb-0" htmlFor="crNotLifted" style={{ fontSize: "0.55rem", color: "#000000", fontWeight: "bold", whiteSpace: "nowrap" }}>Black</label>
+            </div>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0" }}>
+              <input id="crPartialLift" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={partialLift} onChange={e => { setPartialLift(e.target.checked); setSelectedPeriods([]); }} />
+              <label className="form-check-label small mb-0" htmlFor="crPartialLift" style={{ fontSize: "0.55rem", color: "#dc3545", fontWeight: "bold", whiteSpace: "nowrap" }}>Red</label>
+            </div>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
+              <input id="crFullLift" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={fullLift} onChange={e => { setFullLift(e.target.checked); setSelectedPeriods([]); }} />
+              <label className="form-check-label small mb-0" htmlFor="crFullLift" style={{ fontSize: "0.55rem", color: "#0d6efd", fontWeight: "bold", whiteSpace: "nowrap" }}>Blue</label>
+            </div>
+          </div>
+        );
+      case 'dates':
+        return (
+          <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap", height: "100%", width: "100%" }}>
+            <div style={{ flex: 1, height: '28px' }}>
+              <DatePicker selected={fromDate} onChange={date => setFromDate(date)} className="form-control form-control-sm custom-datepicker w-100" dateFormat="dd/MM/yyyy" placeholderText="From Date" portalId="root-portal" popperPlacement="bottom-start" openToDate={new Date()} />
+            </div>
+            <span style={{ fontSize: "0.6rem", fontWeight: "500", color: "#1976D2", margin: "0 2px" }}>To</span>
+            <div style={{ flex: 1, height: '28px' }}>
+              <DatePicker selected={toDate} onChange={date => setToDate(date)} className="form-control form-control-sm custom-datepicker w-100" dateFormat="dd/MM/yyyy" placeholderText="To Date" portalId="root-portal" popperPlacement="bottom-start" openToDate={new Date()} />
+            </div>
+          </div>
+        );
+      case 'clear':
+        return (
+          <Button variant="secondary" size="sm" onClick={handleClear} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <X className="me-1" size={12} /> Clear
+          </Button>
+        );
+      case 'print':
+        return (
+          <Button variant="outline-primary" size="sm" onClick={handleMultiPrint} disabled={selectedRows.length === 0} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Printer className="me-1" size={12} /> Print {selectedRows.length > 0 ? `(${selectedRows.length})` : ''}
+          </Button>
+        );
+      case 'excel':
+        return (
+          <Button variant="outline-success" size="sm" onClick={handleExcelExport} disabled={selectedRows.length === 0} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Download className="me-1" size={12} /> Excel
+          </Button>
+        );
+      case 'link':
+        return (
+          <Button variant="outline-info" size="sm" onClick={handleLink} disabled={selectedPeriods.length !== 1 || !notLifted || partialLift || fullLift} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }} title={selectedPeriods.length !== 1 ? "Select exactly one period" : (!notLifted || partialLift || fullLift) ? "Only Black checkbox should be selected" : "Analyze buyback chains"}>
+            <i className="fas fa-link me-1" style={{ fontSize: '10px' }}></i> Link
+          </Button>
+        );
+      case 'exit':
+        return (
+          <Button variant="danger" style={{ fontSize: "0.55rem", height: "28px", padding: "2px 8px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={handleExit}>
+            <LogOut className="me-1" size={12} /> Exit
+          </Button>
+        );
+      case 'summary':
+        return (
+          <div style={{
+            border: '2px solid #0d6efd',
+            borderRadius: '4px',
+            padding: '0 0.4rem',
+            backgroundColor: '#e7f1ff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            whiteSpace: 'nowrap',
+            height: '28px',
+            width: '100%',
+          }}>
+            <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.55rem' }}>Contracts:</span>
+            <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.55rem' }}>{selectedRows.length.toLocaleString()}</span>
+            <span style={{ color: '#0d6efd', fontSize: '0.55rem' }}>|</span>
+            <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.55rem' }}>Qty:</span>
+            <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.55rem' }}>
+              {filteredTableData
+                .filter(row => selectedRows.includes(row.Id))
+                .reduce((sum, row) => sum + (parseFloat(row.Qty) || 0), 0)
+                .toLocaleString()}
+            </span>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderBottomFilterContent = (filterId) => {
+    switch (filterId) {
+      case 'period':
+        return (
+          <div onClick={openPeriodModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedPeriods && selectedPeriods.length > 0 ? `${selectedPeriods.length} selected` : "Period"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
+      case 'ledger':
+        return (
+          <div onClick={openLedgerModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedLedgerIds && selectedLedgerIds.length > 0 ? `${selectedLedgerIds.length} selected` : "Ledger"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
+      case 'commodity':
+        return (
+          <div onClick={openItemModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "") ? `${selectedItems.filter(item => item !== "").length} selected` : "Commodity"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
+      case 'pdf':
+        return (
+          <Button variant="danger" size="sm" onClick={handlePDFExport} disabled={selectedRows.length === 0} className="d-flex align-items-center shadow-sm" style={{ fontSize: "0.65rem", height: "32px", padding: "0 10px", width: "100%", justifyContent: "center" }}>
+            <FileText className="me-1" size={14} /> PDF
+          </Button>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Helper to render a filter bar with drag/resize/gap support
+  const renderFilterBar = (filterOrder, filterWidths, gap, setGap, dragStart, dragOver, drop, dragEnd, touchDragStart, touchDragMove, touchDragEnd, resizeDown, resetLayout, renderContent) => {
+    return (
+      <>
+        {filterOrder.map(filterId => (
+          <div
+            key={filterId}
+            data-filter-id={filterId}
+            style={{
+              width: `${filterWidths[filterId] || 100}px`,
+              flexShrink: 0,
+              position: "relative",
+              cursor: "default",
+              touchAction: "auto",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+              <div style={{ flex: 1, overflow: "hidden" }}>
+                {renderContent(filterId)}
+              </div>
+            </div>
+            <div className="filter-resize-handle" onMouseDown={e => resizeDown(e, filterId)} onTouchStart={e => resizeDown(e, filterId)} />
+          </div>
+        ))}
+        <div className="filter-gap-control" style={{ marginLeft: "4px" }}>
+          <button onClick={() => setGap(gap - 2)} title="Decrease gap">−</button>
+          <span>{gap}</span>
+          <button onClick={() => setGap(gap + 2)} title="Increase gap">+</button>
+        </div>
+        <button className="filter-reset-btn" onClick={resetLayout} title="Reset layout">
+          <i className="fas fa-undo" style={{ fontSize: "0.5rem" }}></i>
+        </button>
+      </>
+    );
+  };
+  // ─── End Filter Layout Feature ─────────────────────────────────
+
   return (
     <div
       className="contract-register-container"
@@ -1583,7 +1818,10 @@ function ContractRegister() {
         display: 'flex',
         flexDirection: 'column',
         height: 'calc(100vh - 70px)',
-        padding: 0,
+        paddingTop: window.innerWidth > 768 ? '46px' : 0,
+        paddingLeft: 0,
+        paddingRight: 0,
+        paddingBottom: 0,
         margin: 0,
         overflow: 'hidden',
         gap: 0,
@@ -1591,237 +1829,18 @@ function ContractRegister() {
       }}
     >
 
-      {/* Filter Form */}
-      <Card className="shadow-sm border-0" style={{ flexShrink: 0, marginBottom: '0.25rem' }}>
-        <Card.Header className="bg-primary text-white py-1">
-          <div className="d-flex justify-content-between align-items-center">
-            <h6 className="mb-0 d-none d-md-flex align-items-center">
-              <Filter className="me-2" size={16} />
-              Contract Register
-            </h6>
-            <div className="d-flex align-items-center d-md-none w-100 justify-content-center" style={{ gap: '5px' }}>
-              {(() => {
-                const selectedData = filteredTableData.filter(row => selectedRows.includes(row.Id))
-                const totalQty = selectedData.reduce((sum, row) => sum + (parseFloat(row.Qty) || 0), 0)
-                const totalLifted = selectedData.reduce((sum, row) => sum + (parseFloat(row.LiftedQuantity) || 0), 0)
-                const totalPending = totalQty - totalLifted
-
-                return (
-                  <>
-                    <span className="badge bg-info" style={{ fontSize: '0.85rem', padding: '0', marginRight: '5px' }}>
-                      Sel: {selectedRows.length}/{filteredTableData.length}
-                    </span>
-                    <span className="badge bg-primary" style={{ fontSize: '0.85rem', padding: '0', marginRight: '5px' }}>
-                      TQ: {totalQty.toFixed(0)}
-                    </span>
-                    <span className="badge bg-success" style={{ fontSize: '0.85rem', padding: '0', marginRight: '5px' }}>
-                      L: {totalLifted.toFixed(0)}
-                    </span>
-                    <span className="badge bg-warning" style={{ fontSize: '0.85rem', padding: '0' }}>
-                      P: {totalPending.toFixed(0)}
-                    </span>
-                  </>
-                )
-              })()}
+      {/* Filter Form - Resizable/Reorderable */}
+      <div className="col-12" style={{ flex: "0 0 auto", marginBottom: "0" }}>
+        <div className="card border-0 shadow-sm" style={{ marginBottom: "0" }}>
+          <div className="card-body" style={{ padding: "0.25rem" }}>
+            <div style={{ overflowX: "auto", overflowY: "hidden" }}>
+              <div className="d-flex align-items-center filter-theme-light" style={{ backgroundColor: "#E3F2FD", padding: "4px", borderRadius: "4px", flexWrap: "nowrap", minWidth: "fit-content", border: "1px solid #2196F3", gap: `${topGap}px` }}>
+                {renderFilterBar(topFilterOrder, topFilterWidths, topGap, setTopGap, topDragStart, topDragOver, topDrop, topDragEnd, topTouchDragStart, topTouchDragMove, topTouchDragEnd, topResizeDown, resetTopLayout, renderTopFilterContent)}
+              </div>
             </div>
           </div>
-        </Card.Header>
-        <Card.Body className="px-3 py-1" style={{ overflow: 'visible' }}>
-          <Form>
-            <div style={{ overflowX: "auto", overflowY: "hidden" }}>
-              <Row className="g-2 align-items-center" style={{ flexWrap: "nowrap", minWidth: "fit-content" }}>
-                <Col xs="auto" style={{ flex: "0 0 auto", display: 'flex', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '8px' }}>Filter:</span>
-                  <div style={{
-                    border: '1px solid #000000',
-                    borderRadius: '4px',
-                    padding: '0.25rem 0.5rem',
-                    backgroundColor: '#f8f9fa',
-                    width: 'fit-content',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    <div className="d-flex gap-2">
-                      <Form.Check
-                        type="checkbox"
-                        checked={notLifted}
-                        onChange={e => {
-                          setNotLifted(e.target.checked)
-                          setSelectedPeriods([])
-                        }}
-                        className="form-check-input-sm"
-                        label={<span style={{ color: '#000000', fontSize: '0.7rem', fontWeight: '500' }}>Black</span>}
-                      />
-                      <Form.Check
-                        type="checkbox"
-                        checked={partialLift}
-                        onChange={e => {
-                          setPartialLift(e.target.checked)
-                          setSelectedPeriods([])
-                        }}
-                        className="form-check-input-sm"
-                        label={<span style={{ color: '#dc3545', fontSize: '0.7rem', fontWeight: '500' }}>Red</span>}
-                      />
-                      <Form.Check
-                        type="checkbox"
-                        checked={fullLift}
-                        onChange={e => {
-                          setFullLift(e.target.checked)
-                          setSelectedPeriods([])
-                        }}
-                        className="form-check-input-sm"
-                        label={<span style={{ color: '#0d6efd', fontSize: '0.7rem', fontWeight: '500' }}>Blue</span>}
-                      />
-                    </div>
-                  </div>
-                </Col>
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <div style={{ width: '102px', height: '28px' }}>
-                    <DatePicker
-                      selected={fromDate}
-                      onChange={date => setFromDate(date)}
-                      className="form-control form-control-sm custom-datepicker"
-                      dateFormat="dd/MM/yyyy"
-                      placeholderText="From Date"
-                      portalId="root-portal"
-                      popperPlacement="bottom-start"
-                      style={{
-                        fontSize: '0.7rem',
-                        height: '28px',
-                        padding: '0 8px',
-                        lineHeight: '28px'
-                      }}
-                      openToDate={new Date()}
-                    />
-                  </div>
-                </Col>
-                <Col xs="auto" style={{ flex: "0 0 auto", display: 'flex', alignItems: 'center', padding: '0 4px' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>To</span>
-                </Col>
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <div style={{ width: '102px', height: '28px' }}>
-                    <DatePicker
-                      selected={toDate}
-                      onChange={date => setToDate(date)}
-                      className="form-control form-control-sm custom-datepicker"
-                      dateFormat="dd/MM/yyyy"
-                      placeholderText="To Date"
-                      portalId="root-portal"
-                      popperPlacement="bottom-start"
-                      style={{
-                        fontSize: '0.7rem',
-                        height: '28px',
-                        padding: '0 8px',
-                        lineHeight: '28px'
-                      }}
-                      openToDate={new Date()}
-                    />
-                  </div>
-                </Col>
-
-
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleClear}
-                    className="d-flex align-items-center"
-                    style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                  >
-                    <X className="me-1" size={14} />
-                    Clear
-                  </Button>
-                </Col>
-
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <Button
-                    variant="outline-primary"
-                    size="sm"
-                    onClick={handleMultiPrint}
-                    className="d-flex align-items-center"
-                    style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                    disabled={selectedRows.length === 0}
-                  >
-                    <Printer className="me-1" size={14} />
-                    Print {selectedRows.length > 0 ? `(${selectedRows.length})` : ''}
-                  </Button>
-                </Col>
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <Button
-                    variant="outline-success"
-                    size="sm"
-                    onClick={handleExcelExport}
-                    className="d-flex align-items-center"
-                    style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                    disabled={selectedRows.length === 0}
-                    title="Export selected rows to Excel with colorful rows and totals"
-                  >
-                    <Download className="me-1" size={14} />
-                    Excel
-                  </Button>
-                </Col>
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <Button
-                    variant="outline-info"
-                    size="sm"
-                    onClick={handleLink}
-                    className="d-flex align-items-center"
-                    style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                    disabled={selectedPeriods.length !== 1 || !notLifted || partialLift || fullLift}
-                    title={
-                      selectedPeriods.length !== 1
-                        ? "Select exactly one period"
-                        : (!notLifted || partialLift || fullLift)
-                          ? "Only Black checkbox should be selected"
-                          : "Analyze buyback chains"
-                    }
-                  >
-                    <i className="fas fa-link me-1" style={{ fontSize: '12px' }}></i>
-                    Link
-                  </Button>
-                </Col>
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <Button
-                    variant="outline-danger"
-                    size="sm"
-                    onClick={handleExit}
-                    className="d-flex align-items-center"
-                    style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                  >
-                    <LogOut className="me-1" size={14} />
-                    Exit
-                  </Button>
-                </Col>
-
-                <Col xs="auto" style={{ flex: "0 0 auto", display: 'flex', alignItems: 'center' }}>
-                  <div style={{
-                    border: '2px solid #0d6efd',
-                    borderRadius: '4px',
-                    padding: '0 0.6rem',
-                    backgroundColor: '#e7f1ff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    whiteSpace: 'nowrap',
-                    height: '28px',
-                    minHeight: '28px'
-                  }}>
-                    <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.7rem' }}>Contracts:</span>
-                    <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.7rem' }}>{selectedRows.length.toLocaleString()}</span>
-                    <span style={{ color: '#0d6efd', fontSize: '0.7rem' }}>|</span>
-                    <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.7rem' }}>Qty:</span>
-                    <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.7rem' }}>
-                      {filteredTableData
-                        .filter(row => selectedRows.includes(row.Id))
-                        .reduce((sum, row) => sum + (parseFloat(row.Qty) || 0), 0)
-                        .toLocaleString()}
-                    </span>
-                  </div>
-                </Col>
-              </Row>
-            </div>
-          </Form>
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
 
 
       {/* Table Data Section - Full Height Layout; only table scrolls */}
@@ -2333,7 +2352,7 @@ function ContractRegister() {
                       </Table>
                     </div>
 
-                    {/* Bottom bar - Period, Commodity, PDF (like LedgerReport) */}
+                    {/* Bottom bar - Period, Commodity, PDF (resizable/reorderable like LedgerReport) */}
                     <div
                       className="bottom-filters-bar"
                       style={{
@@ -2344,113 +2363,29 @@ function ContractRegister() {
                         fontWeight: "bold",
                         marginTop: 0,
                         marginBottom: 0,
-                        paddingTop: "4px",
-                        paddingBottom: "4px",
+                        paddingTop: "6px",
+                        paddingBottom: "6px",
                         flexShrink: 0,
                         width: "100%",
+                        overflowX: "auto",
+                        overflowY: "hidden",
                       }}
                     >
                       <div
-                        className="d-flex align-items-center bottom-filter-scroll-container"
+                        className="d-flex align-items-center"
                         style={{
-                          padding: "4px 12px",
-                          gap: "8px",
+                          padding: "6px 12px",
+                          gap: `${bottomGap}px`,
                           flexWrap: "nowrap",
-                          overflowX: "auto",
-                          width: "100%",
+                          minWidth: "fit-content"
                         }}
                       >
                         <div className="d-flex align-items-center" style={{ flex: "0 0 auto" }}>
-                          <i className="fas fa-filter me-2" style={{ fontSize: "14px" }}></i>
+                          <i className="fas fa-filter me-2"></i>
                         </div>
-                        <div style={{ flex: "0 0 auto", minWidth: "100px" }}>
-                          <div
-                            onClick={openPeriodModal}
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              color: "#333",
-                              border: "1px solid #2196F3",
-                              borderRadius: "6px",
-                              height: "28px",
-                              padding: "0 8px",
-                              fontSize: "0.65rem",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>
-                              {selectedPeriods && selectedPeriods.length > 0
-                                ? `${selectedPeriods.length} selected`
-                                : "Period"}
-                            </span>
-                            <i className="fas fa-chevron-down ms-2"></i>
-                          </div>
-                        </div>
-                        <div style={{ flex: "0 0 auto", minWidth: "100px" }}>
-                          <div
-                            onClick={openLedgerModal}
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              color: "#333",
-                              border: "1px solid #2196F3",
-                              borderRadius: "6px",
-                              height: "28px",
-                              padding: "0 8px",
-                              fontSize: "0.65rem",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>
-                              {selectedLedgerIds && selectedLedgerIds.length > 0
-                                ? `${selectedLedgerIds.length} selected`
-                                : "Ledger"}
-                            </span>
-                            <i className="fas fa-chevron-down ms-2"></i>
-                          </div>
-                        </div>
-                        <div style={{ flex: "0 0 auto", minWidth: "100px" }}>
-                          <div
-                            onClick={openItemModal}
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              color: "#333",
-                              border: "1px solid #2196F3",
-                              borderRadius: "6px",
-                              height: "28px",
-                              padding: "0 8px",
-                              fontSize: "0.65rem",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>
-                              {selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "")
-                                ? `${selectedItems.filter(item => item !== "").length} selected`
-                                : "Commodity"}
-                            </span>
-                            <i className="fas fa-chevron-down ms-2"></i>
-                          </div>
-                        </div>
-                        <div className="d-flex align-items-center" style={{ gap: "8px", flex: "0 0 auto" }}>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={handlePDFExport}
-                            className="d-flex align-items-center shadow-sm"
-                            style={{ fontSize: "0.65rem", height: "28px", padding: "0 10px" }}
-                            disabled={selectedRows.length === 0}
-                          >
-                            <FileText className="me-1" size={14} />
-                            PDF
-                          </Button>
-                        </div>
+
+                        {renderFilterBar(bottomFilterOrder, bottomFilterWidths, bottomGap, setBottomGap, bottomDragStart, bottomDragOver, bottomDrop, bottomDragEnd, bottomTouchDragStart, bottomTouchDragMove, bottomTouchDragEnd, bottomResizeDown, resetBottomLayout, renderBottomFilterContent)}
+
                       </div>
                     </div>
                   </>

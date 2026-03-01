@@ -10,6 +10,7 @@ import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
+import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont';
 import { toast } from 'react-toastify';
 import useColumnResize from '../../helpers/useColumnResize'
 import '../../helpers/columnResize.css'
@@ -950,6 +951,8 @@ const getDalaliData = async () => {
             }
 
             const doc = new jsPDF({ orientation: isDetailed ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+            await registerHindiFont(doc);
+            setHindiFont(doc);
             const filename = `Brokerage_Register_${isDetailed ? 'Detailed' : 'Normal'}_${new Date().toISOString().split('T')[0]}.pdf`;
 
             const marginX = isDetailed ? 7 : 14;
@@ -1012,7 +1015,7 @@ const getDalaliData = async () => {
                     body,
                     startY: 31,
                     margin: { left: marginX, right: marginX },
-                    styles: { fontSize: 8, cellPadding: 1, overflow: 'linebreak' },
+                    styles: { font: 'NotoSansDevanagari', fontSize: 8, cellPadding: 1, overflow: 'linebreak' },
                     headStyles: { fillColor: [40, 167, 69], halign: 'center', valign: 'middle' },
                     columnStyles: {
                         0: { cellWidth: 10, halign: 'center' },
@@ -1059,7 +1062,7 @@ const getDalaliData = async () => {
                     body,
                     startY: 31,
                     margin: { left: marginX, right: marginX },
-                    styles: { fontSize: 10, cellPadding: 1.5, overflow: 'linebreak' },
+                    styles: { font: 'NotoSansDevanagari', fontSize: 10, cellPadding: 1.5, overflow: 'linebreak' },
                     headStyles: { fillColor: [40, 167, 69], halign: 'center', valign: 'middle' },
                     columnStyles: {
                         0: { cellWidth: 10, halign: 'center' },

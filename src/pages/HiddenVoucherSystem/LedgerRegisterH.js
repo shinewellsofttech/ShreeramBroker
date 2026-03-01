@@ -8,6 +8,7 @@ import { API_WEB_URLS } from '../../constants/constAPI';
 import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
+import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont';
 import useColumnResize from '../../helpers/useColumnResize'
 import '../../helpers/columnResize.css'
 
@@ -119,6 +120,8 @@ const LedgerRegisterH = () => {
         if (selectedItems.size === 0) return;
 
         const doc = new jsPDF();
+        await registerHindiFont(doc);
+        setHindiFont(doc);
         doc.setFontSize(16);
         doc.text('Ledger Register', 14, 15);
         doc.setFontSize(10);
@@ -154,7 +157,7 @@ const LedgerRegisterH = () => {
             startY: 28,
             theme: 'grid',
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            styles: { fontSize: 8, cellPadding: 2 },
+            styles: { font: 'NotoSansDevanagari', fontSize: 8, cellPadding: 2 },
             columnStyles: {
                 1: { halign: 'right' },
                 2: { halign: 'right' },

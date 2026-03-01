@@ -12,6 +12,7 @@ import { useSelector } from 'react-redux';
 import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
+import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont';
 import useColumnResize from '../../helpers/useColumnResize'
 import '../../helpers/columnResize.css'
 
@@ -168,6 +169,9 @@ const VoucherRegisterBro = ({ globalFromDate, globalToDate, onVoucherUpdate }) =
         if (selectedItems.size === 0) return;
 
         const doc = new jsPDF();
+        await registerHindiFont(doc);
+        setHindiFont(doc);
+        setHindiFont(doc, 'bold');
         doc.setFontSize(16);
         doc.text('Voucher Register', 14, 15);
         doc.setFontSize(10);
@@ -205,7 +209,7 @@ const VoucherRegisterBro = ({ globalFromDate, globalToDate, onVoucherUpdate }) =
             startY: 28,
             theme: 'grid',
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            styles: { fontSize: 8, cellPadding: 2 },
+            styles: { fontSize: 8, cellPadding: 2, font: 'NotoSansDevanagari' },
             columnStyles: {
                 6: { halign: 'right' }
             }
