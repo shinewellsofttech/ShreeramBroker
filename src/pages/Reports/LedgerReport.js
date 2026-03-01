@@ -565,6 +565,15 @@ const LedgerReport = () => {
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      /* Column drag reorder styles */
+      .col-drag-over {
+        outline: 2px solid #FFD700 !important;
+        outline-offset: -2px !important;
+        background-color: rgba(255,215,0,0.25) !important;
+      }
+      .col-dragging {
+        opacity: 0.5 !important;
+      }
     `
     document.head.appendChild(style)
     return () => {
@@ -690,6 +699,108 @@ const LedgerReport = () => {
     }
   }, [])
   // ─── End Column Resize Feature ──────────────────────────────────
+
+  // ─── Column Reorder Feature ─────────────────────────────────────
+  const ALL_COLUMNS = [
+    { key: 'ContractNo', label: 'Contract No', sortKey: 'ContractNo' },
+    { key: 'ContractDate', label: 'Contract Date', sortKey: 'ContractDate' },
+    { key: 'Seller', label: 'Seller', sortKey: 'Seller' },
+    { key: 'Buyer', label: 'Buyer', sortKey: 'Buyer' },
+    { key: 'Status', label: 'S/P', sortKey: 'Status' },
+    { key: 'Unit', label: 'Unit', sortKey: 'Unit' },
+    { key: 'Item', label: 'Item', sortKey: 'Item' },
+    { key: 'PurQty', label: 'Pur Qty', sortKey: 'PurQty' },
+    { key: 'SelQty', label: 'Sel Qty', sortKey: 'SelQty' },
+    { key: 'Vessel', label: 'Vessel', sortKey: null },
+    { key: 'Rate', label: 'Rate', sortKey: null },
+    { key: 'ContPeriod', label: 'Cont Period', sortKey: null },
+    { key: 'DeliveryPort', label: 'Delivery Port', sortKey: null },
+    { key: 'AdvPayment', label: 'Adv Payment', sortKey: null },
+    { key: 'AdvDate', label: 'Adv Date', sortKey: null },
+    { key: 'Lifted', label: 'Lifted', sortKey: null },
+    { key: 'Contract', label: 'Contract', sortKey: null },
+    { key: 'Lifting', label: 'Lifting', sortKey: null, detailedOnly: true },
+    { key: 'Note', label: 'Note', sortKey: null },
+  ]
+  const DEFAULT_COLUMN_ORDER = ALL_COLUMNS.map(c => c.key)
+  const COL_ORDER_LOCALSTORAGE_KEY = 'ledgerReport_columnOrder'
+
+  const getInitialColumnOrder = () => {
+    try {
+      const saved = localStorage.getItem(COL_ORDER_LOCALSTORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const merged = [
+          ...parsed.filter(k => DEFAULT_COLUMN_ORDER.includes(k)),
+          ...DEFAULT_COLUMN_ORDER.filter(k => !parsed.includes(k)),
+        ]
+        return merged
+      }
+    } catch (e) {
+      console.warn('Failed to load column order', e)
+    }
+    return [...DEFAULT_COLUMN_ORDER]
+  }
+
+  const [columnOrder, setColumnOrder] = useState(getInitialColumnOrder)
+
+  const saveColumnOrder = (order) => {
+    try {
+      localStorage.setItem(COL_ORDER_LOCALSTORAGE_KEY, JSON.stringify(order))
+    } catch (e) {
+      console.warn('Failed to save column order', e)
+    }
+  }
+
+  const colDragSrcRef = useRef(null)
+  const [colDragOverKey, setColDragOverKey] = useState(null)
+
+  const handleColDragStart = (e, colKey) => {
+    if (resizeActiveRef.current) { e.preventDefault(); return }
+    colDragSrcRef.current = colKey
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', colKey)
+  }
+
+  const handleColDragOver = (e, colKey) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (colKey !== colDragSrcRef.current) setColDragOverKey(colKey)
+  }
+
+  const handleColDrop = (e, targetKey) => {
+    e.preventDefault()
+    const srcKey = colDragSrcRef.current
+    if (!srcKey || srcKey === targetKey) { setColDragOverKey(null); return }
+    setColumnOrder(prev => {
+      const next = [...prev]
+      const fromIdx = next.indexOf(srcKey)
+      const toIdx = next.indexOf(targetKey)
+      if (fromIdx === -1 || toIdx === -1) return prev
+      next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, srcKey)
+      saveColumnOrder(next)
+      return next
+    })
+    setColDragOverKey(null)
+    colDragSrcRef.current = null
+  }
+
+  const handleColDragEnd = () => {
+    setColDragOverKey(null)
+    colDragSrcRef.current = null
+  }
+
+  const resetColumnOrder = () => {
+    setColumnOrder([...DEFAULT_COLUMN_ORDER])
+    saveColumnOrder([...DEFAULT_COLUMN_ORDER])
+  }
+
+  // Get effective visible columns based on isDetailed flag
+  const getVisibleColumns = () => columnOrder
+    .map(key => ALL_COLUMNS.find(c => c.key === key))
+    .filter(c => c && (!c.detailedOnly || isDetailed))
+  // ─── End Column Reorder Feature ──────────────────────────────────
 
   // ─── Filter Layout Feature (resizable, reorderable, gap control) ───
   const TOP_FILTER_DEFAULTS = [
@@ -4110,656 +4221,60 @@ const LedgerReport = () => {
                             border: "1.5px solid black !important",
                           }}
                         >
-                          <tr
-                            style={{ border: "1.5px solid black !important" }}
-                          >
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "6px 12px",
-                                width: `${columnWidths.ContractNo}px`,
-                                minWidth: "30px",
-                                cursor: "pointer",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("ContractNo")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <div className="d-flex align-items-center gap-1">
-                                  <input
-                                    type="checkbox"
-                                    ref={selectAllRef}
-                                    checked={allVisibleRowsSelected}
-                                    onClick={e => {
-                                      e.stopPropagation()
-                                      handleSelectAllVisibleRows()
-                                    }}
-                                    disabled={visibleRowIds.length === 0}
-                                    style={{
-                                      width: "12px",
-                                      height: "12px",
-                                      margin: "0",
-                                      cursor: "pointer",
-                                    }}
-                                    title="Select all visible contracts"
-                                  />
-                                  <span>Contract No</span>
-                                </div>
-                                <div className="d-flex flex-column">
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "ContractNo" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "ContractNo" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContractNo')} onTouchStart={e => handleResizeMouseDown(e, 'ContractNo')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                cursor: "pointer",
-                                width: `${columnWidths.ContractDate}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("ContractDate")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>Contract Date</span>
-                                <div className="d-flex flex-column">
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "ContractDate" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "ContractDate" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContractDate')} onTouchStart={e => handleResizeMouseDown(e, 'ContractDate')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                cursor: "pointer",
-                                width: `${columnWidths.Seller}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("Seller")}
-                            >
-                              <div
-                                className="d-flex justify-content-center align-items-center gap-1"
-                                style={{ width: "100%" }}
-                              >
-                                <span>Seller</span>
-                                <div className="d-flex flex-column" style={{ lineHeight: "0.5rem" }}>
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "Seller" && sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{ fontSize: "0.5rem" }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "Seller" && sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{ fontSize: "0.5rem" }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Seller')} onTouchStart={e => handleResizeMouseDown(e, 'Seller')} />
-                            </th>
-
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                cursor: "pointer",
-                                width: `${columnWidths.Buyer}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("Buyer")}
-                            >
-                              <div
-                                className="d-flex justify-content-center align-items-center gap-1"
-                                style={{ width: "100%" }}
-                              >
-                                <span>Buyer</span>
-                                <div className="d-flex flex-column" style={{ lineHeight: "0.5rem" }}>
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "Buyer" && sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{ fontSize: "0.5rem" }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "Buyer" && sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{ fontSize: "0.5rem" }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Buyer')} onTouchStart={e => handleResizeMouseDown(e, 'Buyer')} />
-                            </th>
-
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                cursor: "pointer",
-                                width: `${columnWidths.Status}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("Status")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>S/P</span>
-                                <div className="d-flex flex-column">
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "Status" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "Status" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Status')} onTouchStart={e => handleResizeMouseDown(e, 'Status')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                cursor: "pointer",
-                                width: `${columnWidths.Unit}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("Unit")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>Unit</span>
-                                <div className="d-flex flex-column">
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "Unit" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "Unit" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Unit')} onTouchStart={e => handleResizeMouseDown(e, 'Unit')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                cursor: "pointer",
-                                textAlign: "center",
-                                width: `${columnWidths.Item}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("Item")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span >Item</span>
-                                <div className="d-flex flex-column">
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "Item" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "Item" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Item')} onTouchStart={e => handleResizeMouseDown(e, 'Item')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                cursor: "pointer",
-                                width: `${columnWidths.PurQty}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("PurQty")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>Pur Qty</span>
-                                <div className="d-flex flex-column">
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "PurQty" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "PurQty" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'PurQty')} onTouchStart={e => handleResizeMouseDown(e, 'PurQty')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                cursor: "pointer",
-                                width: `${columnWidths.SelQty}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("SelQty")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>Sel Qty</span>
-                                <div className="d-flex flex-column">
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "SelQty" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "SelQty" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'SelQty')} onTouchStart={e => handleResizeMouseDown(e, 'SelQty')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                width: `${columnWidths.Vessel}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              Vessel
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Vessel')} onTouchStart={e => handleResizeMouseDown(e, 'Vessel')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                width: `${columnWidths.Rate}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              Rate
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Rate')} onTouchStart={e => handleResizeMouseDown(e, 'Rate')} />
-                            </th>
-
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                width: `${columnWidths.ContPeriod}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              Cont Period
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContPeriod')} onTouchStart={e => handleResizeMouseDown(e, 'ContPeriod')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                width: `${columnWidths.DeliveryPort}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              Delivery Port
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'DeliveryPort')} onTouchStart={e => handleResizeMouseDown(e, 'DeliveryPort')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                width: `${columnWidths.AdvPayment}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              Adv Payment
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvPayment')} onTouchStart={e => handleResizeMouseDown(e, 'AdvPayment')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                width: `${columnWidths.AdvDate}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              Adv Date
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvDate')} onTouchStart={e => handleResizeMouseDown(e, 'AdvDate')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                width: `${columnWidths.Lifted}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              Lifted
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Lifted')} onTouchStart={e => handleResizeMouseDown(e, 'Lifted')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                width: `${columnWidths.Contract}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              Contract
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Contract')} onTouchStart={e => handleResizeMouseDown(e, 'Contract')} />
-                            </th>
-                            {isDetailed && (
+                          <tr style={{ border: "1.5px solid black !important" }}>
+                            {getVisibleColumns().map((col) => (
                               <th
-                                className="text-center align-middle"
+                                key={col.key}
+                                className={`text-center align-middle${colDragOverKey === col.key ? ' col-drag-over' : ''}`}
+                                draggable
+                                onDragStart={e => handleColDragStart(e, col.key)}
+                                onDragOver={e => handleColDragOver(e, col.key)}
+                                onDrop={e => handleColDrop(e, col.key)}
+                                onDragEnd={handleColDragEnd}
                                 style={{
                                   backgroundColor: "#0000FF",
                                   color: "white",
                                   height: "25px",
                                   fontSize: "0.7rem",
                                   fontWeight: "600",
-                                  padding: "0",
-                                  width: `${columnWidths.Lifting}px`,
+                                  padding: col.key === 'ContractNo' ? "6px 12px" : "0",
+                                  width: `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`,
                                   minWidth: "30px",
+                                  cursor: "grab",
                                   border: "1.5px solid black !important",
                                   boxShadow: "none",
                                   position: "relative",
                                   overflow: "hidden",
+                                  userSelect: "none",
                                 }}
+                                onClick={() => col.sortKey && handleSort(col.sortKey)}
                               >
-                                Lifting
-                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Lifting')} onTouchStart={e => handleResizeMouseDown(e, 'Lifting')} />
+                                <div className="d-flex justify-content-between align-items-center" style={{ width: "100%", pointerEvents: "none" }}>
+                                  <div className="d-flex align-items-center gap-1">
+                                    {col.key === 'ContractNo' && (
+                                      <input
+                                        type="checkbox"
+                                        ref={selectAllRef}
+                                        checked={allVisibleRowsSelected}
+                                        onClick={e => { e.stopPropagation(); handleSelectAllVisibleRows() }}
+                                        disabled={visibleRowIds.length === 0}
+                                        style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer", pointerEvents: "auto" }}
+                                        title="Select all visible contracts"
+                                      />
+                                    )}
+                                    <span>{col.label}</span>
+                                    <i className="fas fa-grip-vertical" style={{ fontSize: "0.4rem", opacity: 0.5, marginLeft: "2px" }} title="Drag to reorder"></i>
+                                  </div>
+                                  {col.sortKey && (
+                                    <div className="d-flex flex-column">
+                                      <i className={`fas fa-sort-up ${sortConfig.key === col.sortKey && sortConfig.direction === "asc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
+                                      <i className={`fas fa-sort-down ${sortConfig.key === col.sortKey && sortConfig.direction === "desc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeMouseDown(e, col.key) }} onTouchStart={e => { e.stopPropagation(); handleResizeMouseDown(e, col.key) }} style={{ cursor: "col-resize" }} />
                               </th>
-                            )}
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0",
-                                width: `${columnWidths.Note}px`,
-                                minWidth: "30px",
-                                border: "1.5px solid black !important",
-                                boxShadow: "none",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              Note
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Note')} onTouchStart={e => handleResizeMouseDown(e, 'Note')} />
-                            </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
@@ -5086,443 +4601,99 @@ const LedgerReport = () => {
                                         })
                                       }}
                                     >
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : "fw-semibold"}
-                                        style={{
+                                      {getVisibleColumns().map((col) => {
+                                        const tdStyle = {
                                           verticalAlign: "middle",
-                                          textAlign: "center",
-                                          padding: "6px 12px",
-                                          border:
-                                            "1.5px solid black !important",
+                                          padding: "0",
+                                          border: "1.5px solid black",
+                                          color: row.Status === "S" ? "red" : "inherit",
+                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
+                                        }
+                                        const tdNumStyle = {
+                                          ...tdStyle,
+                                          textAlign: "right",
+                                          border: "1.5px solid black !important",
+                                          borderTop: "1.5px solid black !important",
+                                          borderRight: "1.5px solid black !important",
+                                          borderBottom: "1.5px solid black !important",
+                                          borderLeft: "1.5px solid black !important",
                                           boxShadow: "none",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.ContractNo ? (
-                                          <div className="d-flex align-items-center gap-2">
-                                            <input
-                                              type="checkbox"
-                                              checked={isRowSelected}
-                                              onClick={e => {
-                                                e.stopPropagation()
-                                                toggleRowSelection(row)
-                                              }}
-                                              style={{
-                                                width: "12px",
-                                                height: "12px",
-                                                margin: "0",
-                                                cursor: "pointer",
-                                              }}
-                                              title="Select contract"
-                                            />
-                                            <Button
-                                              variant="link"
-                                              className={`p-0 text-decoration-none ${row.Status === "S" ? "fw-bold" : "fw-bold"} ${row.Status === "S" ? "text-danger" : "text-primary"}`}
-                                              style={{
-                                                cursor: "pointer",
-                                                transition: "all 0.2s ease",
-                                                border: "none",
-                                                background: "none",
-                                                padding: "6px 10px",
-                                                borderRadius: "4px",
-                                                display: "inline-flex",
-                                                alignItems: "center",
-                                                gap: "8px",
-                                                fontSize: "0.8rem",
-                                                whiteSpace: "nowrap",
-                                                width: "100%",
-                                                justifyContent: "flex-start",
-                                                color: row.Status === "S" ? "red" : "#0d6efd",
-                                                fontWeight: row.Status === "S" ? "bold" : "bold",
-                                              }}
-                                              onMouseEnter={e => {
-                                                if (row.Status === "S") {
-                                                  e.target.style.color = "#cc0000"
-                                                } else {
-                                                  e.target.style.color = "#0056b3"
-                                                }
-                                                e.target.style.textDecoration =
-                                                  "underline"
-                                                e.target.style.backgroundColor =
-                                                  "#f8f9fa"
-                                              }}
-                                              onMouseLeave={e => {
-                                                if (row.Status === "S") {
-                                                  e.target.style.color = "red"
-                                                } else {
-                                                  e.target.style.color = "#0d6efd"
-                                                }
-                                                e.target.style.textDecoration =
-                                                  "none"
-                                                e.target.style.backgroundColor =
-                                                  "transparent"
-                                              }}
-                                              onKeyDown={event => {
-                                                if (
-                                                  event.key === "Enter" ||
-                                                  event.key === " "
-                                                ) {
-                                                  event.preventDefault()
-                                                  event.target.click()
-                                                }
-                                              }}
-                                              onClick={event => {
-                                                console.log("Row data:", row)
-                                                console.log(
-                                                  "Available fields:",
-                                                  Object.keys(row)
-                                                )
-
-                                                const button =
-                                                  event.target.closest("button")
-                                                const originalText =
-                                                  button.innerHTML
-                                                button.innerHTML =
-                                                  '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'
-                                                button.disabled = true
-
-                                                setTimeout(() => {
-                                                  openEditContractModal(row)
-                                                  button.innerHTML = originalText
-                                                  button.disabled = false
-                                                }, 300)
-                                              }}
-                                              title={`Click to edit contract: ${row.ContractNo}`}
-                                              tabIndex={0}
-                                              role="button"
-                                              aria-label={`Edit contract ${row.ContractNo}`}
-                                            >
-                                              <i className={`fas fa-edit ${row.Status === "S" ? "text-danger" : "text-primary"}`} style={{ color: row.Status === "S" ? "red" : "#0d6efd" }}></i>
-                                              <span>{row.ContractNo}</span>
-                                            </Button>
-                                          </div>
-                                        ) : (
-                                          "-"
-                                        )}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          textAlign: "center",
-                                          width: "100px",
-                                          minWidth: "100px",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.ContractDate || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.Seller || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.Buyer || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          textAlign: "center",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.Status || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.Unit || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          textAlign: "center",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.Item || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border:
-                                            "1.5px solid black !important",
-                                          borderTop:
-                                            "1.5px solid black !important",
-                                          borderRight:
-                                            "1.5px solid black !important",
-                                          borderBottom:
-                                            "1.5px solid black !important",
-                                          borderLeft:
-                                            "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.PurQty
-                                          ? parseFloat(row.PurQty).toFixed(2)
-                                          : "0.00"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border:
-                                            "1.5px solid black !important",
-                                          borderTop:
-                                            "1.5px solid black !important",
-                                          borderRight:
-                                            "1.5px solid black !important",
-                                          borderBottom:
-                                            "1.5px solid black !important",
-                                          borderLeft:
-                                            "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.SelQty
-                                          ? parseFloat(row.SelQty).toFixed(2)
-                                          : "0.00"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.Vessel || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border:
-                                            "1.5px solid black !important",
-                                          borderTop:
-                                            "1.5px solid black !important",
-                                          borderRight:
-                                            "1.5px solid black !important",
-                                          borderBottom:
-                                            "1.5px solid black !important",
-                                          borderLeft:
-                                            "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.Rate
-                                          ? parseFloat(row.Rate).toFixed(2)
-                                          : "0.00"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "text-center fw-bold" : "text-center"}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.ShipmentOrLifted || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.DeliveryPort || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border:
-                                            "1.5px solid black !important",
-                                          borderTop:
-                                            "1.5px solid black !important",
-                                          borderRight:
-                                            "1.5px solid black !important",
-                                          borderBottom:
-                                            "1.5px solid black !important",
-                                          borderLeft:
-                                            "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.AdvPayment
-                                          ? parseFloat(row.AdvPayment).toFixed(
-                                            2
-                                          )
-                                          : "0.00"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.AdvDate || "-"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border:
-                                            "1.5px solid black !important",
-                                          borderTop:
-                                            "1.5px solid black !important",
-                                          borderRight:
-                                            "1.5px solid black !important",
-                                          borderBottom:
-                                            "1.5px solid black !important",
-                                          borderLeft:
-                                            "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.Lifted
-                                          ? parseFloat(row.Lifted).toFixed(2)
-                                          : "0.00"}
-                                      </td>
-                                      <td
-                                        className={row.Status === "S" ? "fw-bold" : ""}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {row.Contract || "-"}
-                                      </td>
-                                      {isDetailed && (
-                                        <td
-                                          className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`}
-                                          style={{
-                                            verticalAlign: "top",
-                                            padding: "0",
-                                            border: "1.5px solid black",
-                                            color: row.Status === "S" ? "red" : "inherit",
-                                            fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                          }}
-                                        >
-                                          {(() => {
-                                            if (!row.LiftingJson) return "-";
-                                            try {
-                                              const liftingData = JSON.parse(row.LiftingJson);
-                                              if (!Array.isArray(liftingData) || liftingData.length === 0) return "-";
-                                              return (
-                                                <div style={{ maxHeight: "150px", overflowY: "auto", width: "100%", margin: 0, padding: 0 }}>
-                                                  <table style={{ width: "100%", fontSize: "0.55rem", borderCollapse: "collapse", margin: 0, padding: 0, border: "none" }}>
-                                                    <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8f9fa", zIndex: 1, borderBottom: "1px solid #ccc" }}>
-                                                      <tr>
-                                                        <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Date</th>
-                                                        <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>LorryNo</th>
-                                                        <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>BNo/InvNo</th>
-                                                        <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Qty</th>
-                                                        <th style={{ padding: "2px", textAlign: "left", width: "20%", fontWeight: 600 }}>Rate</th>
-                                                      </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                      {liftingData.map((lift, idx) => (
-                                                        <tr key={idx} style={{ borderBottom: "1px dashed #eee" }}>
-                                                          <td style={{ padding: "2px", textAlign: "left" }}>{lift.LiftDate?.substring(0, 5) || lift.LiftDate || "-"}</td>
-                                                          <td style={{ padding: "2px", textAlign: "left" }}>{lift.LorryNo || "-"}</td>
-                                                          <td style={{ padding: "2px", textAlign: "left" }}>{lift.BNo || lift.InvoiceNo || "-"}</td>
-                                                          <td style={{ padding: "2px", textAlign: "left" }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
-                                                          <td style={{ padding: "2px", textAlign: "left" }}>{lift.LastRate || "-"}</td>
-                                                        </tr>
-                                                      ))}
-                                                    </tbody>
-                                                  </table>
+                                        }
+                                        switch (col.key) {
+                                          case 'ContractNo': return (
+                                            <td key={col.key} className={row.Status === "S" ? "fw-bold" : "fw-semibold"} style={{ ...tdStyle, padding: "6px 12px" }}>
+                                              {row.ContractNo ? (
+                                                <div className="d-flex align-items-center gap-2">
+                                                  <input type="checkbox" checked={rowId ? selectedRowIds.has(rowId) : false} onClick={e => { e.stopPropagation(); toggleRowSelection(row) }} style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer" }} title="Select contract" />
+                                                  <Button variant="link" className={`p-0 text-decoration-none fw-bold ${row.Status === "S" ? "text-danger" : "text-primary"}`} style={{ cursor: "pointer", transition: "all 0.2s ease", border: "none", background: "none", padding: "6px 10px", borderRadius: "4px", display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", whiteSpace: "nowrap", width: "100%", justifyContent: "flex-start", color: row.Status === "S" ? "red" : "#0d6efd", fontWeight: "bold" }} onMouseEnter={e => { e.target.style.color = row.Status === "S" ? "#cc0000" : "#0056b3"; e.target.style.textDecoration = "underline"; e.target.style.backgroundColor = "#f8f9fa" }} onMouseLeave={e => { e.target.style.color = row.Status === "S" ? "red" : "#0d6efd"; e.target.style.textDecoration = "none"; e.target.style.backgroundColor = "transparent" }} onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button">
+                                                    <i className={`fas fa-edit ${row.Status === "S" ? "text-danger" : "text-primary"}`} style={{ color: row.Status === "S" ? "red" : "#0d6efd" }}></i>
+                                                    <span>{row.ContractNo}</span>
+                                                  </Button>
                                                 </div>
-                                              );
-                                            } catch (e) {
-                                              return "Invalid Data";
-                                            }
-                                          })()}
-                                        </td>
-                                      )}
-                                      <td
-                                        className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0",
-                                          border: "1.5px solid black",
-                                          whiteSpace: "pre-wrap",
-                                          wordBreak: "break-word",
-                                          maxWidth: "300px",
-                                          color: row.Status === "S" ? "red" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                        }}
-                                      >
-                                        {getCombinedNotes(row)}
-                                      </td>
+                                              ) : "-"}
+                                            </td>
+                                          )
+                                          case 'ContractDate': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center", minWidth: "100px" }}>{row.ContractDate || "-"}</td>
+                                          case 'Seller': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Seller || "-"}</td>
+                                          case 'Buyer': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Buyer || "-"}</td>
+                                          case 'Status': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Status || "-"}</td>
+                                          case 'Unit': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Unit || "-"}</td>
+                                          case 'Item': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Item || "-"}</td>
+                                          case 'PurQty': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.PurQty ? parseFloat(row.PurQty).toFixed(2) : "0.00"}</td>
+                                          case 'SelQty': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.SelQty ? parseFloat(row.SelQty).toFixed(2) : "0.00"}</td>
+                                          case 'Vessel': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Vessel || "-"}</td>
+                                          case 'Rate': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Rate ? parseFloat(row.Rate).toFixed(2) : "0.00"}</td>
+                                          case 'ContPeriod': return <td key={col.key} className={row.Status === "S" ? "text-center fw-bold" : "text-center"} style={tdStyle}>{row.ShipmentOrLifted || "-"}</td>
+                                          case 'DeliveryPort': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.DeliveryPort || "-"}</td>
+                                          case 'AdvPayment': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00"}</td>
+                                          case 'AdvDate': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.AdvDate || "-"}</td>
+                                          case 'Lifted': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Lifted ? parseFloat(row.Lifted).toFixed(2) : "0.00"}</td>
+                                          case 'Contract': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Contract || "-"}</td>
+                                          case 'Lifting': return (
+                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "top", padding: "0", border: "1.5px solid black", color: row.Status === "S" ? "red" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
+                                              {(() => {
+                                                if (!row.LiftingJson) return "-";
+                                                try {
+                                                  const liftingData = JSON.parse(row.LiftingJson);
+                                                  if (!Array.isArray(liftingData) || liftingData.length === 0) return "-";
+                                                  return (
+                                                    <div style={{ maxHeight: "150px", overflowY: "auto", width: "100%", margin: 0, padding: 0 }}>
+                                                      <table style={{ width: "100%", fontSize: "0.55rem", borderCollapse: "collapse", margin: 0, padding: 0, border: "none" }}>
+                                                        <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8f9fa", zIndex: 1, borderBottom: "1px solid #ccc" }}>
+                                                          <tr>
+                                                            <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Date</th>
+                                                            <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>LorryNo</th>
+                                                            <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>BNo/InvNo</th>
+                                                            <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Qty</th>
+                                                            <th style={{ padding: "2px", textAlign: "left", width: "20%", fontWeight: 600 }}>Rate</th>
+                                                          </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                          {liftingData.map((lift, idx) => (
+                                                            <tr key={idx} style={{ borderBottom: "1px dashed #eee" }}>
+                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LiftDate?.substring(0,5) || lift.LiftDate || '-'}</td>
+                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LorryNo || '-'}</td>
+                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.BNo || lift.InvoiceNo || '-'}</td>
+                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
+                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LastRate || '-'}</td>
+                                                            </tr>
+                                                          ))}
+                                                        </tbody>
+                                                      </table>
+                                                    </div>
+                                                  );
+                                                } catch (e) { return "Invalid Data"; }
+                                              })()}
+                                            </td>
+                                          )
+                                          case 'Note': return (
+                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: "300px", color: row.Status === "S" ? "red" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
+                                              {getCombinedNotes(row)}
+                                            </td>
+                                          )
+                                          default: return null
+                                        }
+                                      })}
                                     </tr>
                                   )
                                 })}
