@@ -61,6 +61,78 @@ function ContractRegister() {
     Vessel: 80,
   })
 
+
+  // ─── Column Reorder Feature ─────────────────────────────────────
+  const CR_ALL_COLUMNS = [
+    { key: 'Checkbox', label: '', sortKey: null },
+    { key: 'ContractNo', label: 'Contract No', sortKey: 'ContractNo' },
+    { key: 'Date', label: 'Date', sortKey: 'Date' },
+    { key: 'Seller', label: 'Seller', sortKey: 'SellerLedger' },
+    { key: 'Buyer', label: 'Buyer', sortKey: 'BuyerLedger' },
+    { key: 'Item', label: 'Item', sortKey: null },
+    { key: 'Period', label: 'Period', sortKey: null },
+    { key: 'Qty', label: 'Qty', sortKey: null },
+    { key: 'Rate', label: 'Rate', sortKey: null },
+    { key: 'LiftedQty', label: 'Lifted Qty', sortKey: null },
+    { key: 'AdvPayment', label: 'Adv Payment', sortKey: null },
+    { key: 'AdvDate', label: 'Adv Date', sortKey: null },
+    { key: 'Vessel', label: 'Vessel', sortKey: null },
+  ]
+  const CR_DEFAULT_ORDER = CR_ALL_COLUMNS.map(c => c.key)
+  const CR_ORDER_KEY = 'contractRegister_columnOrder'
+
+  const crGetInitialOrder = () => {
+    try {
+      const saved = localStorage.getItem(CR_ORDER_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return [
+          ...parsed.filter(k => CR_DEFAULT_ORDER.includes(k)),
+          ...CR_DEFAULT_ORDER.filter(k => !parsed.includes(k)),
+        ]
+      }
+    } catch (e) {}
+    return [...CR_DEFAULT_ORDER]
+  }
+
+  const [crColumnOrder, setCrColumnOrder] = useState(crGetInitialOrder)
+  const [crDragOverKey, setCrDragOverKey] = useState(null)
+  const crDragSrcRef = useRef(null)
+
+  const crSaveOrder = (order) => {
+    try { localStorage.setItem(CR_ORDER_KEY, JSON.stringify(order)) } catch (e) {}
+  }
+
+  const crDragStart = (e, key) => {
+    crDragSrcRef.current = key
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', key)
+  }
+  const crDragOver = (e, key) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (key !== crDragSrcRef.current) setCrDragOverKey(key)
+  }
+  const crDrop = (e, targetKey) => {
+    e.preventDefault()
+    const srcKey = crDragSrcRef.current
+    if (!srcKey || srcKey === targetKey) { setCrDragOverKey(null); return }
+    setCrColumnOrder(prev => {
+      const next = [...prev]
+      const from = next.indexOf(srcKey)
+      const to = next.indexOf(targetKey)
+      if (from === -1 || to === -1) return prev
+      next.splice(from, 1)
+      next.splice(to, 0, srcKey)
+      crSaveOrder(next)
+      return next
+    })
+    setCrDragOverKey(null)
+    crDragSrcRef.current = null
+  }
+  const crDragEnd = () => { setCrDragOverKey(null); crDragSrcRef.current = null }
+  const crVisibleColumns = () => crColumnOrder.map(k => CR_ALL_COLUMNS.find(c => c.key === k)).filter(Boolean)
+  // ─── End Column Reorder Feature ──────────────────────────────────
   // ─── Filter Layout Feature (resizable, reorderable, gap control) ───
   const TOP_FILTER_DEFAULTS = [
     { id: 'checkboxes', defaultWidth: 260 },
@@ -335,6 +407,15 @@ function ContractRegister() {
           background-color: rgba(255, 255, 255, 0.3) !important;
           border-radius: 10px !important;
         }
+      }
+      /* Column drag reorder styles */
+      .col-drag-over {
+        outline: 2px solid #FFD700 !important;
+        outline-offset: -2px !important;
+        background-color: rgba(255,215,0,0.25) !important;
+      }
+      .col-dragging {
+        opacity: 0.5 !important;
       }
     `
     document.head.appendChild(style)
@@ -1914,254 +1995,53 @@ function ContractRegister() {
                           }}
                         >
                           <tr>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "6px 12px",
-                                width: `${columnWidths.Checkbox}px`,
-                                minWidth: "30px",
-                                cursor: "pointer",
-                                border: "1.5px solid black !important",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              <div className="d-flex justify-content-center align-items-center">
-                                <Form.Check
-                                  type="checkbox"
-                                  checked={selectAll}
-                                  onChange={handleSelectAll}
-                                  title="Select All"
-                                  style={{ margin: 0 }}
-                                />
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Checkbox')} onTouchStart={e => handleResizeMouseDown(e, 'Checkbox')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                width: `${columnWidths.ContractNo}px`,
-                                minWidth: "30px",
-                                cursor: "pointer",
-                                border: "1.5px solid black !important",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("ContractNo")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>Contract No</span>
-                                <div className="d-flex flex-column" style={{ marginLeft: "4px" }}>
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "ContractNo" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "ContractNo" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'ContractNo')} onTouchStart={e => handleResizeMouseDown(e, 'ContractNo')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                width: `${columnWidths.Date}px`,
-                                minWidth: "30px",
-                                cursor: "pointer",
-                                border: "1.5px solid black !important",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("Date")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>Date</span>
-                                <div className="d-flex flex-column" style={{ marginLeft: "4px" }}>
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "Date" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "Date" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Date')} onTouchStart={e => handleResizeMouseDown(e, 'Date')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                width: `${columnWidths.Seller}px`,
-                                minWidth: "30px",
-                                cursor: "pointer",
-                                border: "1.5px solid black !important",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("SellerLedger")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>Seller</span>
-                                <div className="d-flex flex-column" style={{ marginLeft: "4px" }}>
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "SellerLedger" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "SellerLedger" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Seller')} onTouchStart={e => handleResizeMouseDown(e, 'Seller')} />
-                            </th>
-                            <th
-                              className="text-center align-middle"
-                              style={{
-                                backgroundColor: "#0000FF",
-                                color: "white",
-                                height: "25px",
-                                fontSize: "0.7rem",
-                                fontWeight: "600",
-                                padding: "0 8px",
-                                width: `${columnWidths.Buyer}px`,
-                                minWidth: "30px",
-                                cursor: "pointer",
-                                border: "1.5px solid black !important",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                              onClick={() => handleSort("BuyerLedger")}
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span>Buyer</span>
-                                <div className="d-flex flex-column" style={{ marginLeft: "4px" }}>
-                                  <i
-                                    className={`fas fa-sort-up ${sortConfig.key === "BuyerLedger" &&
-                                      sortConfig.direction === "asc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                  <i
-                                    className={`fas fa-sort-down ${sortConfig.key === "BuyerLedger" &&
-                                      sortConfig.direction === "desc"
-                                      ? "text-warning"
-                                      : "text-light"
-                                      }`}
-                                    style={{
-                                      fontSize: "0.5rem",
-                                      lineHeight: "0.5rem",
-                                    }}
-                                  ></i>
-                                </div>
-                              </div>
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Buyer')} onTouchStart={e => handleResizeMouseDown(e, 'Buyer')} />
-                            </th>
-                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Item}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
-                              Item
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Item')} onTouchStart={e => handleResizeMouseDown(e, 'Item')} />
-                            </th>
-                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Period}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
-                              Period
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Period')} onTouchStart={e => handleResizeMouseDown(e, 'Period')} />
-                            </th>
-                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Qty}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
-                              Qty
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Qty')} onTouchStart={e => handleResizeMouseDown(e, 'Qty')} />
-                            </th>
-                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Rate}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
-                              Rate
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Rate')} onTouchStart={e => handleResizeMouseDown(e, 'Rate')} />
-                            </th>
-                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.LiftedQty}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
-                              Lifted Qty
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'LiftedQty')} onTouchStart={e => handleResizeMouseDown(e, 'LiftedQty')} />
-                            </th>
-                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.AdvPayment}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
-                              Adv Payment
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvPayment')} onTouchStart={e => handleResizeMouseDown(e, 'AdvPayment')} />
-                            </th>
-                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.AdvDate}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
-                              Adv Date
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'AdvDate')} onTouchStart={e => handleResizeMouseDown(e, 'AdvDate')} />
-                            </th>
-                            <th className="text-center align-middle" style={{ backgroundColor: "#0000FF", color: "white", height: "25px", fontSize: "0.7rem", fontWeight: "600", padding: "0 8px", width: `${columnWidths.Vessel}px`, minWidth: "30px", border: "1.5px solid black !important", position: "relative", overflow: "hidden" }}>
-                              Vessel
-                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, 'Vessel')} onTouchStart={e => handleResizeMouseDown(e, 'Vessel')} />
-                            </th>
+                            {crVisibleColumns().map((col) => (
+                              <th
+                                key={col.key}
+                                className={`text-center align-middle${crDragOverKey === col.key ? ' col-drag-over' : ''}`}
+                                draggable={col.key !== 'Checkbox'}
+                                onDragStart={col.key !== 'Checkbox' ? (e => crDragStart(e, col.key)) : undefined}
+                                onDragOver={e => crDragOver(e, col.key)}
+                                onDrop={e => crDrop(e, col.key)}
+                                onDragEnd={crDragEnd}
+                                style={{
+                                  backgroundColor: "#0000FF",
+                                  color: "white",
+                                  height: "25px",
+                                  fontSize: "0.7rem",
+                                  fontWeight: "600",
+                                  padding: col.key === 'Checkbox' ? "6px 12px" : "0 8px",
+                                  width: `${columnWidths[col.key] || 80}px`,
+                                  minWidth: "30px",
+                                  cursor: col.key === 'Checkbox' ? 'default' : 'grab',
+                                  border: "1.5px solid black !important",
+                                  position: "relative",
+                                  overflow: "hidden",
+                                  userSelect: "none",
+                                }}
+                                onClick={() => col.sortKey && handleSort(col.sortKey)}
+                              >
+                                {col.key === 'Checkbox' ? (
+                                  <div className="d-flex justify-content-center align-items-center">
+                                    <Form.Check type="checkbox" checked={selectAll} onChange={handleSelectAll} title="Select All" style={{ margin: 0 }} />
+                                  </div>
+                                ) : (
+                                  <div className="d-flex justify-content-between align-items-center" style={{ pointerEvents: "none" }}>
+                                    <div className="d-flex align-items-center gap-1">
+                                      <span>{col.label}</span>
+                                      <i className="fas fa-grip-vertical" style={{ fontSize: "0.4rem", opacity: 0.5 }} title="Drag to reorder"></i>
+                                    </div>
+                                    {col.sortKey && (
+                                      <div className="d-flex flex-column" style={{ marginLeft: "4px" }}>
+                                        <i className={`fas fa-sort-up ${sortConfig.key === col.sortKey && sortConfig.direction === "asc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
+                                        <i className={`fas fa-sort-down ${sortConfig.key === col.sortKey && sortConfig.direction === "desc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, col.key)} onTouchStart={e => handleResizeMouseDown(e, col.key)} />
+                              </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
@@ -2169,182 +2049,38 @@ function ContractRegister() {
                             const bgColor = getRowBackgroundColor(row);
                             return (
                               <tr key={i} style={{ border: "1.5px solid black !important" }}>
-                                <td
-                                  className="text-center align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  <Form.Check
-                                    type="checkbox"
-                                    checked={selectedRows.includes(row.Id)}
-                                    onChange={() => handleRowSelect(row.Id)}
-                                    onClick={e => e.stopPropagation()}
-                                    style={{ margin: 0 }}
-                                  />
-                                </td>
-                                <td
-                                  className="fw-semibold align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.ContractNo ? (
-                                    <Button
-                                      variant="link"
-                                      className="p-0 text-decoration-none"
-                                      onClick={(event) => {
-                                        const button = event.target.closest("button")
-                                        const originalText = button.innerHTML
-                                        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'
-                                        button.disabled = true
-
-                                        setTimeout(() => {
-                                          openEditContractModal(row)
-                                          button.innerHTML = originalText
-                                          button.disabled = false
-                                        }, 300)
-                                      }}
-                                      title={`Click to edit contract: ${row.ContractNo}`}
-                                      tabIndex={0}
-                                      role="button"
-                                      aria-label={`Edit contract ${row.ContractNo}`}
-                                      style={{ fontSize: "0.7rem" }}
-                                    >
-                                      <i className="fas fa-edit text-primary me-1"></i>
-                                      <span>{row.ContractNo}</span>
-                                    </Button>
-                                  ) : (
-                                    "-"
-                                  )}
-                                </td>
-                                <td
-                                  className="text-center align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.Date ? new Date(row.Date).toLocaleDateString('en-GB') : '-'}
-                                </td>
-                                <td
-                                  className="align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.SellerLedger || '-'}
-                                </td>
-                                <td
-                                  className="align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.BuyerLedger || '-'}
-                                </td>
-                                <td
-                                  className="align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.ItemTypeName || '-'}
-                                </td>
-                                <td
-                                  className="align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {getPeriodValue(row)}
-                                </td>
-                                <td
-                                  className="text-end fw-semibold align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.Qty ? row.Qty.toLocaleString() : '0'}
-                                </td>
-                                <td
-                                  className="text-end fw-semibold align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.Rate ? row.Rate.toLocaleString() : '0'}
-                                </td>
-                                <td
-                                  className="text-end fw-semibold align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.LiftedQuantity ? row.LiftedQuantity.toLocaleString() : '0'}
-                                </td>
-                                <td
-                                  className="text-end fw-semibold align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.AdvPayment ? row.AdvPayment.toLocaleString() : '0'}
-                                </td>
-                                <td
-                                  className="text-center align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.AdvDate ? new Date(row.AdvDate).toLocaleDateString('en-GB') : '-'}
-                                </td>
-                                <td
-                                  className="align-middle"
-                                  style={{
-                                    backgroundColor: bgColor,
-                                    padding: "2px 4px",
-                                    border: "1.5px solid black !important",
-                                    fontSize: "0.7rem",
-                                  }}
-                                >
-                                  {row.Vessel || '-'}
-                                </td>
+                                {crVisibleColumns().map((col) => {
+                                  const s = { backgroundColor: bgColor, padding: "2px 4px", border: "1.5px solid black !important", fontSize: "0.7rem" }
+                                  switch (col.key) {
+                                    case 'Checkbox': return (
+                                      <td key={col.key} className="text-center align-middle" style={s}>
+                                        <Form.Check type="checkbox" checked={selectedRows.includes(row.Id)} onChange={() => handleRowSelect(row.Id)} onClick={e => e.stopPropagation()} style={{ margin: 0 }} />
+                                      </td>
+                                    )
+                                    case 'ContractNo': return (
+                                      <td key={col.key} className="fw-semibold align-middle" style={s}>
+                                        {row.ContractNo ? (
+                                          <Button variant="link" className="p-0 text-decoration-none" onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button" style={{ fontSize: "0.7rem" }}>
+                                            <i className="fas fa-edit text-primary me-1"></i>
+                                            <span>{row.ContractNo}</span>
+                                          </Button>
+                                        ) : "-"}
+                                      </td>
+                                    )
+                                    case 'Date': return <td key={col.key} className="text-center align-middle" style={s}>{row.Date ? new Date(row.Date).toLocaleDateString('en-GB') : '-'}</td>
+                                    case 'Seller': return <td key={col.key} className="align-middle" style={s}>{row.SellerLedger || '-'}</td>
+                                    case 'Buyer': return <td key={col.key} className="align-middle" style={s}>{row.BuyerLedger || '-'}</td>
+                                    case 'Item': return <td key={col.key} className="align-middle" style={s}>{row.ItemTypeName || '-'}</td>
+                                    case 'Period': return <td key={col.key} className="align-middle" style={s}>{getPeriodValue(row)}</td>
+                                    case 'Qty': return <td key={col.key} className="text-end fw-semibold align-middle" style={s}>{row.Qty ? row.Qty.toLocaleString() : '0'}</td>
+                                    case 'Rate': return <td key={col.key} className="text-end fw-semibold align-middle" style={s}>{row.Rate ? row.Rate.toLocaleString() : '0'}</td>
+                                    case 'LiftedQty': return <td key={col.key} className="text-end fw-semibold align-middle" style={s}>{row.LiftedQuantity ? row.LiftedQuantity.toLocaleString() : '0'}</td>
+                                    case 'AdvPayment': return <td key={col.key} className="text-end fw-semibold align-middle" style={s}>{row.AdvPayment ? row.AdvPayment.toLocaleString() : '0'}</td>
+                                    case 'AdvDate': return <td key={col.key} className="text-center align-middle" style={s}>{row.AdvDate ? new Date(row.AdvDate).toLocaleDateString('en-GB') : '-'}</td>
+                                    case 'Vessel': return <td key={col.key} className="align-middle" style={s}>{row.Vessel || '-'}</td>
+                                    default: return null
+                                  }
+                                })}
                               </tr>
                             );
                           })}
