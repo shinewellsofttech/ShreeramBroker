@@ -40,6 +40,8 @@ import { FileText } from "react-feather"
 import jsPDF from "jspdf"
 import { applyPlugin as applyAutoTable } from "jspdf-autotable"
 applyAutoTable(jsPDF)
+import useFilterLayout from "../../helpers/useFilterLayout"
+import "../../helpers/filterLayout.css"
 
 const LedgerReport = () => {
   const dispatch = useDispatch()
@@ -687,6 +689,297 @@ const LedgerReport = () => {
     }
   }, [])
   // ─── End Column Resize Feature ──────────────────────────────────
+
+  // ─── Filter Layout Feature (resizable, reorderable, gap control) ───
+  const TOP_FILTER_DEFAULTS = [
+    { id: 'checkboxes', defaultWidth: 260 },
+    { id: 'dates', defaultWidth: 210 },
+    { id: 'ledger', defaultWidth: 70 },
+    { id: 'voucher', defaultWidth: 60 },
+    { id: 'addContract', defaultWidth: 40 },
+    { id: 'lapLip', defaultWidth: 150 },
+    { id: 'notes', defaultWidth: 250 },
+    { id: 'exit', defaultWidth: 60 },
+  ];
+
+  const BOTTOM_FILTER_DEFAULTS = [
+    { id: 'period', defaultWidth: 130 },
+    { id: 'item', defaultWidth: 130 },
+    { id: 'exportButtons', defaultWidth: 140 },
+    { id: 'party', defaultWidth: 230 },
+    { id: 'contractType', defaultWidth: 150 },
+    { id: 'vessel', defaultWidth: 110 },
+    { id: 'port', defaultWidth: 110 },
+  ];
+
+  const {
+    filterOrder: topFilterOrder,
+    filterWidths: topFilterWidths,
+    gap: topGap,
+    setGap: setTopGap,
+    handleDragStart: topDragStart,
+    handleDragOver: topDragOver,
+    handleDrop: topDrop,
+    handleDragEnd: topDragEnd,
+    handleTouchDragStart: topTouchDragStart,
+    handleTouchDragMove: topTouchDragMove,
+    handleTouchDragEnd: topTouchDragEnd,
+    handleFilterResizeMouseDown: topResizeDown,
+    resetLayout: resetTopLayout,
+  } = useFilterLayout('ledgerReport_topFilters', TOP_FILTER_DEFAULTS);
+
+  const {
+    filterOrder: bottomFilterOrder,
+    filterWidths: bottomFilterWidths,
+    gap: bottomGap,
+    setGap: setBottomGap,
+    handleDragStart: bottomDragStart,
+    handleDragOver: bottomDragOver,
+    handleDrop: bottomDrop,
+    handleDragEnd: bottomDragEnd,
+    handleTouchDragStart: bottomTouchDragStart,
+    handleTouchDragMove: bottomTouchDragMove,
+    handleTouchDragEnd: bottomTouchDragEnd,
+    handleFilterResizeMouseDown: bottomResizeDown,
+    resetLayout: resetBottomLayout,
+  } = useFilterLayout('ledgerReport_bottomFilters', BOTTOM_FILTER_DEFAULTS);
+
+  // ─── Filter Content Renderers ─────────────────────────────────
+  const renderTopFilterContent = (filterId) => {
+    switch (filterId) {
+      case 'checkboxes':
+        return (
+          <div
+            style={{
+              border: "1px solid #2196F3",
+              borderRadius: "4px",
+              padding: "2px 1px",
+              backgroundColor: "#E3F2FD",
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "nowrap",
+              gap: "0",
+              height: "28px",
+              width: "100%",
+            }}
+          >
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0", paddingLeft: "1.5rem" }}>
+              <input id="Detailed" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={isDetailed} onClick={() => setIsDetailed(!isDetailed)} readOnly />
+              <label className="form-check-label small mb-0 mr-2" htmlFor="Detailed" style={{ fontSize: "0.55rem", color: "#198754", fontWeight: "bold", whiteSpace: "nowrap" }}>Detailed</label>
+            </div>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0" }}>
+              <input id="Pending" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={state.Pending} onClick={() => { setState(prev => ({ ...prev, Pending: !prev.Pending })); setSelectedPeriod([]); }} />
+              <label className="form-check-label small mb-0" htmlFor="Pending" style={{ fontSize: "0.55rem", color: "#dc3545", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-hourglass-half" style={{ fontSize: "0.5rem" }}></i>R:{state.Pending ? "Y" : "N"}</label>
+            </div>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0" }}>
+              <input id="NotStarted" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={state.NotStarted} onClick={() => { setState(prev => ({ ...prev, NotStarted: !prev.NotStarted })); setSelectedPeriod([]); }} />
+              <label className="form-check-label small mb-0" htmlFor="NotStarted" style={{ fontSize: "0.55rem", color: "#000000", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-clock" style={{ fontSize: "0.5rem" }}></i>Bk:{state.NotStarted ? "Y" : "N"}</label>
+            </div>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
+              <input id="Completed" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} onChange={e => { setState(prev => ({ ...prev, Completed: e.target.checked })); setSelectedPeriod([]); }} checked={state.Completed} />
+              <label className="form-check-label small mb-0" htmlFor="Completed" style={{ fontSize: "0.55rem", color: "#007bff", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>Bl:{state.Completed ? "Y" : "N"}</label>
+            </div>
+          </div>
+        );
+      case 'dates':
+        return (
+          <FormGroup className="mb-0" style={{ width: "100%", height: "100%", paddingRight: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap", height: "100%", width: "100%" }}>
+              <div style={{ flex: 1, height: '28px' }}>
+                <DatePicker selected={fromDate} onChange={date => setFromDate(date)} className="form-control form-control-sm custom-datepicker w-100" dateFormat="dd/MM/yyyy" placeholderText="From Date" portalId="root-portal" popperPlacement="bottom-start" openToDate={new Date()} />
+              </div>
+              <span style={{ fontSize: "0.6rem", fontWeight: "500", color: "#1976D2", margin: "0 2px" }}>To</span>
+              <div style={{ flex: 1, height: '28px' }}>
+                <DatePicker selected={toDate} onChange={date => setToDate(date)} className="form-control form-control-sm custom-datepicker w-100" dateFormat="dd/MM/yyyy" placeholderText="To Date" portalId="root-portal" popperPlacement="bottom-start" openToDate={new Date()} />
+              </div>
+            </div>
+          </FormGroup>
+        );
+      case 'ledger':
+        return (
+          <FormGroup className="mb-0">
+            <Button variant="outline-primary" onClick={handleOpenLedgerModal} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 4px", display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#E3F2FD", border: "1px solid #2196F3", color: "#1976D2", whiteSpace: "nowrap", minWidth: "fit-content", width: "100%" }}>
+              Ledger
+              <i className="fas fa-chevron-down" style={{ fontSize: "0.5rem", marginLeft: "2px" }}></i>
+            </Button>
+          </FormGroup>
+        );
+      case 'voucher':
+        return (
+          <Button color="info" style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", minWidth: "50px", whiteSpace: "nowrap", width: "100%" }} onClick={() => window.open('/VoucherList', '_blank')}>
+            <i className="fas fa-receipt"></i>Vch
+          </Button>
+        );
+      case 'addContract':
+        return (
+          <Button variant="success" style={{ fontSize: "0.6rem", height: "28px", padding: "2px 6px", minWidth: "32px", width: "100%" }} onClick={() => window.open('/Contract', '_blank')}>
+            <i className="fas fa-plus"></i>
+          </Button>
+        );
+      case 'lapLip':
+        return (
+          <div style={{ border: "1px solid #2196F3", borderRadius: "4px", padding: "2px 3px", backgroundColor: "#E3F2FD", display: "flex", alignItems: "center", flexWrap: "nowrap", height: "28px", width: "100%" }}>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "2px" }}>
+              <input id="LAP" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} onClick={() => { const newLapValue = !state.LAP; setState(prev => ({ ...prev, LAP: newLapValue })); handleLapLipDateChange(newLapValue, state.LIP); }} checked={state.LAP} />
+              <label className="form-check-label small mb-0" htmlFor="LAP" style={{ fontSize: "0.55rem", color: "#28a745", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>LAP:{state.LAP ? "Y" : "N"}</label>
+            </div>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
+              <input id="LIP" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} onClick={() => { const newLipValue = !state.LIP; setState(prev => ({ ...prev, LIP: newLipValue })); handleLapLipDateChange(state.LAP, newLipValue); }} checked={state.LIP} />
+              <label className="form-check-label small mb-0" htmlFor="LIP" style={{ fontSize: "0.55rem", color: "#dc3545", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>LIP:{state.LIP ? "Y" : "N"}</label>
+            </div>
+          </div>
+        );
+      case 'notes':
+        return (
+          <div style={{ border: "1px solid #2196F3", borderRadius: "4px", padding: "2px 4px", backgroundColor: "#E3F2FD", height: "28px", display: "flex", alignItems: "center", width: "100%" }}>
+            <label className="fw-bold small mb-0" style={{ fontSize: "0.55rem", whiteSpace: "nowrap", marginRight: "2px", color: "#1976D2" }}>
+              <i className="fas fa-sticky-note" style={{ fontSize: "0.5rem" }}></i>Note:
+            </label>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              {[1, 2, 3, 4, 5, 6].map(n => (
+                <div key={n} className="form-check" style={{ display: "flex", alignItems: "center", margin: "0" }}>
+                  <input id={`note${n}`} type="checkbox" className="form-check-input" style={{ width: "10px", height: "10px", margin: "0 1px" }} onClick={() => setVisibleNotes(prev => ({ ...prev, [`Note${n}`]: !prev[`Note${n}`] }))} checked={visibleNotes[`Note${n}`]} />
+                  <label className="form-check-label mb-0" htmlFor={`note${n}`} style={{ fontSize: "0.5rem" }}>{n}</label>
+                </div>
+              ))}
+              <Button size="sm" variant="outline-secondary" style={{ fontSize: "0.45rem", padding: "1px 3px", height: "16px", lineHeight: "1", marginLeft: "2px" }} onClick={() => { const allChecked = Object.values(visibleNotes).every(v => v); toggleAllNotes(!allChecked); }}>All</Button>
+            </div>
+          </div>
+        );
+      case 'exit':
+        return (
+          <Button variant="danger" style={{ fontSize: "0.6rem", height: "28px", padding: "2px 8px", minWidth: "55px", whiteSpace: "nowrap", width: "100%" }} onClick={() => window.close()}>
+            <i className="fas fa-times"></i> Exit
+          </Button>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderBottomFilterContent = (filterId) => {
+    switch (filterId) {
+      case 'period':
+        return (
+          <div onClick={openPeriodModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedPeriod && selectedPeriod.length > 0 ? `${selectedPeriod.length} selected` : "Period"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
+      case 'item':
+        return (
+          <div onClick={openItemModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "") ? `${selectedItems.filter(item => item !== "").length} selected` : "Items"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
+      case 'exportButtons':
+        return (
+          <div className="d-flex align-items-center" style={{ gap: "8px" }}>
+            <Button color="success" onClick={exportToExcel} className="shadow-sm" size="sm" style={{ fontSize: "0.6rem", whiteSpace: "nowrap", height: "32px", minHeight: "32px", padding: "0 10px" }}>
+              <i className="fas fa-file-excel me-1"></i>Excel
+            </Button>
+            <Button color="danger" onClick={exportToPDF} className="shadow-sm" size="sm" style={{ fontSize: "0.6rem", whiteSpace: "nowrap", height: "32px", minHeight: "32px", padding: "0 10px" }}>
+              <i className="fas fa-file-pdf me-1"></i>PDF
+            </Button>
+          </div>
+        );
+      case 'party':
+        return (
+          <div onClick={openPartyModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedParties && selectedParties.length > 0 ? `${selectedParties.length} selected` : "Party"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
+      case 'contractType':
+        return (
+          <Select
+            options={state.TaxAccountArray.map(tax => ({ value: tax.Id, label: tax.Name }))}
+            value={state.TaxAccountArray.find(t => t.Id === parseInt(selectedTax)) ? { value: selectedTax, label: state.TaxAccountArray.find(t => t.Id === parseInt(selectedTax))?.Name } : null}
+            onChange={option => setSelectedTax(option?.value || "")}
+            placeholder="Contract"
+            className="party-dropdown"
+            isSearchable
+            classNamePrefix="react-select"
+            noOptionsMessage={() => "No contract types found"}
+            isClearable
+            menuPosition="fixed"
+            menuPortalTarget={document.body}
+            styles={{
+              control: provided => ({ ...provided, fontSize: "0.65rem", minHeight: "32px", height: "32px", border: "1px solid #2196F3", backgroundColor: "#E3F2FD", boxShadow: "none", display: "flex", alignItems: "center" }),
+              valueContainer: provided => ({ ...provided, display: "flex", alignItems: "center", padding: "0 8px" }),
+              option: provided => ({ ...provided, fontSize: "0.65rem" }),
+              singleValue: provided => ({ ...provided, fontSize: "0.65rem", lineHeight: "1" }),
+              placeholder: provided => ({ ...provided, fontSize: "0.65rem", lineHeight: "1", margin: 0 }),
+              input: provided => ({ ...provided, margin: 0, padding: 0 }),
+              menu: provided => ({ ...provided, zIndex: 10000 }),
+              menuPortal: provided => ({ ...provided, fontSize: "0.65rem", zIndex: 10000 }),
+            }}
+          />
+        );
+      case 'vessel':
+        return (
+          <Input id="vessel" type="text" value={state.Vessel} onChange={e => setState({ ...state, Vessel: e.target.value })} className="form-control-sm shadow-sm" style={{ backgroundColor: "#E3F2FD", color: "#333", fontSize: "0.65rem", padding: "0 8px", height: "32px", minHeight: "32px", borderRadius: "6px", border: "1px solid #2196F3", width: "100%" }} placeholder="Vessel" />
+        );
+      case 'port':
+        return (
+          <Input id="deliveryPort" type="text" value={state.DeliveryPort} onChange={e => setState({ ...state, DeliveryPort: e.target.value })} className="form-control-sm shadow-sm" style={{ backgroundColor: "#E3F2FD", color: "#333", fontSize: "0.65rem", padding: "0 8px", height: "32px", minHeight: "32px", borderRadius: "6px", border: "1px solid #2196F3", width: "100%" }} placeholder="Port" />
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Helper to render a filter bar with drag/resize/gap support
+  const renderFilterBar = (filterOrder, filterWidths, gap, setGap, dragStart, dragOver, drop, dragEnd, touchDragStart, touchDragMove, touchDragEnd, resizeDown, resetLayout, renderContent) => {
+    return (
+      <>
+        {filterOrder.map(filterId => (
+          <div
+            key={filterId}
+            className="filter-item"
+            data-filter-id={filterId}
+            draggable
+            onDragStart={e => dragStart(e, filterId)}
+            onDragOver={e => dragOver(e, filterId)}
+            onDrop={e => drop(e, filterId)}
+            onDragEnd={dragEnd}
+            onTouchStart={e => {
+              // Only trigger drag on the drag handle
+              if (e.target.closest('.filter-drag-handle')) {
+                touchDragStart(e, filterId);
+              }
+            }}
+            onTouchMove={touchDragMove}
+            onTouchEnd={touchDragEnd}
+            style={{
+              width: `${filterWidths[filterId] || 100}px`,
+              flexShrink: 0,
+              position: "relative",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+              <div className="filter-drag-handle" title="Drag to reorder"></div>
+              <div style={{ flex: 1, overflow: "hidden" }}>
+                {renderContent(filterId)}
+              </div>
+            </div>
+            <div className="filter-resize-handle" onMouseDown={e => resizeDown(e, filterId)} onTouchStart={e => resizeDown(e, filterId)} />
+          </div>
+        ))}
+        {/* Gap & Reset controls */}
+        <div className="filter-gap-control" style={{ marginLeft: "4px" }}>
+          <button onClick={() => setGap(gap - 2)} title="Decrease gap">−</button>
+          <span>{gap}</span>
+          <button onClick={() => setGap(gap + 2)} title="Increase gap">+</button>
+        </div>
+        <button className="filter-reset-btn" onClick={resetLayout} title="Reset layout">
+          <i className="fas fa-undo" style={{ fontSize: "0.5rem" }}></i>
+        </button>
+      </>
+    );
+  };
+  // ─── End Filter Layout Feature ─────────────────────────────────
 
   // Scroll event handler for table container
   const handleTableScroll = () => {
@@ -3751,422 +4044,9 @@ const LedgerReport = () => {
         <div className="card border-0 shadow-sm" style={{ marginBottom: "0" }}>
           <div className="card-body" style={{ padding: "0.25rem" }}>
             <div style={{ overflowX: "auto", overflowY: "hidden" }}>
-              <Row className="g-0 align-items-center" style={{ backgroundColor: "#E3F2FD", padding: "4px", borderRadius: "4px", flexWrap: "nowrap", minWidth: "fit-content", border: "1px solid #2196F3" }}>
-                {/* Red, Blue, Black checkboxes - first */}
-                <Col xs="auto" lg={2} md={2} style={{ flex: "0 0 auto" }}>
-                  <div
-                    style={{
-                      border: "1px solid #2196F3",
-                      borderRadius: "4px",
-                      padding: "2px 1px",
-                      backgroundColor: "#E3F2FD",
-                      display: "flex",
-                      alignItems: "center",
-                      flexWrap: "nowrap",
-                      gap: "0",
-                      height: "28px",
-                      minWidth: "fit-content",
-                    }}
-                  >
-                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0", paddingLeft: "1.5rem" }}>
-                      <input
-                        id="Detailed"
-                        type="checkbox"
-                        className="form-check-input"
-                        style={{ width: "12px", height: "12px", margin: "0" }}
-                        checked={isDetailed}
-                        onClick={() => setIsDetailed(!isDetailed)}
-                        readOnly
-                      />
-                      <label
-                        className="form-check-label small mb-0 mr-2"
-                        htmlFor="Detailed"
-                        style={{ fontSize: "0.55rem", color: "#198754", fontWeight: "bold", whiteSpace: "nowrap" }}
-                      >
-                        Detailed
-                      </label>
-                    </div>
-
-                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0" }}>
-                      <input
-                        id="Pending"
-                        type="checkbox"
-                        className="form-check-input"
-                        style={{ width: "12px", height: "12px", margin: "0" }}
-                        checked={state.Pending}
-                        onClick={e => {
-                          setState(prev => ({
-                            ...prev,
-                            Pending: !prev.Pending,
-                          }))
-                          setSelectedPeriod([])
-                        }}
-                      />
-                      <label
-                        className="form-check-label small mb-0"
-                        htmlFor="Pending"
-                        style={{ fontSize: "0.55rem", color: "#dc3545", fontWeight: "bold", whiteSpace: "nowrap" }}
-                      >
-                        <i className="fas fa-hourglass-half" style={{ fontSize: "0.5rem" }}></i>R:{state.Pending ? "Y" : "N"}
-                      </label>
-                    </div>
-
-                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0" }}>
-                      <input
-                        id="NotStarted"
-                        type="checkbox"
-                        className="form-check-input"
-                        style={{ width: "12px", height: "12px", margin: "0" }}
-                        checked={state.NotStarted}
-                        onClick={e => {
-                          setState(prev => ({
-                            ...prev,
-                            NotStarted: !prev.NotStarted,
-                          }))
-                          setSelectedPeriod([])
-                        }}
-                      />
-                      <label
-                        className="form-check-label small mb-0"
-                        htmlFor="NotStarted"
-                        style={{ fontSize: "0.55rem", color: "#000000", fontWeight: "bold", whiteSpace: "nowrap" }}
-                      >
-                        <i className="fas fa-clock" style={{ fontSize: "0.5rem" }}></i>Bk:{state.NotStarted ? "Y" : "N"}
-                      </label>
-                    </div>
-
-                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
-                      <input
-                        id="Completed"
-                        type="checkbox"
-                        className="form-check-input"
-                        style={{ width: "12px", height: "12px", margin: "0" }}
-                        onChange={e => {
-                          setState(prev => ({
-                            ...prev,
-                            Completed: e.target.checked,
-                          }))
-                          setSelectedPeriod([])
-                        }}
-                      />
-                      <label
-                        className="form-check-label small mb-0"
-                        htmlFor="Completed"
-                        style={{ fontSize: "0.55rem", color: "#007bff", fontWeight: "bold", whiteSpace: "nowrap" }}
-                      >
-                        <i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>Bl:{state.Completed ? "Y" : "N"}
-                      </label>
-                    </div>
-                  </div>
-                </Col>
-
-                <Col xs="auto" lg={2} md={2} style={{ flex: "0 0 auto", marginLeft: "4px" }}>
-                  <FormGroup className="mb-0">
-                    <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-                      <div style={{ width: '95px', height: '28px' }}>
-                        <DatePicker
-                          selected={fromDate}
-                          onChange={date => setFromDate(date)}
-                          className="form-control form-control-sm custom-datepicker"
-                          dateFormat="dd/MM/yyyy"
-                          placeholderText="From Date"
-                          portalId="root-portal"
-                          popperPlacement="bottom-start"
-                          openToDate={new Date()}
-                        />
-                      </div>
-                      <span style={{ fontSize: "0.6rem", fontWeight: "500", color: "#1976D2", margin: "0 2px" }}>To</span>
-                      <div style={{ width: '95px', height: '28px' }}>
-                        <DatePicker
-                          selected={toDate}
-                          onChange={date => setToDate(date)}
-                          className="form-control form-control-sm custom-datepicker"
-                          dateFormat="dd/MM/yyyy"
-                          placeholderText="To Date"
-                          portalId="root-portal"
-                          popperPlacement="bottom-start"
-                          openToDate={new Date()}
-                        />
-                      </div>
-                    </div>
-                  </FormGroup>
-                </Col>
-
-                <Col xs="auto" lg={1} md={1} style={{ flex: "0 0 auto", marginLeft: "4px" }}>
-                  <FormGroup className="mb-0">
-                    <Button
-                      variant="outline-primary"
-                      onClick={handleOpenLedgerModal}
-                      style={{
-                        fontSize: "0.55rem",
-                        height: "28px",
-                        padding: "2px 4px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        backgroundColor: "#E3F2FD",
-                        border: "1px solid #2196F3",
-                        color: "#1976D2",
-                        whiteSpace: "nowrap",
-                        minWidth: "fit-content",
-                      }}
-                    >
-                      Ledger
-                      <i className="fas fa-chevron-down" style={{ fontSize: "0.5rem", marginLeft: "2px" }}></i>
-                    </Button>
-                  </FormGroup>
-                </Col>
-
-                <Col xs="auto" style={{ flex: "0 0 auto", marginLeft: "4px" }}>
-                  <Button
-                    color="info"
-                    style={{
-                      fontSize: "0.55rem",
-                      height: "28px",
-                      padding: "2px 6px",
-                      minWidth: "50px",
-                      whiteSpace: "nowrap",
-                    }}
-                    onClick={() => window.open('/VoucherList', '_blank')}
-                  >
-                    <i className="fas fa-receipt"></i>Vch
-                  </Button>
-                </Col>
-
-                <Col xs="auto" style={{ flex: "0 0 auto", marginLeft: "4px" }}>
-                  <Button
-                    variant="success"
-                    style={{
-                      fontSize: "0.6rem",
-                      height: "28px",
-                      padding: "2px 6px",
-                      minWidth: "32px",
-                    }}
-                    onClick={() => window.open('/Contract', '_blank')}
-                  >
-                    <i className="fas fa-plus"></i>
-                  </Button>
-                </Col>
-
-                <Col xs="auto" style={{ flex: "0 0 auto", marginLeft: "4px" }}>
-                  <div
-                    style={{
-                      border: "1px solid #2196F3",
-                      borderRadius: "4px",
-                      padding: "2px 3px",
-                      backgroundColor: "#E3F2FD",
-                      display: "flex",
-                      alignItems: "center",
-                      flexWrap: "nowrap",
-                      height: "28px",
-                      minWidth: "fit-content",
-                    }}
-                  >
-                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "2px" }}>
-                      <input
-                        id="LAP"
-                        type="checkbox"
-                        className="form-check-input"
-                        style={{ width: "12px", height: "12px", margin: "0" }}
-                        onClick={e => {
-                          const newLapValue = !state.LAP
-                          setState(prev => ({
-                            ...prev,
-                            LAP: newLapValue,
-                          }))
-                          handleLapLipDateChange(newLapValue, state.LIP)
-                        }}
-                        checked={state.LAP}
-                      />
-                      <label
-                        className="form-check-label small mb-0"
-                        htmlFor="LAP"
-                        style={{ fontSize: "0.55rem", color: "#28a745", fontWeight: "bold", whiteSpace: "nowrap" }}
-                      >
-                        <i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>LAP:{state.LAP ? "Y" : "N"}
-                      </label>
-                    </div>
-
-                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
-                      <input
-                        id="LIP"
-                        type="checkbox"
-                        className="form-check-input"
-                        style={{ width: "12px", height: "12px", margin: "0" }}
-                        onClick={e => {
-                          const newLipValue = !state.LIP
-                          setState(prev => ({
-                            ...prev,
-                            LIP: newLipValue,
-                          }))
-                          handleLapLipDateChange(state.LAP, newLipValue)
-                        }}
-                        checked={state.LIP}
-                      />
-                      <label
-                        className="form-check-label small mb-0"
-                        htmlFor="LIP"
-                        style={{ fontSize: "0.55rem", color: "#dc3545", fontWeight: "bold", whiteSpace: "nowrap" }}
-                      >
-                        <i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>LIP:{state.LIP ? "Y" : "N"}
-                      </label>
-                    </div>
-                  </div>
-                </Col>
-
-                <Col xs="auto" lg={3} md={3} style={{ flex: "0 0 auto", marginLeft: "4px" }}>
-                  <div
-                    style={{
-                      border: "1px solid #2196F3",
-                      borderRadius: "4px",
-                      padding: "2px 4px",
-                      backgroundColor: "#E3F2FD",
-                      height: "28px",
-                      display: "flex",
-                      alignItems: "center",
-                      minWidth: "fit-content",
-                    }}
-                  >
-                    <label
-                      className="fw-bold small mb-0"
-                      style={{ fontSize: "0.55rem", whiteSpace: "nowrap", marginRight: "2px", color: "#1976D2" }}
-                    >
-                      <i className="fas fa-sticky-note" style={{ fontSize: "0.5rem" }}></i>Note:
-                    </label>
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      <div className="form-check" style={{ display: "flex", alignItems: "center", margin: "0" }}>
-                        <input
-                          id="note1"
-                          type="checkbox"
-                          className="form-check-input"
-                          style={{ width: "10px", height: "10px", margin: "0 1px" }}
-                          onClick={e => {
-                            setVisibleNotes(prev => ({
-                              ...prev,
-                              Note1: !prev.Note1,
-                            }))
-                          }}
-                          checked={visibleNotes.Note1}
-                        />
-                        <label className="form-check-label mb-0" htmlFor="note1" style={{ fontSize: "0.5rem" }}>1</label>
-                      </div>
-                      <div className="form-check" style={{ display: "flex", alignItems: "center", margin: "0" }}>
-                        <input
-                          id="note2"
-                          type="checkbox"
-                          className="form-check-input"
-                          style={{ width: "10px", height: "10px", margin: "0 1px" }}
-                          onClick={e => {
-                            setVisibleNotes(prev => ({
-                              ...prev,
-                              Note2: !prev.Note2,
-                            }))
-                          }}
-                          checked={visibleNotes.Note2}
-                        />
-                        <label className="form-check-label mb-0" htmlFor="note2" style={{ fontSize: "0.5rem" }}>2</label>
-                      </div>
-                      <div className="form-check" style={{ display: "flex", alignItems: "center", margin: "0" }}>
-                        <input
-                          id="note3"
-                          type="checkbox"
-                          className="form-check-input"
-                          style={{ width: "10px", height: "10px", margin: "0 1px" }}
-                          onClick={e => {
-                            setVisibleNotes(prev => ({
-                              ...prev,
-                              Note3: !prev.Note3,
-                            }))
-                          }}
-                          checked={visibleNotes.Note3}
-                        />
-                        <label className="form-check-label mb-0" htmlFor="note3" style={{ fontSize: "0.5rem" }}>3</label>
-                      </div>
-                      <div className="form-check" style={{ display: "flex", alignItems: "center", margin: "0" }}>
-                        <input
-                          id="note4"
-                          type="checkbox"
-                          className="form-check-input"
-                          style={{ width: "10px", height: "10px", margin: "0 1px" }}
-                          onClick={e => {
-                            setVisibleNotes(prev => ({
-                              ...prev,
-                              Note4: !prev.Note4,
-                            }))
-                          }}
-                          checked={visibleNotes.Note4}
-                        />
-                        <label className="form-check-label mb-0" htmlFor="note4" style={{ fontSize: "0.5rem" }}>4</label>
-                      </div>
-                      <div className="form-check" style={{ display: "flex", alignItems: "center", margin: "0" }}>
-                        <input
-                          id="note5"
-                          type="checkbox"
-                          className="form-check-input"
-                          style={{ width: "10px", height: "10px", margin: "0 1px" }}
-                          onClick={e => {
-                            setVisibleNotes(prev => ({
-                              ...prev,
-                              Note5: !prev.Note5,
-                            }))
-                          }}
-                          checked={visibleNotes.Note5}
-                        />
-                        <label className="form-check-label mb-0" htmlFor="note5" style={{ fontSize: "0.5rem" }}>5</label>
-                      </div>
-                      <div className="form-check" style={{ display: "flex", alignItems: "center", margin: "0" }}>
-                        <input
-                          id="note6"
-                          type="checkbox"
-                          className="form-check-input"
-                          style={{ width: "10px", height: "10px", margin: "0 1px" }}
-                          onClick={e => {
-                            setVisibleNotes(prev => ({
-                              ...prev,
-                              Note6: !prev.Note6,
-                            }))
-                          }}
-                          checked={visibleNotes.Note6}
-                        />
-                        <label className="form-check-label mb-0" htmlFor="note6" style={{ fontSize: "0.5rem" }}>6</label>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline-secondary"
-                        style={{
-                          fontSize: "0.45rem",
-                          padding: "1px 3px",
-                          height: "16px",
-                          lineHeight: "1",
-                          marginLeft: "2px",
-                        }}
-                        onClick={() => {
-                          const allChecked = Object.values(visibleNotes).every(v => v)
-                          toggleAllNotes(!allChecked)
-                        }}
-                      >
-                        All
-                      </Button>
-                    </div>
-                  </div>
-                </Col>
-
-                <Col xs="auto" style={{ flex: "0 0 auto", marginLeft: "4px" }}>
-                  <Button
-                    variant="danger"
-                    style={{
-                      fontSize: "0.6rem",
-                      height: "28px",
-                      padding: "2px 8px",
-                      minWidth: "55px",
-                      whiteSpace: "nowrap",
-                    }}
-                    onClick={() => window.close()}
-                  >
-                    <i className="fas fa-times"></i> Exit
-                  </Button>
-                </Col>
-              </Row>
+              <div className="d-flex align-items-center filter-theme-light" style={{ backgroundColor: "#E3F2FD", padding: "4px", borderRadius: "4px", flexWrap: "nowrap", minWidth: "fit-content", border: "1px solid #2196F3", gap: `${topGap}px` }}>
+                {renderFilterBar(topFilterOrder, topFilterWidths, topGap, setTopGap, topDragStart, topDragOver, topDrop, topDragEnd, topTouchDragStart, topTouchDragMove, topTouchDragEnd, topResizeDown, resetTopLayout, renderTopFilterContent)}
+              </div>
             </div>
           </div>
         </div>
@@ -6126,7 +6006,7 @@ const LedgerReport = () => {
                         className="d-flex align-items-center"
                         style={{
                           padding: "6px 12px",
-                          gap: "8px",
+                          gap: `${bottomGap}px`,
                           flexWrap: "nowrap",
                           minWidth: "fit-content"
                         }}
@@ -6139,254 +6019,7 @@ const LedgerReport = () => {
                           <i className="fas fa-chart-line me-2"></i>
                         </div>
 
-                        {/* Period Dropdown - Opens Modal */}
-                        <div style={{ flex: "0 0 auto", minWidth: "100px", maxWidth: "160px" }}>
-                          <div
-                            onClick={openPeriodModal}
-                            className="bottom-filter-control"
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              color: "#333",
-                              border: "1px solid #2196F3",
-                              borderRadius: "6px",
-                              height: "32px",
-                              minHeight: "32px",
-                              padding: "0 8px",
-                              fontSize: "0.65rem",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>
-                              {selectedPeriod && selectedPeriod.length > 0
-                                ? `${selectedPeriod.length} selected`
-                                : "Period"}
-                            </span>
-                            <i className="fas fa-chevron-down ms-2"></i>
-                          </div>
-                        </div>
-
-                        {/* Item Dropdown - Opens Modal */}
-                        <div style={{ flex: "0 0 auto", minWidth: "120px", maxWidth: "140px" }}>
-                          <div
-                            onClick={openItemModal}
-                            className="bottom-filter-control"
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              color: "#333",
-                              border: "1px solid #2196F3",
-                              borderRadius: "6px",
-                              height: "32px",
-                              minHeight: "32px",
-                              padding: "0 8px",
-                              fontSize: "0.65rem",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>
-                              {selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "")
-                                ? `${selectedItems.filter(item => item !== "").length} selected`
-                                : "Items"}
-                            </span>
-                            <i className="fas fa-chevron-down ms-2"></i>
-                          </div>
-                        </div>
-
-                        {/* Export Buttons - before Party */}
-                        <div
-                          className="d-flex align-items-center"
-                          style={{ gap: "8px", flex: "0 0 auto" }}
-                        >
-                          <Button
-                            color="success"
-                            onClick={exportToExcel}
-                            className="shadow-sm"
-                            size="sm"
-                            style={{ fontSize: "0.6rem", whiteSpace: "nowrap", height: "32px", minHeight: "32px", padding: "0 10px" }}
-                          >
-                            <i className="fas fa-file-excel me-1"></i>
-                            Excel
-                          </Button>
-                          <Button
-                            color="danger"
-                            onClick={exportToPDF}
-                            className="shadow-sm"
-                            size="sm"
-                            style={{ fontSize: "0.6rem", whiteSpace: "nowrap", height: "32px", minHeight: "32px", padding: "0 10px" }}
-                          >
-                            <i className="fas fa-file-pdf me-1"></i>
-                            PDF
-                          </Button>
-                        </div>
-
-                        {/* Party Dropdown - Opens Modal */}
-                        <div style={{ flex: "0 0 auto", minWidth: "200px", maxWidth: "280px" }}>
-                          <div
-                            onClick={openPartyModal}
-                            className="bottom-filter-control"
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              color: "#333",
-                              border: "1px solid #2196F3",
-                              borderRadius: "6px",
-                              height: "32px",
-                              minHeight: "32px",
-                              padding: "0 8px",
-                              fontSize: "0.65rem",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <span>
-                              {selectedParties && selectedParties.length > 0
-                                ? `${selectedParties.length} selected`
-                                : "Party"}
-                            </span>
-                            <i className="fas fa-chevron-down ms-2"></i>
-                          </div>
-                        </div>
-
-                        {/* Contract Type Dropdown */}
-                        <div style={{ flex: "0 0 auto", minWidth: "140px", maxWidth: "160px" }} className="bottom-filter-select-wrap">
-                          <Select
-                            options={state.TaxAccountArray.map(tax => ({
-                              value: tax.Id,
-                              label: tax.Name,
-                            }))}
-                            value={
-                              state.TaxAccountArray.find(
-                                t => t.Id === parseInt(selectedTax)
-                              )
-                                ? {
-                                  value: selectedTax,
-                                  label: state.TaxAccountArray.find(
-                                    t => t.Id === parseInt(selectedTax)
-                                  )?.Name,
-                                }
-                                : null
-                            }
-                            onChange={option => {
-                              setSelectedTax(option?.value || "")
-                            }}
-                            placeholder="Contract"
-                            className="party-dropdown"
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              fontSize: "0.65rem",
-                              minHeight: "32px",
-                              border: "1px solid #2196F3",
-                            }}
-                            isSearchable
-                            classNamePrefix="react-select"
-                            noOptionsMessage={() => "No contract types found"}
-                            isClearable
-                            menuPosition="fixed"
-                            menuPortalTarget={document.body}
-                            styles={{
-                              control: provided => ({
-                                ...provided,
-                                fontSize: "0.65rem",
-                                minHeight: "32px",
-                                height: "32px",
-                                border: "1px solid #2196F3",
-                                backgroundColor: "#E3F2FD",
-                                boxShadow: "none",
-                                display: "flex",
-                                alignItems: "center",
-                              }),
-                              valueContainer: provided => ({
-                                ...provided,
-                                display: "flex",
-                                alignItems: "center",
-                                padding: "0 8px",
-                              }),
-                              option: provided => ({
-                                ...provided,
-                                fontSize: "0.65rem",
-                              }),
-                              singleValue: provided => ({
-                                ...provided,
-                                fontSize: "0.65rem",
-                                lineHeight: "1",
-                              }),
-                              placeholder: provided => ({
-                                ...provided,
-                                fontSize: "0.65rem",
-                                lineHeight: "1",
-                                margin: 0,
-                              }),
-                              input: provided => ({
-                                ...provided,
-                                margin: 0,
-                                padding: 0,
-                              }),
-                              menu: provided => ({
-                                ...provided,
-                                zIndex: 10000,
-                              }),
-                              menuPortal: provided => ({
-                                ...provided,
-                                fontSize: "0.65rem",
-                                zIndex: 10000,
-                              }),
-                            }}
-                          />
-                        </div>
-
-                        {/* Vessel Input */}
-                        <div style={{ flex: "0 0 auto", minWidth: "100px", maxWidth: "120px" }}>
-                          <Input
-                            id="vessel"
-                            type="text"
-                            value={state.Vessel}
-                            onChange={e => {
-                              setState({ ...state, Vessel: e.target.value })
-                            }}
-                            className="form-control-sm shadow-sm"
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              color: "#333",
-                              fontSize: "0.65rem",
-                              padding: "0 8px",
-                              height: "32px",
-                              minHeight: "32px",
-                              borderRadius: "6px",
-                              border: "1px solid #2196F3",
-                            }}
-                            placeholder="Vessel"
-                          />
-                        </div>
-
-                        {/* Delivery Port Input */}
-                        <div style={{ flex: "0 0 auto", minWidth: "100px", maxWidth: "120px" }}>
-                          <Input
-                            id="deliveryPort"
-                            type="text"
-                            value={state.DeliveryPort}
-                            onChange={e => {
-                              setState({ ...state, DeliveryPort: e.target.value })
-                            }}
-                            className="form-control-sm shadow-sm"
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              color: "#333",
-                              fontSize: "0.65rem",
-                              padding: "0 8px",
-                              height: "32px",
-                              minHeight: "32px",
-                              borderRadius: "6px",
-                              border: "1px solid #2196F3",
-                            }}
-                            placeholder="Port"
-                          />
-                        </div>
+                        {renderFilterBar(bottomFilterOrder, bottomFilterWidths, bottomGap, setBottomGap, bottomDragStart, bottomDragOver, bottomDrop, bottomDragEnd, bottomTouchDragStart, bottomTouchDragMove, bottomTouchDragEnd, bottomResizeDown, resetBottomLayout, renderBottomFilterContent)}
 
                       </div>
                     </div>

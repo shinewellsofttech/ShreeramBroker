@@ -1,0 +1,179 @@
+/* ─── Filter Layout: Drag & Resize ─── */
+
+.filter-item {
+    position: relative;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    cursor: grab;
+    touch-action: none;
+}
+
+.filter-item:active {
+    cursor: grabbing;
+}
+
+/* Dragging state */
+.filter-item.dragging {
+    opacity: 0.45;
+    transform: scale(0.96);
+    outline: 2px dashed rgba(255, 255, 255, 0.6);
+    outline-offset: 2px;
+    z-index: 100;
+}
+
+/* Resize handle on right edge */
+.filter-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    background: transparent;
+    z-index: 20;
+    touch-action: none;
+}
+
+.filter-resize-handle:hover,
+.filter-resize-handle:active {
+    background: rgba(255, 255, 0, 0.45);
+}
+
+.filter-resize-handle::after {
+    content: '';
+    position: absolute;
+    right: 2px;
+    top: 20%;
+    bottom: 20%;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 1px;
+}
+
+/* Gap control buttons */
+.filter-gap-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.filter-gap-control button {
+    width: 18px;
+    height: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-size: 0.6rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s;
+}
+
+.filter-gap-control button:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.filter-gap-control span {
+    font-size: 0.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    min-width: 14px;
+    text-align: center;
+}
+
+/* Reset layout button */
+.filter-reset-btn {
+    width: 20px;
+    height: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.55rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.filter-reset-btn:hover {
+    background: rgba(220, 53, 69, 0.5);
+    color: white;
+}
+
+/* Drag handle icon area */
+.filter-drag-handle {
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    flex-shrink: 0;
+    opacity: 0.4;
+    touch-action: none;
+}
+
+.filter-item:hover .filter-drag-handle {
+    opacity: 0.9;
+}
+
+.filter-drag-handle::before {
+    content: '⋮⋮';
+    font-size: 0.5rem;
+    letter-spacing: -2px;
+    color: white;
+}
+
+/* ─── Light Theme (for top filter bar) ─── */
+.filter-theme-light .filter-gap-control button {
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
+}
+
+.filter-theme-light .filter-gap-control button:hover {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.filter-theme-light .filter-gap-control span {
+    color: #333;
+    font-weight: 600;
+}
+
+.filter-theme-light .filter-reset-btn {
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
+}
+
+.filter-theme-light .filter-reset-btn:hover {
+    background: rgba(220, 53, 69, 0.8);
+    color: white;
+    border-color: rgba(220, 53, 69, 0.8);
+}
+
+.filter-theme-light .filter-drag-handle::before {
+    color: #2196F3;
+}
+
+.filter-theme-light .filter-item.dragging {
+    outline: 2px dashed rgba(33, 150, 243, 0.6);
+}
+
+.filter-theme-light .filter-resize-handle:hover,
+.filter-theme-light .filter-resize-handle:active {
+    background: rgba(33, 150, 243, 0.15);
+}
+
+.filter-theme-light .filter-resize-handle::after {
+    background: rgba(33, 150, 243, 0.8);
+}
