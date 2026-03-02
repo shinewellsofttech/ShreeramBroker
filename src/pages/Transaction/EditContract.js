@@ -169,6 +169,9 @@ const EditContract = ({
   })
   const [liftingRows, setLiftingRows] = useState(createDefaultLiftingRows(7))
 
+  const [showSharePDFModal, setShowSharePDFModal] = useState(false)
+  const [pendingShareFile, setPendingShareFile] = useState(null)
+
   const API_URL_SAVE = `${API_WEB_URLS.ContractH}/0/token`
   const API_URL_Lifting = `${API_WEB_URLS.AddLifting}/0/token`
   const API_URL = API_WEB_URLS.MASTER + "/0/token/PartyAccount"
@@ -185,7 +188,7 @@ const EditContract = ({
   const API_URL10 = API_WEB_URLS.MASTER + "/0/token/LiftingMaster"
   const API_Delete = API_WEB_URLS.MASTER + "/0/token/DeleteContract"
 
- 
+
 
   useEffect(() => {
     // Load master data
@@ -360,11 +363,11 @@ const EditContract = ({
               AdvDate: contract.AdvDate || "",
               Note5: contract.Note5 || "",
               Note6: contract.Note6 || "",
-                Note1: contract.Note1 || "",
+              Note1: contract.Note1 || "",
               Note2: contract.Note2 || "",
               Note3: contract.Note3 || "",
               Note4: contract.Note4 || "",
-              
+
               importDuty: contract.importDuty || 0,
               tariff: contract.tariff || 0,
               exchangeRate: contract.exchangeRate || 0,
@@ -384,9 +387,9 @@ const EditContract = ({
               id: 0,
               ContractArray: [],
               LiftingArray: [],
-                      isEditMode: false,
-        isFieldsDisabled: false,
-        ContractNo: contractId,
+              isEditMode: false,
+              isFieldsDisabled: false,
+              ContractNo: contractId,
             }
           }
         })
@@ -505,9 +508,8 @@ const EditContract = ({
         showLiftingAlert: totalLiftingQty > (prev.contractQty || prev.Qty || 0),
         liftingAlertMessage:
           totalLiftingQty > (prev.contractQty || prev.Qty || 0)
-            ? `Lifting quantity (${totalLiftingQty}) exceeds contract quantity (${
-                prev.contractQty || prev.Qty || 0
-              }). Please adjust.`
+            ? `Lifting quantity (${totalLiftingQty}) exceeds contract quantity (${prev.contractQty || prev.Qty || 0
+            }). Please adjust.`
             : "",
       }))
     } else {
@@ -691,10 +693,10 @@ const EditContract = ({
                 id: 0,
                 ContractArray: [],
                 LiftingArray: [],
-                        isEditMode: false,
-        isFieldsDisabled: false,
-        // Keep the manually entered contract number
-        ContractNo: value,
+                isEditMode: false,
+                isFieldsDisabled: false,
+                // Keep the manually entered contract number
+                ContractNo: value,
               }
             }
           })
@@ -707,9 +709,9 @@ const EditContract = ({
           id: 0,
           ContractArray: [],
           LiftingArray: [],
-                  isEditMode: false,
-        isFieldsDisabled: false,
-        ContractNo: value,
+          isEditMode: false,
+          isFieldsDisabled: false,
+          ContractNo: value,
         }))
       }
     } else if (name === "ContractNo" && !value) {
@@ -738,7 +740,7 @@ const EditContract = ({
     }
   }
 
-   
+
 
   // Handle modal form input changes
   const handleModalInputChange = (field, value) => {
@@ -764,9 +766,9 @@ const EditContract = ({
       formData.append(
         "ContractNo",
         state.ContractNo ||
-          state.NewArray?.[0]?.ContractNoNew ||
-          state.ContractArray?.[0]?.ContractNo ||
-          ""
+        state.NewArray?.[0]?.ContractNoNew ||
+        state.ContractArray?.[0]?.ContractNo ||
+        ""
       )
       formData.append(
         "F_UnitMaster",
@@ -867,7 +869,7 @@ const EditContract = ({
         const liftingFormData = new FormData()
         liftingFormData.append("Data", JSON.stringify(liftingDataArray))
         liftingFormData.append("F_ContractH", res.id || res.Id || state.id)
-        
+
         await Fn_AddEditData(
           dispatch,
           setState,
@@ -943,7 +945,7 @@ const EditContract = ({
     }
   }
 
-  
+
 
 
   const handlePrint = () => {
@@ -1016,175 +1018,67 @@ const EditContract = ({
     })
   }
 
-  // Mail Seller - Share contract PDF via email with file attachment
-  const handleMailSeller = async () => {
-    if (state.id || state.ContractArray?.[0]?.Id) {
-      const contractId = state.id || state.ContractArray[0].Id
-      const sellerName = state.PartyAccountArray.find(p => p.Id === state.F_SellerLedger)?.Name || 'Seller'
-      const contractNo = state.ContractNo || 'Contract'
-      
-      try {
-        // Show loading message
-        alert('Generating PDF... Please wait.')
-        
-        // Generate PDF blob
-        const pdfBlob = await generateContractPDF(contractId, contractNo)
-        
-        // Create download link and trigger download
-        const url = window.URL.createObjectURL(pdfBlob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `Contract_${contractNo}_${contractId}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(url)
-        
-        // Open email with PDF file
-        const subject = encodeURIComponent(`Contract ${contractNo} - PDF Attached`)
-        const body = encodeURIComponent(
-          `Dear ${sellerName},\n\nPlease find the contract PDF attached.\n\nContract No: ${contractNo}\n\nBest Regards`
-        )
-        
-        // Note: mailto doesn't support file attachments directly
-        // PDF is downloaded, user can manually attach it
-        setTimeout(() => {
-          window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
-        }, 500)
-      } catch (error) {
-        console.error('Error generating PDF:', error)
-        alert('Error generating PDF. Please try again or use Print button.')
+  // Called from Share button click – runs in user gesture so navigator.share() is allowed
+  const handleSharePDFClick = async () => {
+    if (!pendingShareFile || !navigator.share) return
+    try {
+      await navigator.share({
+        title: 'Contract Report',
+        text: 'Please find attached the Contract Report',
+        files: [pendingShareFile]
+      })
+      toastr.success('PDF shared successfully!')
+      setShowSharePDFModal(false)
+      setPendingShareFile(null)
+    } catch (shareError) {
+      if (shareError.name === 'AbortError') {
+        toastr.info('Share cancelled.')
+      } else {
+        console.error('Share error:', shareError)
+        toastr.error('Share failed. Try again.')
       }
-    } else {
-      alert("Please select a contract first")
+      setShowSharePDFModal(false)
+      setPendingShareFile(null)
     }
   }
 
-  // Mail Buyer - Share contract PDF via email with file attachment
-  const handleMailBuyer = async () => {
+  // Generate PDF and open Share Modal (or download directly if share unsupported)
+  const handlePDFExport = async () => {
     if (state.id || state.ContractArray?.[0]?.Id) {
       const contractId = state.id || state.ContractArray[0].Id
-      const buyerName = state.PartyAccountArray.find(p => p.Id === state.F_BuyerLedger)?.Name || 'Buyer'
       const contractNo = state.ContractNo || 'Contract'
-      
-      try {
-        // Show loading message
-        alert('Generating PDF... Please wait.')
-        
-        // Generate PDF blob
-        const pdfBlob = await generateContractPDF(contractId, contractNo)
-        
-        // Create download link and trigger download
-        const url = window.URL.createObjectURL(pdfBlob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `Contract_${contractNo}_${contractId}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(url)
-        
-        // Open email with PDF file
-        const subject = encodeURIComponent(`Contract ${contractNo} - PDF Attached`)
-        const body = encodeURIComponent(
-          `Dear ${buyerName},\n\nPlease find the contract PDF attached.\n\nContract No: ${contractNo}\n\nBest Regards`
-        )
-        
-        // Note: mailto doesn't support file attachments directly
-        // PDF is downloaded, user can manually attach it
-        setTimeout(() => {
-          window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
-        }, 500)
-      } catch (error) {
-        console.error('Error generating PDF:', error)
-        alert('Error generating PDF. Please try again or use Print button.')
-      }
-    } else {
-      alert("Please select a contract first")
-    }
-  }
 
-  // WhatsApp Seller - Share contract PDF via WhatsApp with file
-  const handleWhatsAppSeller = async () => {
-    if (state.id || state.ContractArray?.[0]?.Id) {
-      const contractId = state.id || state.ContractArray[0].Id
-      const sellerName = state.PartyAccountArray.find(p => p.Id === state.F_SellerLedger)?.Name || 'Seller'
-      const contractNo = state.ContractNo || 'Contract'
-      
       try {
         // Show loading message
-        alert('Generating PDF... Please wait.')
-        
-        // Generate PDF blob
-        const pdfBlob = await generateContractPDF(contractId, contractNo)
-        
-        // Create download link and trigger download
-        const url = window.URL.createObjectURL(pdfBlob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `Contract_${contractNo}_${contractId}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        
-        // Open WhatsApp with concise message
-        const message = encodeURIComponent(
-          `Dear ${sellerName},\n\nContract No: ${contractNo}\n\nPlease find the contract PDF attached.\n\nBest Regards`
-        )
-        
-        setTimeout(() => {
-          window.open(`https://wa.me/?text=${message}`, '_blank')
-          // Clean up blob URL after a delay
-          setTimeout(() => window.URL.revokeObjectURL(url), 1000)
-        }, 500)
-      } catch (error) {
-        console.error('Error generating PDF:', error)
-        alert('Error generating PDF. Please try again or use Print button.')
-      }
-    } else {
-      alert("Please select a contract first")
-    }
-  }
+        toastr.info('Generating PDF... Please wait.')
 
-  // WhatsApp Buyer - Share contract PDF via WhatsApp with file
-  const handleWhatsAppBuyer = async () => {
-    if (state.id || state.ContractArray?.[0]?.Id) {
-      const contractId = state.id || state.ContractArray[0].Id
-      const buyerName = state.PartyAccountArray.find(p => p.Id === state.F_BuyerLedger)?.Name || 'Buyer'
-      const contractNo = state.ContractNo || 'Contract'
-      
-      try {
-        // Show loading message
-        alert('Generating PDF... Please wait.')
-        
         // Generate PDF blob
         const pdfBlob = await generateContractPDF(contractId, contractNo)
-        
-        // Create download link and trigger download
-        const url = window.URL.createObjectURL(pdfBlob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `Contract_${contractNo}_${contractId}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        
-        // Open WhatsApp with concise message
-        const message = encodeURIComponent(
-          `Dear ${buyerName},\n\nContract No: ${contractNo}\n\nPlease find the contract PDF attached.\n\nBest Regards`
-        )
-        
-        setTimeout(() => {
-          window.open(`https://wa.me/?text=${message}`, '_blank')
-          // Clean up blob URL after a delay
-          setTimeout(() => window.URL.revokeObjectURL(url), 1000)
-        }, 500)
+
+        const filename = `Contract_${contractNo}_${contractId}.pdf`
+        const file = new File([pdfBlob], filename, { type: 'application/pdf' })
+
+        if (navigator.share) {
+          setPendingShareFile(file)
+          setShowSharePDFModal(true)
+        } else {
+          // Fallback if no share
+          const url = window.URL.createObjectURL(pdfBlob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = filename
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          window.URL.revokeObjectURL(url)
+          toastr.warning('Share not available on this device. File downloaded instead.')
+        }
       } catch (error) {
         console.error('Error generating PDF:', error)
-        alert('Error generating PDF. Please try again or use Print button.')
+        toastr.error('Error generating PDF. Please try again or use Print button.')
       }
     } else {
-      alert("Please select a contract first")
+      toastr.warning("Please select a contract first")
     }
   }
 
@@ -1601,15 +1495,13 @@ const EditContract = ({
               {/* Merged Contract Details and Conditions Section */}
               <Col xs={12} md={12} lg={isModal ? 8 : 8}>
                 <div
-                  className={`form-section ${
-                    isModal ? "form-section-modal" : ""
-                  }`}
+                  className={`form-section ${isModal ? "form-section-modal" : ""
+                    }`}
                   style={{ backgroundColor: '#fffacd' }}
                 >
                   <h6
-                    className={`section-title ${
-                      isModal ? "section-title-modal" : ""
-                    }`}
+                    className={`section-title ${isModal ? "section-title-modal" : ""
+                      }`}
                     style={{
                       fontSize: isModal ? "0.9rem" : "1rem",
                       fontWeight: "bold",
@@ -1635,7 +1527,7 @@ const EditContract = ({
                         marginLeft: "10px",
                       }}
                     >
-                       ( {state.ContractHNo ? state.ContractHNo.length : 0})
+                      ( {state.ContractHNo ? state.ContractHNo.length : 0})
                     </span>
                   </h6>
 
@@ -1653,7 +1545,7 @@ const EditContract = ({
                           }
                         }
                       `}</style>
-                      
+
 
                       <Row className="g-1">
                         <Col xs={12} sm={6} md={4}>
@@ -1679,7 +1571,7 @@ const EditContract = ({
                           </FormGroup>
                         </Col>
 
-                         
+
 
                         <Col xs={12} sm={6} md={4}>
                           <FormGroup className="mb-1">
@@ -1736,7 +1628,7 @@ const EditContract = ({
                             </select>
                           </FormGroup>
                         </Col>
-                        
+
 
                         <Col md={5}>
                           <FormGroup className="mb-1">
@@ -1792,7 +1684,7 @@ const EditContract = ({
                           </FormGroup>
                         </Col>
 
-                        
+
 
                         <Col md={5}>
                           <FormGroup className="mb-1">
@@ -1848,7 +1740,7 @@ const EditContract = ({
                           </FormGroup>
                         </Col>
 
-                        
+
                         <Col md={2}>
                           <FormGroup className="mb-1">
                             <Label
@@ -2041,7 +1933,7 @@ const EditContract = ({
                           }
                         }
                       `}</style>
-                      
+
 
                       <Row className="g-1">
                         <Col md={7}>
@@ -2072,7 +1964,7 @@ const EditContract = ({
                             </select>
                           </FormGroup>
                         </Col>
-                        
+
 
                         <Col md={2}>
                           <FormGroup className="mb-1">
@@ -2388,13 +2280,12 @@ const EditContract = ({
                             type="text"
                             value={state.DiffAmt || "0.00"}
                             readOnly
-                            className={`form-control-sm ${
-                              parseFloat(state.DiffAmt || 0) > 0
-                                ? "text-danger fw-bold"
-                                : parseFloat(state.DiffAmt || 0) < 0
+                            className={`form-control-sm ${parseFloat(state.DiffAmt || 0) > 0
+                              ? "text-danger fw-bold"
+                              : parseFloat(state.DiffAmt || 0) < 0
                                 ? "text-success fw-bold"
                                 : ""
-                            }`}
+                              }`}
                           />
                         </Col>
                       </Row>
@@ -2448,7 +2339,7 @@ const EditContract = ({
                             onKeyDown={e => handleKeyDown(e, note3Ref)}
                           />
                         </FormGroup>
-                     
+
                         <FormGroup>
                           <input
                             type="text"
@@ -2501,15 +2392,13 @@ const EditContract = ({
               {/* Right Panel - Lifting Details */}
               <Col xs={12} md={12} lg={isModal ? 4 : 4}>
                 <div
-                  className={`form-section ${
-                    isModal ? "form-section-modal" : ""
-                  }`}
+                  className={`form-section ${isModal ? "form-section-modal" : ""
+                    }`}
                   style={{ backgroundColor: '#fffacd' }}
                 >
                   <h6
-                    className={`section-title ${
-                      isModal ? "section-title-modal" : ""
-                    }`}
+                    className={`section-title ${isModal ? "section-title-modal" : ""
+                      }`}
                     style={{
                       fontSize: isModal ? "0.9rem" : "1rem",
                       fontWeight: "bold",
@@ -2520,24 +2409,24 @@ const EditContract = ({
                   </h6>
 
                   <span>
-                     <select
-                            name="LiftingLedger"
-                            id="LiftingLedger"
-                            value={getFieldValue("LiftingLedger")}
-                            onChange={handleInputChange}
-                            
-                            className="form-control form-control-sm py-1"
-                            style={{ width: "200px", maxWidth: "200px" , height: "30px", fontWeight: "bold"}}
-                            disabled={state.isEditMode && !state.isEditingEnabled}
-                          >
-                            <option value="">Select Lifting</option>
-                            {state.PartyAccountArray.map(type => (
-                                <option key={type.Id} value={type.Id}>
-                                  {type.Name}
-                                </option>
-                              ))}
-                          </select> 
-                          </span>
+                    <select
+                      name="LiftingLedger"
+                      id="LiftingLedger"
+                      value={getFieldValue("LiftingLedger")}
+                      onChange={handleInputChange}
+
+                      className="form-control form-control-sm py-1"
+                      style={{ width: "200px", maxWidth: "200px", height: "30px", fontWeight: "bold" }}
+                      disabled={state.isEditMode && !state.isEditingEnabled}
+                    >
+                      <option value="">Select Lifting</option>
+                      {state.PartyAccountArray.map(type => (
+                        <option key={type.Id} value={type.Id}>
+                          {type.Name}
+                        </option>
+                      ))}
+                    </select>
+                  </span>
 
                   {/* Compact Lifting Table */}
                   <div className="table-container mb-2">
@@ -2693,14 +2582,14 @@ const EditContract = ({
                                     }
                                     placeholder="DD-MM-YYYY"
                                     data-placeholder="DD-MM-YYYY"
-                                    style={{ 
-                                      color: "#000000", 
+                                    style={{
+                                      color: "#000000",
                                       backgroundColor: "#ffffff",
                                       position: "relative"
                                     }}
                                   />
                                   {!row.Date1 && (
-                                    <span 
+                                    <span
                                       className="lifting-date-hint d-md-none"
                                       style={{
                                         position: "absolute",
@@ -2837,11 +2726,10 @@ const EditContract = ({
                           Contract Qty
                         </Label>
                         <div
-                          className={`form-control-sm py-1 ${
-                            state.totalLiftingQty > state.contractQty
-                              ? "bg-warning"
-                              : "bg-light"
-                          }`}
+                          className={`form-control-sm py-1 ${state.totalLiftingQty > state.contractQty
+                            ? "bg-warning"
+                            : "bg-light"
+                            }`}
                         >
                           {state.contractQty || state.Qty || "0.00"}
                         </div>
@@ -2856,11 +2744,10 @@ const EditContract = ({
                           Total Lifting
                         </Label>
                         <div
-                          className={`form-control-sm py-1 ${
-                            state.totalLiftingQty > state.contractQty
-                              ? "bg-warning"
-                              : "bg-light"
-                          }`}
+                          className={`form-control-sm py-1 ${state.totalLiftingQty > state.contractQty
+                            ? "bg-warning"
+                            : "bg-light"
+                            }`}
                         >
                           {state.totalLiftingQty || "0.00"}
                         </div>
@@ -2881,7 +2768,7 @@ const EditContract = ({
                           {Math.max(
                             0,
                             (state.contractQty || state.Qty || 0) -
-                              (state.totalLiftingQty || 0)
+                            (state.totalLiftingQty || 0)
                           ).toFixed(2)}
                         </div>
                       </FormGroup>
@@ -2899,13 +2786,12 @@ const EditContract = ({
                           name="DiffAmt"
                           value={state.DiffAmt || "0.00"}
                           onChange={handleInputChange}
-                          className={`form-control-sm py-1 ${
-                            parseFloat(state.DiffAmt || 0) < 0
-                              ? "text-success"
-                              : parseFloat(state.DiffAmt || 0) > 0
+                          className={`form-control-sm py-1 ${parseFloat(state.DiffAmt || 0) < 0
+                            ? "text-success"
+                            : parseFloat(state.DiffAmt || 0) > 0
                               ? "text-danger"
                               : ""
-                          }`}
+                            }`}
                           placeholder="0.00"
                           readOnly
                           disabled={state.isFieldsDisabled}
@@ -3062,42 +2948,12 @@ const EditContract = ({
 
                     <button
                       type="button"
-                      className="btn btn-outline-primary btn-sm action-btn"
-                      onClick={handleMailSeller}
+                      className="btn btn-danger btn-sm action-btn"
+                      onClick={handlePDFExport}
                     >
-                      <i className="bx bx-envelope"></i>
-                      <span className="d-none d-md-inline ms-1">Mail Seller</span>
-                      <span className="d-inline d-md-none ms-1">M.Sel</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-outline-primary btn-sm action-btn"
-                      onClick={handleMailBuyer}
-                    >
-                      <i className="bx bx-envelope"></i>
-                      <span className="d-none d-md-inline ms-1">Mail Buyer</span>
-                      <span className="d-inline d-md-none ms-1">M.Buy</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-outline-success btn-sm action-btn"
-                      onClick={handleWhatsAppSeller}
-                    >
-                      <i className="bx bxl-whatsapp"></i>
-                      <span className="d-none d-md-inline ms-1">WA Seller</span>
-                      <span className="d-inline d-md-none ms-1">W.Sel</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-outline-success btn-sm action-btn"
-                      onClick={handleWhatsAppBuyer}
-                    >
-                      <i className="bx bxl-whatsapp"></i>
-                      <span className="d-none d-md-inline ms-1">WA Buyer</span>
-                      <span className="d-inline d-md-none ms-1">W.Buy</span>
+                      <i className="bx bxs-file-pdf"></i>
+                      <span className="d-none d-md-inline ms-1">PDF</span>
+                      <span className="d-inline d-md-none ms-1">PDF</span>
                     </button>
                   </div>
                 </div>
@@ -3107,7 +2963,30 @@ const EditContract = ({
         </div>
       </div>
 
-     
+
+      {/* Share PDF Modal */}
+      <Modal isOpen={showSharePDFModal} toggle={() => setShowSharePDFModal(false)} className="modal-sm" centered>
+        <ModalHeader toggle={() => setShowSharePDFModal(false)} className="bg-primary text-white pb-2 pt-2 border-bottom-0">
+          <h5 className="modal-title text-white">Share PDF</h5>
+        </ModalHeader>
+        <ModalBody className="text-center pt-4 pb-4">
+          <div className="mb-3">
+            <i className="bx bxs-file-pdf text-danger" style={{ fontSize: "3rem" }}></i>
+          </div>
+          <h6>Contract PDF Ready</h6>
+          <p className="text-muted small mb-0">PDF has been generated successfully.</p>
+        </ModalBody>
+        <ModalFooter className="border-top-0 d-flex justify-content-center pb-3">
+          <Button color="secondary" className="btn-sm px-4" onClick={() => setShowSharePDFModal(false)}>
+            Close
+          </Button>
+          <Button color="primary" className="btn-sm px-4 action-btn" onClick={handleSharePDFClick}>
+            <i className="bx bx-share-alt me-1"></i>
+            Share File
+          </Button>
+        </ModalFooter>
+      </Modal>
+
     </div>
   )
 }

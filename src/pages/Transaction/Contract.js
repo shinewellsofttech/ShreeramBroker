@@ -185,6 +185,9 @@ const Contract = () => {
 
   const [newContractData, setNewContractData] = useState({ Name: "" })
 
+  const [showSharePDFModal, setShowSharePDFModal] = useState(false)
+  const [pendingShareFile, setPendingShareFile] = useState(null)
+
 
 
   const API_URL_SAVE = `${API_WEB_URLS.ContractH}/0/token`
@@ -248,7 +251,7 @@ const Contract = () => {
       // Get the first contract from ContractHNo array
       if (state.ContractHNo && state.ContractHNo.length > 0) {
         const firstContract = state.ContractHNo[0]
-        
+
         // Load the first contract's full data
         await Fn_FillListData(
           dispatch,
@@ -351,10 +354,10 @@ const Contract = () => {
 
   // Set ContractNo to ContractNoNew when NewArray is loaded (for new contracts)
   useEffect(() => {
-     {
+    {
       setState(prev => ({
         ...prev,
-        ContractNo:  state.ContractNo,
+        ContractNo: state.ContractNo,
         ContractId: "", // Clear ContractId for new contracts
       }))
     }
@@ -374,13 +377,13 @@ const Contract = () => {
       // Check if Ctrl+S is pressed (works for both add and edit modes)
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault() // Prevent default browser save behavior
-        
+
         // Check if required data is loaded
         if (!state.F_SellerLedger || !state.F_BuyerLedger || !state.F_ItemType || !state.Qty || !state.Rate) {
           alert('Please wait for the form data to load completely before saving, or fill in the required fields manually.')
           return
         }
-        
+
         // Check if ContractNo is filled
         if (!state.ContractNo || state.ContractNo.trim() === "") {
           alert('Please enter a contract number before saving.')
@@ -390,7 +393,7 @@ const Contract = () => {
           }
           return
         }
-        
+
         // Show confirmation alert with appropriate message based on mode
         const actionText = state.isEditMode ? 'update' : 'save'
         if (window.confirm(`Are you sure you want to ${actionText} this contract?`)) {
@@ -507,9 +510,8 @@ const Contract = () => {
         showLiftingAlert: totalLiftingQty > (prev.contractQty || prev.Qty || 0),
         liftingAlertMessage:
           totalLiftingQty > (prev.contractQty || prev.Qty || 0)
-            ? `Lifting quantity (${totalLiftingQty}) exceeds contract quantity (${
-                prev.contractQty || prev.Qty || 0
-              }). Please adjust.`
+            ? `Lifting quantity (${totalLiftingQty}) exceeds contract quantity (${prev.contractQty || prev.Qty || 0
+            }). Please adjust.`
             : "",
       }))
     } else {
@@ -705,7 +707,7 @@ const Contract = () => {
                 BuyerPerson: contract.BuyerPerson || "",
                 LiftingLedger: contract.LiftingLedger || "",
 
-                
+
               }
             } else {
               // No existing contract found, this is a new contract number
@@ -752,7 +754,7 @@ const Contract = () => {
         // Reset ContractNo to ContractNoNew for new contracts
         ContractNo: "",
         originalContractNo: "", // Reset original contract number
-          LiftingLedger: "",
+        LiftingLedger: "",
       }))
     }
   }
@@ -847,11 +849,11 @@ const Contract = () => {
   }
 
 
-   // Save new contract data
-   const handleSaveNewCommodity = async () => {
+  // Save new contract data
+  const handleSaveNewCommodity = async () => {
     const formData = new FormData()
     formData.append("Name", newCommodityData.Name || "")
-     
+
 
     const res = await Fn_AddEditData(
       dispatch,
@@ -871,8 +873,8 @@ const Contract = () => {
   // Function to handle updating existing contract with new contract number
   const handleUpdateExistingContract = () => {
     // Check if user is trying to update an existing contract with a new contract number
-    
-    
+
+
     // Normal save/update
     handleSave()
   }
@@ -905,14 +907,14 @@ const Contract = () => {
 
       // Use current state values and DOM values for editing
       formData.append("Date", getCurrentFormValue("Date") || state.Date || "")
-      
+
       // Handle ContractNo based on whether ContractId is selected or not
       let contractNoToSave = getCurrentFormValue("ContractCombined") || state.ContractNo || ""
-      
+
       // Determine if this is a new contract or update
       const isNewContract = !state.ContractId || state.ContractId === ""
       const isContractNumberChanged = state.contractNumberChanged && state.ContractNo !== state.originalContractNo
-      
+
       // If contract number changed and we're in edit mode, treat as new contract
       if (state.isEditMode && isContractNumberChanged) {
         // Reset ID to 0 to create new contract
@@ -924,11 +926,11 @@ const Contract = () => {
         // Use existing ID for update or 0 for new contract
         formData.append("Id", state.id || 0)
       }
-      
+
       formData.append("ContractNo", contractNoToSave)
       formData.append(
         "F_UnitMaster",
-        state.GlobalArray?.[0]?.F_UnitMaster  || ""
+        state.GlobalArray?.[0]?.F_UnitMaster || ""
       )
       formData.append("F_SellerLedger", getCurrentFormValue("F_SellerLedger") || state.F_SellerLedger || 0)
       formData.append("F_BuyerLedger", getCurrentFormValue("F_BuyerLedger") || state.F_BuyerLedger || 0)
@@ -994,10 +996,10 @@ const Contract = () => {
       // Show success message based on operation type
       if (res && res.success) {
         if (isNewContract || (state.isEditMode && isContractNumberChanged)) {
-          const message = isContractNumberChanged 
+          const message = isContractNumberChanged
             ? `New contract ${contractNoToSave} created successfully from contract ${state.originalContractNo}!`
             : `New contract ${contractNoToSave} created successfully!`
-          
+
           setState(prev => ({
             ...prev,
             showSuccessMessage: true,
@@ -1012,7 +1014,7 @@ const Contract = () => {
             isProgress: false,
           }))
         }
-        
+
         // Reset the contract number changed flag after successful save
         setState(prev => ({
           ...prev,
@@ -1216,175 +1218,67 @@ const Contract = () => {
     })
   }
 
-  // Mail Seller - Share contract PDF via email with file attachment
-  const handleMailSeller = async () => {
-    if (state.id || state.ContractArray?.[0]?.Id) {
-      const contractId = state.id || state.ContractArray[0].Id
-      const sellerName = state.PartyAccountArray.find(p => p.Id === state.F_SellerLedger)?.Name || 'Seller'
-      const contractNo = state.ContractNo || 'Contract'
-      
-      try {
-        // Show loading message
-        const loadingMsg = alert('Generating PDF... Please wait.')
-        
-        // Generate PDF blob
-        const pdfBlob = await generateContractPDF(contractId, contractNo)
-        
-        // Create download link and trigger download
-        const url = window.URL.createObjectURL(pdfBlob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `Contract_${contractNo}_${contractId}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(url)
-        
-        // Open email with PDF file
-        const subject = encodeURIComponent(`Contract ${contractNo} - PDF Attached`)
-        const body = encodeURIComponent(
-          `Dear ${sellerName},\n\nPlease find the contract PDF attached.\n\nContract No: ${contractNo}\n\nBest Regards`
-        )
-        
-        // Note: mailto doesn't support file attachments directly
-        // PDF is downloaded, user can manually attach it
-        setTimeout(() => {
-          window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
-        }, 500)
-      } catch (error) {
-        console.error('Error generating PDF:', error)
-        alert('Error generating PDF. Please try again or use Print button.')
+  // Called from Share button click – runs in user gesture so navigator.share() is allowed
+  const handleSharePDFClick = async () => {
+    if (!pendingShareFile || !navigator.share) return
+    try {
+      await navigator.share({
+        title: 'Contract Report',
+        text: 'Please find attached the Contract Report',
+        files: [pendingShareFile]
+      })
+      toastr.success('PDF shared successfully!')
+      setShowSharePDFModal(false)
+      setPendingShareFile(null)
+    } catch (shareError) {
+      if (shareError.name === 'AbortError') {
+        toastr.info('Share cancelled.')
+      } else {
+        console.error('Share error:', shareError)
+        toastr.error('Share failed. Try again.')
       }
-    } else {
-      alert("Please select a contract first")
+      setShowSharePDFModal(false)
+      setPendingShareFile(null)
     }
   }
 
-  // Mail Buyer - Share contract PDF via email with file attachment
-  const handleMailBuyer = async () => {
+  // Generate PDF and open Share Modal (or download directly if share unsupported)
+  const handlePDFExport = async () => {
     if (state.id || state.ContractArray?.[0]?.Id) {
       const contractId = state.id || state.ContractArray[0].Id
-      const buyerName = state.PartyAccountArray.find(p => p.Id === state.F_BuyerLedger)?.Name || 'Buyer'
       const contractNo = state.ContractNo || 'Contract'
-      
-      try {
-        // Show loading message
-        alert('Generating PDF... Please wait.')
-        
-        // Generate PDF blob
-        const pdfBlob = await generateContractPDF(contractId, contractNo)
-        
-        // Create download link and trigger download
-        const url = window.URL.createObjectURL(pdfBlob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `Contract_${contractNo}_${contractId}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(url)
-        
-        // Open email with PDF file
-        const subject = encodeURIComponent(`Contract ${contractNo} - PDF Attached`)
-        const body = encodeURIComponent(
-          `Dear ${buyerName},\n\nPlease find the contract PDF attached.\n\nContract No: ${contractNo}\n\nBest Regards`
-        )
-        
-        // Note: mailto doesn't support file attachments directly
-        // PDF is downloaded, user can manually attach it
-        setTimeout(() => {
-          window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
-        }, 500)
-      } catch (error) {
-        console.error('Error generating PDF:', error)
-        alert('Error generating PDF. Please try again or use Print button.')
-      }
-    } else {
-      alert("Please select a contract first")
-    }
-  }
 
-  // WhatsApp Seller - Share contract PDF via WhatsApp with file
-  const handleWhatsAppSeller = async () => {
-    if (state.id || state.ContractArray?.[0]?.Id) {
-      const contractId = state.id || state.ContractArray[0].Id
-      const sellerName = state.PartyAccountArray.find(p => p.Id === state.F_SellerLedger)?.Name || 'Seller'
-      const contractNo = state.ContractNo || 'Contract'
-      
       try {
         // Show loading message
-        alert('Generating PDF... Please wait.')
-        
-        // Generate PDF blob
-        const pdfBlob = await generateContractPDF(contractId, contractNo)
-        
-        // Create download link and trigger download
-        const url = window.URL.createObjectURL(pdfBlob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `Contract_${contractNo}_${contractId}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        
-        // Open WhatsApp with concise message
-        const message = encodeURIComponent(
-          `Dear ${sellerName},\n\nContract No: ${contractNo}\n\nPlease find the contract PDF attached.\n\nBest Regards`
-        )
-        
-        setTimeout(() => {
-          window.open(`https://wa.me/?text=${message}`, '_blank')
-          // Clean up blob URL after a delay
-          setTimeout(() => window.URL.revokeObjectURL(url), 1000)
-        }, 500)
-      } catch (error) {
-        console.error('Error generating PDF:', error)
-        alert('Error generating PDF. Please try again or use Print button.')
-      }
-    } else {
-      alert("Please select a contract first")
-    }
-  }
+        toastr.info('Generating PDF... Please wait.')
 
-  // WhatsApp Buyer - Share contract PDF via WhatsApp with file
-  const handleWhatsAppBuyer = async () => {
-    if (state.id || state.ContractArray?.[0]?.Id) {
-      const contractId = state.id || state.ContractArray[0].Id
-      const buyerName = state.PartyAccountArray.find(p => p.Id === state.F_BuyerLedger)?.Name || 'Buyer'
-      const contractNo = state.ContractNo || 'Contract'
-      
-      try {
-        // Show loading message
-        alert('Generating PDF... Please wait.')
-        
         // Generate PDF blob
         const pdfBlob = await generateContractPDF(contractId, contractNo)
-        
-        // Create download link and trigger download
-        const url = window.URL.createObjectURL(pdfBlob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `Contract_${contractNo}_${contractId}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        
-        // Open WhatsApp with concise message
-        const message = encodeURIComponent(
-          `Dear ${buyerName},\n\nContract No: ${contractNo}\n\nPlease find the contract PDF attached.\n\nBest Regards`
-        )
-        
-        setTimeout(() => {
-          window.open(`https://wa.me/?text=${message}`, '_blank')
-          // Clean up blob URL after a delay
-          setTimeout(() => window.URL.revokeObjectURL(url), 1000)
-        }, 500)
+
+        const filename = `Contract_${contractNo}_${contractId}.pdf`
+        const file = new File([pdfBlob], filename, { type: 'application/pdf' })
+
+        if (navigator.share) {
+          setPendingShareFile(file)
+          setShowSharePDFModal(true)
+        } else {
+          // Fallback if no share
+          const url = window.URL.createObjectURL(pdfBlob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = filename
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          window.URL.revokeObjectURL(url)
+          toastr.warning('Share not available on this device. File downloaded instead.')
+        }
       } catch (error) {
         console.error('Error generating PDF:', error)
-        alert('Error generating PDF. Please try again or use Print button.')
+        toastr.error('Error generating PDF. Please try again or use Print button.')
       }
     } else {
-      alert("Please select a contract first")
+      toastr.warning("Please select a contract first")
     }
   }
 
@@ -1584,9 +1478,9 @@ const Contract = () => {
     console.log("handleKeyDown", e.key)
     if (e.key === "Enter") {
       e.preventDefault()
-      
+
       const fieldName = e.target.name
-      
+
       // Special handling for ContractCombined field
       if (fieldName === "ContractCombined") {
         // Check if contract number is empty
@@ -1594,7 +1488,7 @@ const Contract = () => {
           alert("Please enter a contract number before proceeding.")
           return
         }
-        
+
         // Only navigate to F_SellerLedger if contract number has been changed by user
         if (state.contractNumberChanged) {
           // Contract number changed, navigate to F_SellerLedger
@@ -1607,20 +1501,20 @@ const Contract = () => {
           return
         }
       }
-      
+
       // Check if shipment month/year is selected
       const isShipmentMonthSelected =
         (state.F_MonthMaster && state.F_MonthMaster !== 0) ||
         (state.F_YearMaster && state.F_YearMaster !== 0)
       // Check if shipment dates are selected - check for both truthy values and non-empty strings
-      const areShipmentDatesSelected = state.ShipMentFromDate && state.ShipMentToDate && 
+      const areShipmentDatesSelected = state.ShipMentFromDate && state.ShipMentToDate &&
         state.ShipMentFromDate !== "" && state.ShipMentToDate !== "" &&
         state.ShipMentFromDate !== null && state.ShipMentToDate !== null
       // Check if lifting dates are selected - check for both truthy values and non-empty strings
-      const areLiftingDatesSelected = state.LiftedFromDate && state.LiftedToDate && 
+      const areLiftingDatesSelected = state.LiftedFromDate && state.LiftedToDate &&
         state.LiftedFromDate !== "" && state.LiftedToDate !== "" &&
         state.LiftedFromDate !== null && state.LiftedToDate !== null
-      
+
       // Handle delivery port navigation based on conditions
       if (fieldName === "DeliveryPort") {
         console.log("DeliveryPort navigation - Debug info:")
@@ -1634,23 +1528,23 @@ const Contract = () => {
         )
         console.log("areShipmentDatesSelected:", areShipmentDatesSelected, "values:", state.ShipMentFromDate, state.ShipMentToDate)
         console.log("areLiftingDatesSelected:", areLiftingDatesSelected, "values:", state.LiftedFromDate, state.LiftedToDate)
-        
+
         // Also check the actual DOM values to be sure
         const shipmentFromInput = document.querySelector('input[name="ShipMentFromDate"]')
         const shipmentToInput = document.querySelector('input[name="ShipMentToDate"]')
         const liftingFromInput = document.querySelector('input[name="LiftedFromDate"]')
         const liftingToInput = document.querySelector('input[name="LiftedToDate"]')
-        
-        const domShipmentDatesSelected = shipmentFromInput && shipmentToInput && 
+
+        const domShipmentDatesSelected = shipmentFromInput && shipmentToInput &&
           shipmentFromInput.value && shipmentToInput.value
-        const domLiftingDatesSelected = liftingFromInput && liftingToInput && 
+        const domLiftingDatesSelected = liftingFromInput && liftingToInput &&
           liftingFromInput.value && liftingToInput.value
-        
+
         console.log("DOM values - shipment:", domShipmentDatesSelected, "lifting:", domLiftingDatesSelected)
-        
+
         // If any of the conditions are met, skip to payment terms
-        if (isShipmentMonthSelected || areShipmentDatesSelected || areLiftingDatesSelected || 
-            domShipmentDatesSelected || domLiftingDatesSelected) {
+        if (isShipmentMonthSelected || areShipmentDatesSelected || areLiftingDatesSelected ||
+          domShipmentDatesSelected || domLiftingDatesSelected) {
           console.log("Condition met - skipping to payment terms")
           const paymentTermsInput = document.querySelector('input[name="Remarks"]')
           if (paymentTermsInput) {
@@ -1666,7 +1560,7 @@ const Contract = () => {
           }
         }
       }
-      
+
       // Handle shipment from date navigation
       if (fieldName === "ShipMentFromDate") {
         if (shipmentToRef.current) {
@@ -1674,7 +1568,7 @@ const Contract = () => {
           return
         }
       }
-      
+
       // Handle shipment to date navigation
       if (fieldName === "ShipMentToDate") {
         if (remarksRef.current) {
@@ -1682,7 +1576,7 @@ const Contract = () => {
           return
         }
       }
-      
+
       // Handle lifting from date navigation
       if (fieldName === "LiftedFromDate") {
         if (liftedToRef.current) {
@@ -1690,7 +1584,7 @@ const Contract = () => {
           return
         }
       }
-      
+
       // Handle lifting to date navigation
       if (fieldName === "LiftedToDate") {
         if (remarksRef.current) {
@@ -1698,7 +1592,7 @@ const Contract = () => {
           return
         }
       }
-      
+
       // Normal navigation for other fields
       if (nextRef && nextRef.current) {
         nextRef.current.focus()
@@ -1711,30 +1605,30 @@ const Contract = () => {
     console.log("handleDropdownKeyDown", e.key, fieldName)
     if (e.key == "PageUp" || e.key == "PageDown") {
       e.preventDefault()
-      
+
       let options, currentIndex, newIndex, newValue
-      
+
       if (fieldName === "ContractCombined") {
         // For contract field - use ContractHNo array
         console.log("ContractHNo:", state.ContractHNo)
         const contractOptions = state.ContractHNo.filter(contract => contract.ContractNo && contract.ContractNo.trim() !== "")
         console.log("Contract options available:", contractOptions.length, contractOptions)
-        
+
         if (contractOptions.length === 0) {
           console.log("No contract options available")
           return // No options to navigate
         }
-        
+
         // Get current value and find its index
         const currentValue = e.target.value
         currentIndex = -1
-        
+
         if (currentValue) {
           currentIndex = contractOptions.findIndex(contract => contract.ContractNo === currentValue)
         }
-        
+
         console.log("Current value:", currentValue, "Current index:", currentIndex)
-        
+
         if (e.key === "PageUp") {
           // Navigate up (previous option)
           newIndex = currentIndex <= 0 ? contractOptions.length - 1 : currentIndex - 1
@@ -1742,13 +1636,13 @@ const Contract = () => {
           // Navigate down (next option)
           newIndex = currentIndex >= contractOptions.length - 1 ? 0 : currentIndex + 1
         }
-        
+
         newValue = contractOptions[newIndex].ContractNo
         console.log("New value:", newValue, "New index:", newIndex)
-        
+
         // Update the input value
         e.target.value = newValue
-        
+
         // Update the form state directly
         setState(prev => ({
           ...prev,
@@ -1759,11 +1653,11 @@ const Contract = () => {
           isEditMode: true,
           isEditingEnabled: true,
         }))
-        
+
         // Load the selected contract data
         const changeEvent = { target: { value: newValue } }
         handleCombinedContractChange(changeEvent)
-        
+
         // Trigger change event to update the form state
         const changeEvent2 = new Event('change', { bubbles: true })
         e.target.dispatchEvent(changeEvent2)
@@ -1772,22 +1666,22 @@ const Contract = () => {
         console.log("NotesArray:", state.NotesArray)
         const noteOptions = state.NotesArray.filter(note => note.Name && note.Name.trim() !== "")
         console.log("Note options available:", noteOptions.length, noteOptions)
-        
+
         if (noteOptions.length === 0) {
           console.log("No note options available")
           return // No options to navigate
         }
-        
+
         // Get current value and find its index
         const currentValue = e.target.value
         currentIndex = -1
-        
+
         if (currentValue) {
           currentIndex = noteOptions.findIndex(note => note.Name === currentValue)
         }
-        
+
         console.log("Current value:", currentValue, "Current index:", currentIndex)
-        
+
         if (e.key === "PageUp") {
           // Navigate up (previous option)
           newIndex = currentIndex <= 0 ? noteOptions.length - 1 : currentIndex - 1
@@ -1795,19 +1689,19 @@ const Contract = () => {
           // Navigate down (next option)
           newIndex = currentIndex >= noteOptions.length - 1 ? 0 : currentIndex + 1
         }
-        
+
         newValue = noteOptions[newIndex].Name
         console.log("New value:", newValue, "New index:", newIndex)
-        
+
         // Update the input value
         e.target.value = newValue
-        
+
         // Update the form state directly
         setState(prev => ({
           ...prev,
           [fieldName]: newValue
         }))
-        
+
         // Trigger change event to update the form state
         const changeEvent = new Event('change', { bubbles: true })
         e.target.dispatchEvent(changeEvent)
@@ -1816,9 +1710,9 @@ const Contract = () => {
         const selectElement = e.target
         options = Array.from(selectElement.options)
         currentIndex = selectElement.selectedIndex
-        
+
         if (options.length <= 1) return // No options to navigate
-        
+
         if (e.key === "PageUp") {
           // Navigate up (previous option)
           newIndex = currentIndex <= 0 ? options.length - 1 : currentIndex - 1
@@ -1826,15 +1720,15 @@ const Contract = () => {
           // Navigate down (next option)
           newIndex = currentIndex >= options.length - 1 ? 0 : currentIndex + 1
         }
-        
+
         // Update the selected value
         newValue = options[newIndex].value
         selectElement.value = newValue
-        
+
         // Trigger change event to update the form state
         const changeEvent = new Event('change', { bubbles: true })
         e.target.dispatchEvent(changeEvent)
-        
+
         // Update the form state manually if needed based on field type
         switch (fieldName) {
           case "ContractId":
@@ -1873,12 +1767,12 @@ const Contract = () => {
               console.log("Selected month:", selectedMonth)
             }
             break
-        case "F_YearMaster":
-          const selectedYear = state.YearArray.find(year => year.Id == newValue)
-          if (selectedYear) {
-            console.log("Selected year:", selectedYear)
-          }
-          break
+          case "F_YearMaster":
+            const selectedYear = state.YearArray.find(year => year.Id == newValue)
+            if (selectedYear) {
+              console.log("Selected year:", selectedYear)
+            }
+            break
           case "LiftingLedger":
             const selectedLiftingLedger = state.PartyAccountArray.find(party => party.Id == newValue)
             if (selectedLiftingLedger) {
@@ -1920,23 +1814,23 @@ const Contract = () => {
 
   const handleCombinedContractChange = async (e) => {
     const value = e.target.value
-    
+
     // Store the original contract number before making changes
     const originalContractNo = state.ContractNo || ""
-    
+
     // Check if this matches an existing contract
     const existingContract = state.ContractHNo.find(contract => contract.ContractNo === value)
-    
+
     if (existingContract) {
       // Existing contract selected - load it for editing
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         ContractNo: value,
         ContractId: existingContract.Id,
         originalContractNo: originalContractNo, // Store the original value
         contractNumberChanged: true, // Mark that contract number has been changed
       }))
-      
+
       // Load the existing contract data
       try {
         await Fn_FillListData(
@@ -2043,7 +1937,7 @@ const Contract = () => {
         originalContractNo: originalContractNo, // Store the original value
         contractNumberChanged: true, // Mark that contract number has been changed
         LiftingLedger: 0,
-        }))
+      }))
     }
   }
 
@@ -2061,10 +1955,10 @@ const Contract = () => {
       isEditingEnabled: false,
       LiftingLedger: 0,
     }))
-    
+
     // Reset lifting rows
     setLiftingRows(createDefaultLiftingRows(7))
-    
+
     // Focus on contract number field
     if (contractNoRef.current) {
       contractNoRef.current.focus()
@@ -2082,7 +1976,7 @@ const Contract = () => {
         ContractNo: prev.originalContractNo,
         contractNumberChanged: false,
       }))
-      
+
       // Update the input field value
       if (contractNoRef.current) {
         contractNoRef.current.value = state.originalContractNo
@@ -2093,10 +1987,10 @@ const Contract = () => {
   // Simplified function to handle contract number changes
   const handleContractNumberChangeInEditMode = (e) => {
     const value = e.target.value
-    
+
     // Check if this matches an existing contract
     const existingContract = state.ContractHNo.find(contract => contract.ContractNo === value)
-    
+
     if (existingContract) {
       // Existing contract found - load it
       setState(prev => ({
@@ -2108,7 +2002,7 @@ const Contract = () => {
         isEditMode: true,
         isEditingEnabled: true,
       }))
-      
+
       // Load the existing contract data
       handleCombinedContractChange(e)
     } else {
@@ -2124,7 +2018,7 @@ const Contract = () => {
         isEditingEnabled: true,
         id: 0,
       }))
-      
+
       // Reset lifting rows for new contract
       setLiftingRows(createDefaultLiftingRows(7))
     }
@@ -2132,15 +2026,15 @@ const Contract = () => {
 
   const selectExistingContract = (id, contractNo) => {
     const originalContractNo = state.ContractNo || ""
-    
-    setState(prev => ({ 
-      ...prev, 
-      ContractNo: contractNo, 
+
+    setState(prev => ({
+      ...prev,
+      ContractNo: contractNo,
       ContractId: id,
       originalContractNo: originalContractNo,
       contractNumberChanged: true // Mark that contract number has been changed
     }))
-    
+
     // Trigger the change handler to load contract data
     const event = { target: { value: contractNo } }
     handleCombinedContractChange(event)
@@ -2154,7 +2048,7 @@ const Contract = () => {
         }}
       ></div>
       <div style={{ height: "auto", overflow: "visible" }}>
-         
+
 
         <div className="contract-form" style={{ backgroundColor: "#fffacd", padding: "20px", borderRadius: "8px", height: "auto", minHeight: "auto", overflow: "visible" }}>
           <style>{`
@@ -2182,7 +2076,7 @@ const Contract = () => {
                 <div className="form-section" style={{ position: "relative" }}>
                   <h6
                     className="section-title"
-                    style={{ fontSize: "1rem" , fontWeight: "bold", }}
+                    style={{ fontSize: "1rem", fontWeight: "bold", }}
                   >
                     <i className="bx bx-file-doc me-2"></i>
                     Contract Details & Conditions{" "}
@@ -2203,7 +2097,7 @@ const Contract = () => {
                         marginLeft: "10px",
                       }}
                     >
-                       ( {state.ContractHNo ? state.ContractHNo.length : 0})
+                      ( {state.ContractHNo ? state.ContractHNo.length : 0})
                     </span>
                   </h6>
 
@@ -2259,26 +2153,26 @@ const Contract = () => {
                               </span>
                             )}
                           </Label>
-                            <input
-                              name="ContractCombined"
-                              id="ContractCombined"
-                              onKeyDown={e => {
-                                handleDropdownKeyDown(e, "ContractCombined")
-                                handleKeyDown(e, sellerRef)
-                              }}
-                              value={getFieldValue("ContractCombined")}
-                              onChange={handleContractNumberChangeInEditMode}
-                              type="text"
-                              className="form-control form-control-sm py-1"
-                              placeholder="Type contract number (PageUp/PageDown to navigate)"
-                              ref={contractNoRef}
-                              autoComplete="off"
-                            />
+                          <input
+                            name="ContractCombined"
+                            id="ContractCombined"
+                            onKeyDown={e => {
+                              handleDropdownKeyDown(e, "ContractCombined")
+                              handleKeyDown(e, sellerRef)
+                            }}
+                            value={getFieldValue("ContractCombined")}
+                            onChange={handleContractNumberChangeInEditMode}
+                            type="text"
+                            className="form-control form-control-sm py-1"
+                            placeholder="Type contract number (PageUp/PageDown to navigate)"
+                            ref={contractNoRef}
+                            autoComplete="off"
+                          />
                         </FormGroup>
                       </Col>
                     </Row>
 
-                     
+
 
                     <Row className="g-1">
                       <Col xs={10} sm={10} md={7}>
@@ -2649,18 +2543,18 @@ const Contract = () => {
                           >
                             Duty per Ton
                           </Label>
-                                                      <input
-                              type="number"
-                              name="calPerTonDuty"
-                              id="calPerTonDuty"
-                              value={state.calPerTonDuty}
-                              onChange={handleInputChange}
-                              className="form-control form-control-sm py-1"
-                              placeholder="0.00"
-                              ref={calPerTonDutyRef}
-                              onKeyDown={e => handleKeyDown(e, contractTypeRef)}
-                              disabled={state.isEditMode && !state.isEditingEnabled}
-                            />
+                          <input
+                            type="number"
+                            name="calPerTonDuty"
+                            id="calPerTonDuty"
+                            value={state.calPerTonDuty}
+                            onChange={handleInputChange}
+                            className="form-control form-control-sm py-1"
+                            placeholder="0.00"
+                            ref={calPerTonDutyRef}
+                            onKeyDown={e => handleKeyDown(e, contractTypeRef)}
+                            disabled={state.isEditMode && !state.isEditingEnabled}
+                          />
                         </FormGroup>
                       </Col>
                     </Row>
@@ -2680,7 +2574,7 @@ const Contract = () => {
                   </div>
 
                   {/* Vertical Separator Line */}
-                  <div 
+                  <div
                     className="vertical-separator"
                     style={{
                       position: "absolute",
@@ -2692,7 +2586,7 @@ const Contract = () => {
                       zIndex: 1
                     }}
                   ></div>
-                    <style>{`
+                  <style>{`
                       @media (max-width: 768px) {
                         .vertical-separator {
                           display: none !important;
@@ -2882,7 +2776,7 @@ const Contract = () => {
                             type="text"
                             name="DeliveryPort"
                             id="DeliveryPort"
-                            value={getFieldValue("DeliveryPort") }
+                            value={getFieldValue("DeliveryPort")}
                             onChange={handleInputChange}
                             className="form-control form-control-sm py-1"
                             placeholder="Enter delivery port"
@@ -3070,31 +2964,31 @@ const Contract = () => {
                           >
                             Deposit Date
                           </Label>
-                                                      <input
-                              type="date"
-                              name="AdvDate"
-                              id="AdvDate"
-                              value={formatDateForInput(getFieldValue("AdvDate"))}
-                              onChange={handleInputChange}
-                              className="form-control form-control-sm py-1"
-                              ref={advDateRef}
-                              onKeyDown={e => handleKeyDown(e, note6Ref)}
-                              disabled={state.isEditMode && !state.isEditingEnabled}
-                            />
-                          </FormGroup>
-                        </Col>
-                      </Row>
+                          <input
+                            type="date"
+                            name="AdvDate"
+                            id="AdvDate"
+                            value={formatDateForInput(getFieldValue("AdvDate"))}
+                            onChange={handleInputChange}
+                            className="form-control form-control-sm py-1"
+                            ref={advDateRef}
+                            onKeyDown={e => handleKeyDown(e, note6Ref)}
+                            disabled={state.isEditMode && !state.isEditingEnabled}
+                          />
+                        </FormGroup>
+                      </Col>
+                    </Row>
 
-                      <Row>
+                    <Row>
                       <Col lg={4}>
-                  <Input
-                    type="text"
-                    value={state.DiffAmt || "0.00"}
-                    readOnly
-                    className={`form-control-sm ${parseFloat(state.DiffAmt || 0) > 0 ? 'text-danger fw-bold' : parseFloat(state.DiffAmt || 0) < 0 ? 'text-success fw-bold' : ''}`}
-                  />
-                </Col>
-                      </Row>
+                        <Input
+                          type="text"
+                          value={state.DiffAmt || "0.00"}
+                          readOnly
+                          className={`form-control-sm ${parseFloat(state.DiffAmt || 0) > 0 ? 'text-danger fw-bold' : parseFloat(state.DiffAmt || 0) < 0 ? 'text-success fw-bold' : ''}`}
+                        />
+                      </Col>
+                    </Row>
                   </div>
 
                   {/* Clear float and add Notes section below both columns */}
@@ -3221,7 +3115,7 @@ const Contract = () => {
                             placeholder="Write a Note  "
                             ref={note5Ref}
                             onKeyDown={e => {
-                              console.log("Enter key pressed",e.key)
+                              console.log("Enter key pressed", e.key)
                               if (e.key == "Enter") {
                                 console.log("Enter key pressed")
                                 e.preventDefault()
@@ -3230,8 +3124,8 @@ const Contract = () => {
                                   saveButtonRef.current.focus()
                                 }
                               } else {
-                              handleNoteKeyDown(e, "Note5")
-                              handleDropdownKeyDown(e, "Note5")
+                                handleNoteKeyDown(e, "Note5")
+                                handleDropdownKeyDown(e, "Note5")
                               }
                             }}
                             autoComplete="off"
@@ -3254,29 +3148,29 @@ const Contract = () => {
                     <i className="bx bx-truck me-2"></i>
                     Lifting Details
 
-                  
+
                   </h6>
 
                   <span>
-                     <select
-                            name="LiftingLedger"
-                            id="LiftingLedger"
-                            value={getFieldValue("LiftingLedger")}
-                            onChange={handleInputChange}
-                            onKeyDown={e => handleDropdownKeyDown(e, "LiftingLedger")}
-                            className="form-control form-control-sm py-1"
-                            style={{ width: "200px", maxWidth: "200px" , height: "30px", fontWeight: "bold"}}
-                            disabled={state.isEditMode && !state.isEditingEnabled}
-                          >
-                            <option value="">Select Lifting</option>
-                            {state.PartyAccountArray.map(type => (
-                              <option key={type.Id} value={type.Id}>
-                                {type.Name}
-                              </option>
-                            ))}
-                          </select> 
-                          </span>
-                  
+                    <select
+                      name="LiftingLedger"
+                      id="LiftingLedger"
+                      value={getFieldValue("LiftingLedger")}
+                      onChange={handleInputChange}
+                      onKeyDown={e => handleDropdownKeyDown(e, "LiftingLedger")}
+                      className="form-control form-control-sm py-1"
+                      style={{ width: "200px", maxWidth: "200px", height: "30px", fontWeight: "bold" }}
+                      disabled={state.isEditMode && !state.isEditingEnabled}
+                    >
+                      <option value="">Select Lifting</option>
+                      {state.PartyAccountArray.map(type => (
+                        <option key={type.Id} value={type.Id}>
+                          {type.Name}
+                        </option>
+                      ))}
+                    </select>
+                  </span>
+
 
                   {/* Compact Lifting Table */}
                   <div className="table-container mb-2">
@@ -3433,14 +3327,14 @@ const Contract = () => {
                                     placeholder="DD-MM-YYYY"
                                     data-placeholder="DD-MM-YYYY"
                                     disabled={state.isEditMode && !state.isEditingEnabled}
-                                    style={{ 
-                                      color: "#000000", 
+                                    style={{
+                                      color: "#000000",
                                       backgroundColor: "#ffffff",
                                       position: "relative"
                                     }}
                                   />
                                   {!row.Date1 && (
-                                    <span 
+                                    <span
                                       className="lifting-date-hint d-md-none"
                                       style={{
                                         position: "absolute",
@@ -3594,16 +3488,15 @@ const Contract = () => {
                       <FormGroup>
                         <Label
                           className="form-label-sm text-muted"
-                          style={{ fontSize: "0.65rem" , fontWeight: "bold" }}
+                          style={{ fontSize: "0.65rem", fontWeight: "bold" }}
                         >
                           Contract Qty
                         </Label>
                         <div
-                          className={`form-control-sm py-1 ${
-                            state.totalLiftingQty > state.contractQty
-                              ? "bg-warning"
-                              : "bg-light"
-                          }`}
+                          className={`form-control-sm py-1 ${state.totalLiftingQty > state.contractQty
+                            ? "bg-warning"
+                            : "bg-light"
+                            }`}
                         >
                           {state.contractQty || state.Qty || "0.00"}
                         </div>
@@ -3613,16 +3506,15 @@ const Contract = () => {
                       <FormGroup>
                         <Label
                           className="form-label-sm text-muted"
-                          style={{ fontSize: "0.65rem" , fontWeight: "bold" }}
+                          style={{ fontSize: "0.65rem", fontWeight: "bold" }}
                         >
                           Total Lifting
                         </Label>
                         <div
-                          className={`form-control-sm py-1 ${
-                            state.totalLiftingQty > state.contractQty
-                              ? "bg-warning"
-                              : "bg-light"
-                          }`}
+                          className={`form-control-sm py-1 ${state.totalLiftingQty > state.contractQty
+                            ? "bg-warning"
+                            : "bg-light"
+                            }`}
                         >
                           {state.totalLiftingQty || "0.00"}
                         </div>
@@ -3632,7 +3524,7 @@ const Contract = () => {
                       <FormGroup>
                         <Label
                           className="form-label-sm text-muted"
-                          style={{ fontSize: "0.65rem" , fontWeight: "bold" }}
+                          style={{ fontSize: "0.65rem", fontWeight: "bold" }}
                         >
                           Pending
                         </Label>
@@ -3640,7 +3532,7 @@ const Contract = () => {
                           {Math.max(
                             0,
                             (state.contractQty || state.Qty || 0) -
-                              (state.totalLiftingQty || 0)
+                            (state.totalLiftingQty || 0)
                           ).toFixed(2)}
                         </div>
                       </FormGroup>
@@ -3649,7 +3541,7 @@ const Contract = () => {
                       <FormGroup>
                         <Label
                           className="form-label-sm text-muted"
-                          style={{ fontSize: "0.65rem" , fontWeight: "bold"   }}
+                          style={{ fontSize: "0.65rem", fontWeight: "bold" }}
                         >
                           Diff. Amt
                         </Label>
@@ -3658,13 +3550,12 @@ const Contract = () => {
                           name="DiffAmt"
                           value={state.DiffAmt || "0.00"}
                           onChange={handleInputChange}
-                          className={`form-control-sm py-1 ${
-                            parseFloat(state.DiffAmt || 0) < 0
-                              ? "text-success"
-                              : parseFloat(state.DiffAmt || 0) > 0
+                          className={`form-control-sm py-1 ${parseFloat(state.DiffAmt || 0) < 0
+                            ? "text-success"
+                            : parseFloat(state.DiffAmt || 0) > 0
                               ? "text-danger"
                               : ""
-                          }`}
+                            }`}
                           placeholder="0.00"
                           readOnly
                           disabled={state.isEditMode && !state.isEditingEnabled}
@@ -3680,7 +3571,7 @@ const Contract = () => {
                         <Label
                           for="BackSellerCNo"
                           className="form-label-sm"
-                          style={{ fontSize: "0.65rem" , fontWeight: "bold" }}
+                          style={{ fontSize: "0.65rem", fontWeight: "bold" }}
                         >
                           Back Seller CNo
                         </Label>
@@ -3816,42 +3707,12 @@ const Contract = () => {
 
                     <button
                       type="button"
-                      className="btn btn-outline-primary btn-sm action-btn"
-                      onClick={handleMailSeller}
+                      className="btn btn-danger btn-sm action-btn"
+                      onClick={handlePDFExport}
                     >
-                      <i className="bx bx-envelope"></i>
-                      <span className="d-none d-md-inline ms-1">Mail Seller</span>
-                      <span className="d-inline d-md-none ms-1">M.Sel</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-outline-primary btn-sm action-btn"
-                      onClick={handleMailBuyer}
-                    >
-                      <i className="bx bx-envelope"></i>
-                      <span className="d-none d-md-inline ms-1">Mail Buyer</span>
-                      <span className="d-inline d-md-none ms-1">M.Buy</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-outline-success btn-sm action-btn"
-                      onClick={handleWhatsAppSeller}
-                    >
-                      <i className="bx bxl-whatsapp"></i>
-                      <span className="d-none d-md-inline ms-1">WA Seller</span>
-                      <span className="d-inline d-md-none ms-1">W.Sel</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-outline-success btn-sm action-btn"
-                      onClick={handleWhatsAppBuyer}
-                    >
-                      <i className="bx bxl-whatsapp"></i>
-                      <span className="d-none d-md-inline ms-1">WA Buyer</span>
-                      <span className="d-inline d-md-none ms-1">W.Buy</span>
+                      <i className="bx bxs-file-pdf"></i>
+                      <span className="d-none d-md-inline ms-1">PDF</span>
+                      <span className="d-inline d-md-none ms-1">PDF</span>
                     </button>
                   </div>
                 </div>
@@ -3920,7 +3781,7 @@ const Contract = () => {
               className="form-control-sm"
             />
           </FormGroup>
-          
+
         </ModalBody>
         <ModalFooter>
           <Button color="secondary" onClick={toggleSellerModal}>
@@ -4009,6 +3870,29 @@ const Contract = () => {
             onClick={() => handleSaveNewCommodity("commodity")}
           >
             Save
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Share PDF Modal */}
+      <Modal isOpen={showSharePDFModal} toggle={() => setShowSharePDFModal(false)} className="modal-sm" centered>
+        <ModalHeader toggle={() => setShowSharePDFModal(false)} className="bg-primary text-white pb-2 pt-2 border-bottom-0">
+          <h5 className="modal-title text-white">Share PDF</h5>
+        </ModalHeader>
+        <ModalBody className="text-center pt-4 pb-4">
+          <div className="mb-3">
+            <i className="bx bxs-file-pdf text-danger" style={{ fontSize: "3rem" }}></i>
+          </div>
+          <h6>Contract PDF Ready</h6>
+          <p className="text-muted small mb-0">PDF has been generated successfully.</p>
+        </ModalBody>
+        <ModalFooter className="border-top-0 d-flex justify-content-center pb-3">
+          <Button color="secondary" className="btn-sm px-4" onClick={() => setShowSharePDFModal(false)}>
+            Close
+          </Button>
+          <Button color="primary" className="btn-sm px-4 action-btn" onClick={handleSharePDFClick}>
+            <i className="bx bx-share-alt me-1"></i>
+            Share File
           </Button>
         </ModalFooter>
       </Modal>

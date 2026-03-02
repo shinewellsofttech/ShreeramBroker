@@ -2,7 +2,7 @@ import { API_WEB_URLS, getGlobalOptions as getCachedGlobalOptions, getDefaultFin
 import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { Fn_GetReport, Fn_FillListData } from 'store/Functions';
-import { Card, CardBody, Col, Container, Row, Table, Input, Modal, ModalHeader, ModalBody, ModalFooter, Button, Label, Spinner } from 'reactstrap';
+import { Card, CardBody, Table, Input, Modal, ModalHeader, ModalBody, ModalFooter, Button, Label, Spinner } from 'reactstrap';
 import { Filter } from 'react-feather';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -14,6 +14,15 @@ import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont';
 import { toast } from 'react-toastify';
 import useColumnResize from '../../helpers/useColumnResize'
 import '../../helpers/columnResize.css'
+import useFilterLayout from '../../helpers/useFilterLayout'
+import '../../helpers/filterLayout.css'
+
+const FILTER_DEFAULTS = [
+    { id: 'dates',  defaultWidth: 205 },
+    { id: 'ledger', defaultWidth: 90  },
+    { id: 'excel',  defaultWidth: 72  },
+    { id: 'pdf',    defaultWidth: 65  },
+];
 
 function BrokerageCalculation() {
     const dispatch = useDispatch();
@@ -61,6 +70,17 @@ function BrokerageCalculation() {
     // Checkbox selection state
     const [selectedRows, setSelectedRows] = useState([]);
     const [selectAll, setSelectAll] = useState(false);
+
+    // ─── Filter Layout (resizable / gap-adjustable) ───────────────────────────
+    const {
+        filterOrder,
+        filterWidths,
+        gap: filterGap,
+        setGap: setFilterGap,
+        handleFilterResizeMouseDown,
+        resetLayout,
+    } = useFilterLayout('brokerageCalculation_filters', FILTER_DEFAULTS);
+    // ─── End Filter Layout ──────────────────────────────────────────────────────
 
     // PDF Remarks Modal (same as ReminderData)
     const [showRemarksModal, setShowRemarksModal] = useState(false);
@@ -1107,11 +1127,101 @@ const getDalaliData = async () => {
         }
     };
 
+    // ─── Dynamic Filter Renderers ──────────────────────────────────────────────
+    const renderFilterContent = (filterId) => {
+        switch (filterId) {
+            case 'dates':
+                return (
+                    <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap", height: "28px", width: "100%" }}>
+                        <div style={{ flex: 1, height: '28px' }}>
+                            <DatePicker
+                                selected={state.FromDate ? new Date(state.FromDate) : null}
+                                onChange={(date) => handleDateChange('FromDate', date)}
+                                disabled={isLoadingDetailed}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="From Date"
+                                className="form-control form-control-sm custom-datepicker w-100"
+                                openToDate={new Date()}
+                                portalId="root-portal"
+                                popperPlacement="bottom-start"
+                            />
+                        </div>
+                        <span style={{ fontSize: "0.6rem", fontWeight: "500", color: "#1976D2", margin: "0 3px", flexShrink: 0 }}>To</span>
+                        <div style={{ flex: 1, height: '28px' }}>
+                            <DatePicker
+                                selected={state.ToDate ? new Date(state.ToDate) : null}
+                                onChange={(date) => handleDateChange('ToDate', date)}
+                                disabled={isLoadingDetailed}
+                                dateFormat="dd/MM/yyyy"
+                                placeholderText="To Date"
+                                className="form-control form-control-sm custom-datepicker w-100"
+                                openToDate={new Date()}
+                                portalId="root-portal"
+                                popperPlacement="bottom-start"
+                            />
+                        </div>
+                    </div>
+                );
+            case 'ledger':
+                return (
+                    <div
+                        onClick={openLedgerModal}
+                        style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "28px", padding: "2px 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}
+                    >
+                        <span>{selectedLedgerIds && selectedLedgerIds.length > 0 ? `${selectedLedgerIds.length} selected` : "Ledger"}</span>
+                        <i className="fas fa-chevron-down ms-2"></i>
+                    </div>
+                );
+            case 'excel':
+                return (
+                    <Button color="success" outline onClick={handleExcelExport} disabled={isLoadingDetailed || !filteredData || filteredData.length === 0}
+                        style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem', whiteSpace: 'nowrap', height: '28px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <i className="fas fa-file-excel me-1" style={{ fontSize: '13px' }}></i>Excel
+                    </Button>
+                );
+            case 'pdf':
+                return (
+                    <Button color="danger" outline onClick={handlePDFExport} disabled={isLoadingDetailed || !filteredData || filteredData.length === 0}
+                        style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem', whiteSpace: 'nowrap', height: '28px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <i className="fas fa-file-pdf me-1" style={{ fontSize: '13px' }}></i>PDF
+                    </Button>
+                );
+            default:
+                return null;
+        }
+    };
+
+    const renderFilterBar = () => (
+        <>
+            {filterOrder.map(filterId => (
+                <div
+                    key={filterId}
+                    data-filter-id={filterId}
+                    style={{ width: `${filterWidths[filterId] || 100}px`, flexShrink: 0, position: "relative" }}
+                >
+                    <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                        <div style={{ flex: 1, overflow: "hidden" }}>
+                            {renderFilterContent(filterId)}
+                        </div>
+                    </div>
+                    <div className="filter-resize-handle" onMouseDown={e => handleFilterResizeMouseDown(e, filterId)} onTouchStart={e => handleFilterResizeMouseDown(e, filterId)} />
+                </div>
+            ))}
+            <div className="filter-gap-control" style={{ marginLeft: "4px" }}>
+                <button onClick={() => setFilterGap(filterGap - 2)} title="Decrease gap">−</button>
+                <span>{filterGap}</span>
+                <button onClick={() => setFilterGap(filterGap + 2)} title="Increase gap">+</button>
+            </div>
+            <button className="filter-reset-btn" onClick={resetLayout} title="Reset layout">
+                <i className="fas fa-undo" style={{ fontSize: "0.5rem" }}></i>
+            </button>
+        </>
+    );
+    // ─── End Dynamic Filter ────────────────────────────────────────────────────
+
   return (
-    <div className="brokerage-calculation-wrapper" style={{ paddingTop: '36px' }}>
-        <Container fluid style={{ padding: 0, margin: 0 }}>
-            <Row style={{ margin: 0 }}>
-                <Col lg={12} style={{ padding: 0, margin: 0 }}>
+    <div className="brokerage-calculation-wrapper" style={{ paddingTop: '36px', width: '100%', margin: 0, padding: 0, paddingTop: '36px' }}>
+        <div style={{ width: '100%', padding: 0, margin: 0 }}>
                     <Card className="shadow-sm border-0" style={{ flexShrink: 0, marginBottom: '0.5rem', margin: 0, borderRadius: 0 }}>
                         <div className="bg-primary text-white py-2 px-3" style={{ borderRadius: 0 }}>
                             <h6 className="mb-0 d-flex align-items-center justify-content-between flex-wrap" style={{ gap: '6px' }}>
@@ -1161,132 +1271,13 @@ const getDalaliData = async () => {
                                 </div>
                             </h6>
                         </div>
-                        <CardBody className="py-2 px-3 brokerage-card-body" style={{ position: 'relative', overflow: 'visible', padding: '0.5rem' }}>
-                            <div style={{ overflowX: "auto", overflowY: "visible", minHeight: '32px' }}>
-                                <Row className="align-items-end" style={{ flexWrap: "nowrap", minWidth: "fit-content", gap: 0, margin: 0, marginBottom: '4px' }}>
-                                    <Col xs="auto" style={{ flex: "0 0 auto", padding: 0, margin: 0 }}>
-                                        <div style={{ width: '85px' }}>
-                                            <DatePicker
-                                                selected={state.FromDate ? new Date(state.FromDate) : null}
-                                                onChange={(date) => handleDateChange('FromDate', date)}
-                                                disabled={isLoadingDetailed}
-                                                dateFormat="dd/MM/yyyy"
-                                                placeholderText="From Date"
-                                                className="form-control form-control-sm custom-datepicker"
-                                                openToDate={new Date()}
-                                                portalId="root-portal"
-                                                popperPlacement="bottom-start"
-                                                style={{
-                                                    fontSize: '0.7rem',
-                                                    height: '28px',
-                                                    padding: '0 4px',
-                                                    lineHeight: '20px',
-                                                    backgroundColor: '#E3F2FD',
-                                                    border: '1px solid #2196F3',
-                                                    borderRadius: '0.25rem',
-                                                    color: '#333',
-                                                    boxSizing: 'border-box',
-                                                    display: 'block'
-                                                }}
-                                            />
-                                        </div>
-                                    </Col>
-                                    <Col xs="auto" style={{ flex: "0 0 auto", display: 'flex', alignItems: 'flex-end', padding: '0 0.5rem', margin: 0, paddingBottom: '2px' }}>
-                                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>To</span>
-                                    </Col>
-                                    <Col xs="auto" style={{ flex: "0 0 auto", padding: 0, margin: 0 }}>
-                                        <div style={{ width: '85px' }}>
-                                            <DatePicker
-                                                selected={state.ToDate ? new Date(state.ToDate) : null}
-                                                onChange={(date) => handleDateChange('ToDate', date)}
-                                                disabled={isLoadingDetailed}
-                                                dateFormat="dd/MM/yyyy"
-                                                placeholderText="To Date"
-                                                className="form-control form-control-sm custom-datepicker"
-                                                openToDate={new Date()}
-                                                portalId="root-portal"
-                                                popperPlacement="bottom-start"
-                                                style={{
-                                                    fontSize: '0.7rem',
-                                                    height: '28px',
-                                                    padding: '0 4px',
-                                                    lineHeight: '20px',
-                                                    backgroundColor: '#E3F2FD',
-                                                    border: '1px solid #2196F3',
-                                                    borderRadius: '0.25rem',
-                                                    color: '#333',
-                                                    boxSizing: 'border-box',
-                                                    display: 'block'
-                                                }}
-                                            />
-                                        </div>
-                                    </Col>
-                                    <Col xs="auto" style={{ flex: "0 0 auto", padding: 0, margin: 0 }}>
-                                        <div
-                                            onClick={openLedgerModal}
-                                            style={{
-                                                backgroundColor: "#E3F2FD",
-                                                color: "#333",
-                                                border: "1px solid #2196F3",
-                                                borderRadius: "6px",
-                                                height: "28px",
-                                                padding: "2px 8px",
-                                                fontSize: "0.65rem",
-                                                cursor: "pointer",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                minWidth: "80px",
-                                                maxWidth: "80px"
-                                            }}
-                                        >
-                                            <span>
-                                                {selectedLedgerIds && selectedLedgerIds.length > 0
-                                                    ? `${selectedLedgerIds.length} selected`
-                                                    : "Ledger"}
-                                            </span>
-                                            <i className="fas fa-chevron-down ms-2"></i>
-                                        </div>
-                                    </Col>
-                                    <Col xs="auto" style={{ flex: "0 0 auto", padding: 0, margin: 0 }}>
-                                        <Button
-                                            color="success"
-                                            outline
-                                            onClick={handleExcelExport}
-                                            disabled={isLoadingDetailed || !filteredData || filteredData.length === 0}
-                                            className="d-flex align-items-center"
-                                            style={{
-                                                fontSize: '0.7rem',
-                                                padding: '0.25rem 0.5rem',
-                                                whiteSpace: 'nowrap',
-                                                height: '28px'
-                                            }}
-                                        >
-                                            <i className="fas fa-file-excel me-1" style={{ fontSize: '14px' }}></i>
-                                            Excel
-                                        </Button>
-                                    </Col>
-                                    <Col xs="auto" style={{ flex: "0 0 auto", padding: 0, margin: 0 }}>
-                                        <Button
-                                            color="danger"
-                                            outline
-                                            onClick={handlePDFExport}
-                                            disabled={isLoadingDetailed || !filteredData || filteredData.length === 0}
-                                            className="d-flex align-items-center"
-                                            style={{
-                                                fontSize: '0.7rem',
-                                                padding: '0.25rem 0.5rem',
-                                                whiteSpace: 'nowrap',
-                                                height: '28px'
-                                            }}
-                                        >
-                                            <i className="fas fa-file-pdf me-1" style={{ fontSize: '14px' }}></i>
-                                            PDF
-                                        </Button>
-                                    </Col>
-                                </Row>
+                        <CardBody className="py-2 px-3 brokerage-card-body" style={{ position: 'relative', padding: '0.5rem' }}>
+                            <div style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: 'touch', scrollbarWidth: 'thin' }}>
+                                <div className="d-flex align-items-center filter-theme-light" style={{ backgroundColor: "#E3F2FD", padding: "4px", borderRadius: "4px", flexWrap: "nowrap", width: "max-content", minWidth: "100%", border: "1px solid #2196F3", gap: `${filterGap}px`, marginBottom: '4px' }}>
+                                    {renderFilterBar()}
+                                </div>
                             </div>
-                            
+
                             {/* Loading Overlay for Detailed View */}
                             {isLoadingDetailed && (
                                 <div style={{
@@ -1581,9 +1572,7 @@ const getDalaliData = async () => {
                             )}
                         </CardBody>
                     </Card>
-                </Col>
-            </Row>
-        </Container>
+        </div>
 
         {/* Scroll to Top Button for Table */}
         {showScrollTop && filteredData.length > 0 && (
@@ -1631,6 +1620,12 @@ const getDalaliData = async () => {
         
         {/* Checkbox orange color and table row styles */}
         <style>{`
+            .datepicker-wrapper-inline,
+            .datepicker-wrapper-inline .react-datepicker-wrapper,
+            .datepicker-wrapper-inline .react-datepicker__input-container {
+                display: inline-block !important;
+                width: 90px !important;
+            }
             /* Date input styling - Light blue background and blue border (same as ContractRegister) */
             input[type="date"] {
                 background-color: #E3F2FD !important;
@@ -1690,6 +1685,9 @@ const getDalaliData = async () => {
             /* Desktop: top margin 36px */
             .brokerage-calculation-wrapper {
                 padding-top: 36px !important;
+                width: 100% !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
             }
             /* Mobile - Remove top margin and all padding/margin from sides */
             @media (max-width: 768px) {

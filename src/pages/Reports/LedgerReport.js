@@ -3432,7 +3432,7 @@ const LedgerReport = () => {
                   const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
                   const lorry = lift.LorryNo || "-";
                   const bno = lift.BNo || lift.InvoiceNo || "-";
-                  const lRate = lift.LastRate || "-";
+                  const lRate = lift.Rate != null ? lift.Rate : "-";
                   return `${date} | ${lorry} | ${bno} | ${qty} | ${lRate}`;
                 }).join('\n');
               } else { liftingString = "-"; }
@@ -3794,7 +3794,7 @@ const LedgerReport = () => {
                 const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
                 const lorry = lift.LorryNo || "-";
                 const bno = lift.BNo || lift.InvoiceNo || "-";
-                const lRate = lift.LastRate || "-";
+                const lRate = lift.Rate != null ? lift.Rate : "-";
                 return `${date} | ${lorry} | ${bno} | ${qty} | ${lRate}`;
               }).join('\n');
             } else { liftingString = "-"; }
@@ -4675,7 +4675,7 @@ const LedgerReport = () => {
                                                               <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LorryNo || '-'}</td>
                                                               <td style={{ padding: '2px', textAlign: 'left' }}>{lift.BNo || lift.InvoiceNo || '-'}</td>
                                                               <td style={{ padding: '2px', textAlign: 'left' }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
-                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LastRate || '-'}</td>
+                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.Rate != null ? lift.Rate : '-'}</td>
                                                             </tr>
                                                           ))}
                                                         </tbody>

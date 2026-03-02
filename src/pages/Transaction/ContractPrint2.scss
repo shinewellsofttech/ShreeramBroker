@@ -7,7 +7,7 @@
     padding: 0;
     background: white;
   }
-  
+
   .contract-print-container {
     margin: 0;
     padding: 0;
@@ -38,9 +38,9 @@
   overflow: visible;
   width: 100%;
   position: relative;
- 
+
   // Ensure proper spacing between multiple contracts
-  .contract-document + .contract-document {
+  .contract-document+.contract-document {
     margin-top: 160px;
   }
 
@@ -85,18 +85,18 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     border-radius: 4px;
     page-break-inside: avoid;
-    page-break-after: always;
+    page-break-after: auto;
     overflow: visible;
     min-height: auto;
     height: auto;
     width: 100%;
-    margin-bottom: 200px;
+    margin-bottom: 0px;
 
     // Contract Header - Exact match to image
     .contract-header {
       position: relative;
-      margin-bottom: 15px;
-      padding-bottom: 15px;
+      margin-bottom: 2px;
+      padding-bottom: 0px;
 
       // Top Section - Shree and Jurisdiction
       .header-top-section {
@@ -208,7 +208,7 @@
       .blue-separator {
         height: 2px;
         background-color: #0000ff;
-        margin-bottom: 8px;
+        margin-bottom: 2px;
         width: 100%;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
