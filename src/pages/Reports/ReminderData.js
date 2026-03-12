@@ -1,5 +1,5 @@
 import { API_WEB_URLS } from 'constants/constAPI';
-import React, { useEffect, useState, useMemo, useCallback } from 'react'
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { Fn_GetReport } from 'store/Functions';
 import { useDispatch, useSelector } from 'react-redux';
 import DatePicker from "react-datepicker";
@@ -26,6 +26,8 @@ import jsPDF from 'jspdf';
 import { applyPlugin as applyAutoTable } from 'jspdf-autotable';
 applyAutoTable(jsPDF);
 import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont';
+import useColumnResize from '../../helpers/useColumnResize';
+import '../../helpers/columnResize.css';
 
 function ReminderData({ hideDateFilters = false, onTotalChange }) {
   const dispatch = useDispatch();
@@ -65,6 +67,89 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
     key: null,
     direction: 'asc'
   });
+
+  // ─── Column Resize Feature ─────────────────────────────────────
+  const { columnWidths, handleResizeMouseDown } = useColumnResize('reminderData_columnWidths', {
+    Checkbox: 40,
+    ContractNo: 100,
+    Date: 85,
+    Seller: 120,
+    Buyer: 120,
+    Item: 90,
+    Deposit: 80,
+    Qty: 70,
+    Rate: 70,
+    Period: 120,
+  });
+
+  // ─── Column Reorder Feature ─────────────────────────────────────
+  const RD_ALL_COLUMNS = [
+    { key: 'Checkbox', label: '', sortKey: null },
+    { key: 'ContractNo', label: 'Contract No', sortKey: 'ContractNo' },
+    { key: 'Date', label: 'Date', sortKey: 'ContractDate' },
+    { key: 'Seller', label: 'Seller', sortKey: 'SellerLedger' },
+    { key: 'Buyer', label: 'Buyer', sortKey: 'BuyerLedger' },
+    { key: 'Item', label: 'Item', sortKey: 'ItemTypeName' },
+    { key: 'Deposit', label: 'Deposit', sortKey: 'AdvPayment' },
+    { key: 'Qty', label: 'Qty', sortKey: 'Qty' },
+    { key: 'Rate', label: 'Rate', sortKey: 'Rate' },
+    { key: 'Period', label: 'Period', sortKey: null },
+  ];
+  const RD_DEFAULT_ORDER = RD_ALL_COLUMNS.map(c => c.key);
+  const RD_ORDER_KEY = 'reminderData_columnOrder';
+
+  const rdGetInitialOrder = () => {
+    try {
+      const saved = localStorage.getItem(RD_ORDER_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return [
+          ...parsed.filter(k => RD_DEFAULT_ORDER.includes(k)),
+          ...RD_DEFAULT_ORDER.filter(k => !parsed.includes(k)),
+        ];
+      }
+    } catch (e) {}
+    return [...RD_DEFAULT_ORDER];
+  };
+
+  const [rdColumnOrder, setRdColumnOrder] = useState(rdGetInitialOrder);
+  const [rdDragOverKey, setRdDragOverKey] = useState(null);
+  const rdDragSrcRef = useRef(null);
+
+  const rdSaveOrder = (order) => {
+    try { localStorage.setItem(RD_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
+  };
+
+  const rdDragStart = (e, key) => {
+    rdDragSrcRef.current = key;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', key);
+  };
+  const rdDragOver = (e, key) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (key !== rdDragSrcRef.current) setRdDragOverKey(key);
+  };
+  const rdDrop = (e, targetKey) => {
+    e.preventDefault();
+    const srcKey = rdDragSrcRef.current;
+    if (!srcKey || srcKey === targetKey) { setRdDragOverKey(null); return; }
+    setRdColumnOrder(prev => {
+      const next = [...prev];
+      const from = next.indexOf(srcKey);
+      const to = next.indexOf(targetKey);
+      if (from === -1 || to === -1) return prev;
+      next.splice(from, 1);
+      next.splice(to, 0, srcKey);
+      rdSaveOrder(next);
+      return next;
+    });
+    setRdDragOverKey(null);
+    rdDragSrcRef.current = null;
+  };
+  const rdDragEnd = () => { setRdDragOverKey(null); rdDragSrcRef.current = null; };
+  const rdVisibleColumns = () => rdColumnOrder.map(k => RD_ALL_COLUMNS.find(c => c.key === k)).filter(Boolean);
+  // ─── End Column Reorder Feature ──────────────────────────────────
 
   const API_URL_Get = `${API_WEB_URLS.ReminderData}/0/token`;
 
@@ -248,19 +333,31 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
     return filtered;
   }, [state.FillArray, sortConfig]);
 
-  // Function to determine row background color based on lifted quantity
-  const getRowBackgroundColor = (row) => {
-    const qty = parseFloat(row.Qty) || 0;
-    const totalLifted = parseFloat(row.TotalLifted) || 0;
-    
-    if (qty > 0 && totalLifted === qty) {
-      return '#d1ecf1'; // Light blue - fully lifted
-    } else if (qty > 0 && totalLifted === 0) {
-      return '#e9ecef'; // Light grey - not lifted
-    } else if (qty > 0 && totalLifted > 0 && totalLifted < qty) {
-      return '#f8d7da'; // Light red - partially lifted
-    }
-    return 'white'; // Default white background
+  // Filter color mapping
+  const filterColors = {
+    dep:     { bg: '#e74c3c', light: '#fdedec', row: '#f5b7b1', text: '#fff' },  // Red
+    shipMon: { bg: '#3498db', light: '#ebf5fb', row: '#aed6f1', text: '#fff' },  // Blue
+    lift:    { bg: '#f39c12', light: '#fef9e7', row: '#f9e79f', text: '#fff' },  // Orange
+    shipPd:  { bg: '#27ae60', light: '#eafaf1', row: '#a9dfbf', text: '#fff' },  // Green
+  };
+
+  // Get the active filter's row color (stronger tint matching the box color)
+  const getRowBackgroundColor = (index) => {
+    const evenOdd = index % 2 === 0;
+    if (dep) return evenOdd ? filterColors.dep.row : filterColors.dep.light;
+    if (shipMon) return evenOdd ? filterColors.shipMon.row : filterColors.shipMon.light;
+    if (lift) return evenOdd ? filterColors.lift.row : filterColors.lift.light;
+    if (shipPd) return evenOdd ? filterColors.shipPd.row : filterColors.shipPd.light;
+    return 'white';
+  };
+
+  // Get active filter bg color for header
+  const getActiveHeaderColor = () => {
+    if (dep) return filterColors.dep.bg;
+    if (shipMon) return filterColors.shipMon.bg;
+    if (lift) return filterColors.lift.bg;
+    if (shipPd) return filterColors.shipPd.bg;
+    return '#343a40';
   };
 
   // Function to get Period value
@@ -305,13 +402,6 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
       totalParties: uniqueParties.size,
     };
   }, [state.FillArray, onTotalChange]);
-
-  const getSortIcon = (columnKey) => {
-    if (sortConfig.key !== columnKey) {
-      return <span style={{ opacity: 0.3 }}>⇅</span>;
-    }
-    return sortConfig.direction === 'asc' ? '↑' : '↓';
-  };
 
   // Get unique row identifier
   const getRowIdentifier = (row) => {
@@ -390,13 +480,14 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
           period: getPeriodValue(row)
         });
 
-        // Apply background color based on lifted status
-        const bgColor = getRowBackgroundColor(row);
+        // Apply background color based on active filter
+        const bgColor = getRowBackgroundColor(index);
         if (bgColor !== 'white') {
           const colorMap = {
-            '#d1ecf1': 'D1ECF1', // Light blue
-            '#e9ecef': 'E9ECEF', // Light grey
-            '#f8d7da': 'F8D7DA'  // Light red
+            '#f5b7b1': 'F5B7B1', '#fdedec': 'FDEDEC', // Red (Dep)
+            '#aed6f1': 'AED6F1', '#ebf5fb': 'EBF5FB', // Blue (ShipMon)
+            '#f9e79f': 'F9E79F', '#fef9e7': 'FEF9E7', // Orange (Lift)
+            '#a9dfbf': 'A9DFBF', '#eafaf1': 'EAFAF1', // Green (ShipPd)
           };
           dataRow.fill = {
             type: 'pattern',
@@ -603,7 +694,7 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
           <Col style={hideDateFilters ? { margin: 0, padding: 0 } : {}}>
             <Card style={hideDateFilters ? { margin: 0, border: 'none' } : {}}>
               <Card.Body style={hideDateFilters ? { margin: 0, padding: 0 } : {}}>
-                {/* Filters Section */}
+                {/* Filters Section - Date Pickers Only */}
                 {!hideDateFilters && (
                   <div style={{ overflowX: "auto", overflowY: "hidden" }}>
                     <Row className="g-2 align-items-end mb-3" style={{ flexWrap: "nowrap", minWidth: "fit-content" }}>
@@ -641,179 +732,11 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
                           </div>
                         </Form.Group>
                       </Col>
-                      <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                        <Form.Group>
-                          <div className="d-flex gap-2" style={{ whiteSpace: 'nowrap' }}>
-                            <Form.Check
-                              type="checkbox"
-                              label="Dep"
-                              checked={dep}
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDep(true);
-                                setShipMon(false);
-                                setLift(false);
-                                setShipPd(false);
-                              }}
-                              onChange={() => {}}
-                              id="filter-dep"
-                              className="form-check-sm"
-                            />
-                            <Form.Check
-                              type="checkbox"
-                              label="ShipMon"
-                              checked={shipMon}
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDep(false);
-                                setShipMon(true);
-                                setLift(false);
-                                setShipPd(false);
-                              }}
-                              onChange={() => {}}
-                              id="filter-shipmon"
-                              className="form-check-sm"
-                            />
-                            <Form.Check
-                              type="checkbox"
-                              label="Lift"
-                              checked={lift}
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDep(false);
-                                setShipMon(false);
-                                setLift(true);
-                                setShipPd(false);
-                              }}
-                              onChange={() => {}}
-                              id="filter-lift"
-                              className="form-check-sm"
-                            />
-                            <Form.Check
-                              type="checkbox"
-                              label="ShipPd"
-                              checked={shipPd}
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDep(false);
-                                setShipMon(false);
-                                setLift(false);
-                                setShipPd(true);
-                              }}
-                              onChange={() => {}}
-                              id="filter-shippd"
-                              className="form-check-sm"
-                            />
-                          </div>
-                        </Form.Group>
-                      </Col>
-                      <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                        <Form.Group>
-                          <div className="d-flex gap-2 align-items-end" style={{ marginLeft: '20px' }}>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={handlePDFExport}
-                              disabled={selectedRows.length === 0}
-                              title="Export to PDF"
-                            >
-                              <FileText size={16} />
-                            </Button>
-                          </div>
-                        </Form.Group>
-                      </Col>
                     </Row>
                   </div>
                 )}
                 
-                {/* Filter Type Only (when date filters are hidden) */}
-                {hideDateFilters && (
-                  <div style={{ overflowX: "auto", overflowY: "hidden", margin: 0, padding: 0, marginBottom: '0.5rem' }}>
-                    <Row className="g-2 align-items-end" style={{ flexWrap: "nowrap", minWidth: "fit-content", margin: 0 }}>
-                      <Col xs="auto" style={{ flex: "0 0 auto", margin: 0, padding: 0 }}>
-                        <Form.Group>
-                          <div className="d-flex gap-2" style={{ whiteSpace: 'nowrap' }}>
-                            <Form.Check
-                              type="checkbox"
-                              label="Dep"
-                              checked={dep}
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDep(true);
-                                setShipMon(false);
-                                setLift(false);
-                                setShipPd(false);
-                              }}
-                              onChange={() => {}}
-                              id="filter-dep-dashboard"
-                              className="form-check-sm"
-                            />
-                            <Form.Check
-                              type="checkbox"
-                              label="ShipMon"
-                              checked={shipMon}
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDep(false);
-                                setShipMon(true);
-                                setLift(false);
-                                setShipPd(false);
-                              }}
-                              onChange={() => {}}
-                              id="filter-shipmon-dashboard"
-                              className="form-check-sm"
-                            />
-                            <Form.Check
-                              type="checkbox"
-                              label="Lift"
-                              checked={lift}
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDep(false);
-                                setShipMon(false);
-                                setLift(true);
-                                setShipPd(false);
-                              }}
-                              onChange={() => {}}
-                              id="filter-lift-dashboard"
-                              className="form-check-sm"
-                            />
-                            <Form.Check
-                              type="checkbox"
-                              label="ShipPd"
-                              checked={shipPd}
-                              onClick={e => {
-                                e.stopPropagation();
-                                setDep(false);
-                                setShipMon(false);
-                                setLift(false);
-                                setShipPd(true);
-                              }}
-                              onChange={() => {}}
-                              id="filter-shippd-dashboard"
-                              className="form-check-sm"
-                            />
-                          </div>
-                        </Form.Group>
-                      </Col>
-                      <Col xs="auto" style={{ flex: "0 0 auto", margin: 0, padding: 0 }}>
-                        <Form.Group>
-                          <div className="d-flex gap-2 align-items-end" style={{ marginLeft: '20px' }}>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={handlePDFExport}
-                              disabled={selectedRows.length === 0}
-                              title="Export to PDF"
-                            >
-                              <FileText size={16} />
-                            </Button>
-                          </div>
-                        </Form.Group>
-                      </Col>
-                    </Row>
-                  </div>
-                )}
+                {/* No separate filter section when date filters are hidden - filters are in the fixed bottom bar */}
 
                 {/* Table Section */}
                 {loading && (
@@ -824,153 +747,109 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
                 )}
 
                 {showTable && !loading && filteredTableData.length > 0 && (
-                  <div className="table-responsive" style={{ overflowX: 'auto', width: '100%', margin: hideDateFilters ? 0 : undefined, padding: hideDateFilters ? 0 : undefined }}>
-                    <Table striped bordered hover style={{ minWidth: '100%', whiteSpace: 'nowrap', margin: hideDateFilters ? 0 : undefined, padding: hideDateFilters ? 0 : undefined }}>
-                      <thead className="table-dark">
+                  <div className="table-responsive" style={{ overflowX: 'auto', width: '100%', margin: hideDateFilters ? 0 : undefined, padding: hideDateFilters ? 0 : undefined, paddingBottom: '130px' }}>
+                    <Table bordered hover className="resizable-table" style={{ tableLayout: 'fixed', minWidth: '100%', whiteSpace: 'nowrap', margin: hideDateFilters ? 0 : undefined, padding: hideDateFilters ? 0 : undefined }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                         <tr>
-                          <th className="text-center" style={{ width: '50px' }}>
-                            <Form.Check
-                              type="checkbox"
-                              checked={selectedRows.length === filteredTableData.length && filteredTableData.length > 0}
-                              onClick={e => {
-                                e.stopPropagation();
-                                if (selectedRows.length === filteredTableData.length && filteredTableData.length > 0) {
-                                  setSelectedRows([]);
-                                } else {
-                                  setSelectedRows(filteredTableData.map(row => getRowIdentifier(row)));
-                                }
+                          {rdVisibleColumns().map((col) => (
+                            <th
+                              key={col.key}
+                              className={`text-center align-middle${rdDragOverKey === col.key ? ' col-drag-over' : ''}`}
+                              draggable={col.key !== 'Checkbox'}
+                              onDragStart={col.key !== 'Checkbox' ? (e => rdDragStart(e, col.key)) : undefined}
+                              onDragOver={e => rdDragOver(e, col.key)}
+                              onDrop={e => rdDrop(e, col.key)}
+                              onDragEnd={rdDragEnd}
+                              style={{
+                                backgroundColor: getActiveHeaderColor(),
+                                color: 'white',
+                                height: '25px',
+                                fontSize: '0.7rem',
+                                fontWeight: '600',
+                                padding: col.key === 'Checkbox' ? '6px 12px' : '0 8px',
+                                width: `${columnWidths[col.key] || 80}px`,
+                                minWidth: '30px',
+                                cursor: col.key === 'Checkbox' ? 'default' : 'grab',
+                                border: '1.5px solid black',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                userSelect: 'none',
                               }}
-                              onChange={() => {}}
-                            />
-                          </th>
-                          <th 
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleSort('ContractNo')}
-                          >
-                            Contract No {getSortIcon('ContractNo')}
-                          </th>
-                          <th 
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleSort('ContractDate')}
-                          >
-                            Date {getSortIcon('ContractDate')}
-                          </th>
-                          <th 
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleSort('SellerLedger')}
-                          >
-                            Seller {getSortIcon('SellerLedger')}
-                          </th>
-                          <th 
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleSort('BuyerLedger')}
-                          >
-                            Buyer {getSortIcon('BuyerLedger')}
-                          </th>
-                          <th 
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleSort('ItemTypeName')}
-                          >
-                            Item {getSortIcon('ItemTypeName')}
-                          </th>
-                          <th 
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleSort('AdvPayment')}
-                          >
-                            Deposit {getSortIcon('AdvPayment')}
-                          </th>
-                          <th 
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleSort('Qty')}
-                          >
-                            Qty {getSortIcon('Qty')}
-                          </th>
-                          <th 
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleSort('Rate')}
-                          >
-                            Rate {getSortIcon('Rate')}
-                          </th>
-                          <th>Period</th>
+                              onClick={() => col.sortKey && handleSort(col.sortKey)}
+                            >
+                              {col.key === 'Checkbox' ? (
+                                <div className="d-flex justify-content-center align-items-center">
+                                  <Form.Check
+                                    type="checkbox"
+                                    checked={selectedRows.length === filteredTableData.length && filteredTableData.length > 0}
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      if (selectedRows.length === filteredTableData.length && filteredTableData.length > 0) {
+                                        setSelectedRows([]);
+                                      } else {
+                                        setSelectedRows(filteredTableData.map(row => getRowIdentifier(row)));
+                                      }
+                                    }}
+                                    onChange={() => {}}
+                                    title="Select All"
+                                    style={{ margin: 0 }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="d-flex justify-content-between align-items-center" style={{ pointerEvents: 'none' }}>
+                                  <div className="d-flex align-items-center gap-1">
+                                    <span>{col.label}</span>
+                                    <i className="fas fa-grip-vertical" style={{ fontSize: '0.4rem', opacity: 0.5 }} title="Drag to reorder"></i>
+                                  </div>
+                                  {col.sortKey && (
+                                    <div className="d-flex flex-column" style={{ marginLeft: '4px' }}>
+                                      <i className={`fas fa-sort-up ${sortConfig.key === col.sortKey && sortConfig.direction === 'asc' ? 'text-warning' : 'text-light'}`} style={{ fontSize: '0.5rem', lineHeight: '0.5rem' }}></i>
+                                      <i className={`fas fa-sort-down ${sortConfig.key === col.sortKey && sortConfig.direction === 'desc' ? 'text-warning' : 'text-light'}`} style={{ fontSize: '0.5rem', lineHeight: '0.5rem' }}></i>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <div className="col-resize-handle" onMouseDown={e => handleResizeMouseDown(e, col.key)} onTouchStart={e => handleResizeMouseDown(e, col.key)} />
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
                         {filteredTableData.map((row, index) => {
                           const rowId = getRowIdentifier(row);
+                          const bgColor = getRowBackgroundColor(index);
                           return (
-                          <tr
-                            key={rowId || index}
-                            style={{ backgroundColor: getRowBackgroundColor(row) }}
-                          >
-                            <td className="text-center">
-                              <Form.Check
-                                type="checkbox"
-                                checked={selectedRows.includes(rowId)}
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  handleRowSelect(rowId);
-                                }}
-                                onChange={() => {}}
-                                style={{ margin: 0 }}
-                              />
-                            </td>
-                            <td
-                              className="fw-semibold align-middle"
-                              style={{
-                                backgroundColor: getRowBackgroundColor(row),
-                                padding: "2px 4px",
-                                border: "1.5px solid black !important",
-                                fontSize: "0.7rem",
-                              }}
-                            >
-                              {row.ContractNo ? (
-                                <Button
-                                  variant="link"
-                                  className="p-0 text-decoration-none"
-                                  onClick={(event) => {
-                                    const button = event.target.closest("button");
-                                    const originalText = button.innerHTML;
-                                    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
-                                    button.disabled = true;
-
-                                    setTimeout(() => {
-                                      openEditContractModal(row);
-                                      button.innerHTML = originalText;
-                                      button.disabled = false;
-                                    }, 300);
-                                  }}
-                                  title={`Click to edit contract: ${row.ContractNo}`}
-                                  tabIndex={0}
-                                  role="button"
-                                  aria-label={`Edit contract ${row.ContractNo}`}
-                                  style={{ fontSize: "0.7rem" }}
-                                >
-                                  <i className="fas fa-edit text-primary me-1"></i>
-                                  <span>{row.ContractNo}</span>
-                                </Button>
-                              ) : (
-                                "-"
-                              )}
-                            </td>
-                            <td>
-                              {row.ContractDate
-                                ? new Date(row.ContractDate).toLocaleDateString()
-                                : '-'}
-                            </td>
-                            <td style={{ color: '#E91E63', fontWeight: 'bold' }}>
-                              {row.SellerLedger || '-'}
-                            </td>
-                            <td style={{ color: '#2196F3', fontWeight: 'bold' }}>
-                              {row.BuyerLedger || '-'}
-                            </td>
-                            <td>{row.ItemTypeName || '-'}</td>
-                            <td>{row.AdvPayment || '0'}</td>
-                            <td>{row.Qty || '0'}</td>
-                            <td>₹{row.Rate || '0'}</td>
-                            <td style={{ color: '#FF0000', fontWeight: 'bold' }}>
-                              {getPeriodValue(row)}
-                            </td>
-                          </tr>
+                            <tr key={rowId || index} style={{ border: '1.5px solid black' }}>
+                              {rdVisibleColumns().map((col) => {
+                                const s = { backgroundColor: bgColor, padding: '2px 4px', border: '1.5px solid black', fontSize: '0.7rem' };
+                                switch (col.key) {
+                                  case 'Checkbox': return (
+                                    <td key={col.key} className="text-center align-middle" style={s}>
+                                      <Form.Check type="checkbox" checked={selectedRows.includes(rowId)} onClick={e => { e.stopPropagation(); handleRowSelect(rowId); }} onChange={() => {}} style={{ margin: 0 }} />
+                                    </td>
+                                  );
+                                  case 'ContractNo': return (
+                                    <td key={col.key} className="fw-semibold align-middle" style={s}>
+                                      {row.ContractNo ? (
+                                        <Button variant="link" className="p-0 text-decoration-none" onClick={event => { const button = event.target.closest('button'); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false; }, 300); }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button" style={{ fontSize: '0.7rem' }}>
+                                          <i className="fas fa-edit text-primary me-1"></i>
+                                          <span>{row.ContractNo}</span>
+                                        </Button>
+                                      ) : '-'}
+                                    </td>
+                                  );
+                                  case 'Date': return <td key={col.key} className="text-center align-middle" style={s}>{row.ContractDate ? new Date(row.ContractDate).toLocaleDateString('en-GB') : '-'}</td>;
+                                  case 'Seller': return <td key={col.key} className="align-middle" style={{ ...s, color: '#E91E63', fontWeight: 'bold' }}>{row.SellerLedger || '-'}</td>;
+                                  case 'Buyer': return <td key={col.key} className="align-middle" style={{ ...s, color: '#2196F3', fontWeight: 'bold' }}>{row.BuyerLedger || '-'}</td>;
+                                  case 'Item': return <td key={col.key} className="align-middle" style={s}>{row.ItemTypeName || '-'}</td>;
+                                  case 'Deposit': return <td key={col.key} className="text-end fw-semibold align-middle" style={s}>{row.AdvPayment || '0'}</td>;
+                                  case 'Qty': return <td key={col.key} className="text-end fw-semibold align-middle" style={s}>{row.Qty || '0'}</td>;
+                                  case 'Rate': return <td key={col.key} className="text-end fw-semibold align-middle" style={s}>₹{row.Rate || '0'}</td>;
+                                  case 'Period': return <td key={col.key} className="align-middle" style={{ ...s, color: '#FF0000', fontWeight: 'bold' }}>{getPeriodValue(row)}</td>;
+                                  default: return null;
+                                }
+                              })}
+                            </tr>
                           );
                         })}
                       </tbody>
@@ -988,6 +867,189 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
           </Col>
         </Row>
       </Container>
+
+      {/* Fixed Bottom Filter Bar - just above the NavigationFooter */}
+      <style>{`
+        .reminder-filter-bar {
+          position: fixed;
+          bottom: 75px;
+          left: 0;
+          right: 0;
+          z-index: 1040;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 0px;
+          background-color: #1a1a2e;
+          padding: 6px 10px;
+          box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+        }
+        @media (min-width: 769px) {
+          .reminder-filter-bar {
+            bottom: 0;
+          }
+        }
+      `}</style>
+      <div className="reminder-filter-bar">
+        {/* Dep Box */}
+        <div
+          onClick={() => { setDep(true); setShipMon(false); setLift(false); setShipPd(false); }}
+          style={{
+            flex: 1,
+            maxWidth: '20%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '8px 12px',
+            backgroundColor: dep ? filterColors.dep.bg : '#444',
+            color: '#fff',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontWeight: dep ? '700' : '500',
+            fontSize: '0.85rem',
+            transition: 'all 0.2s ease',
+            border: dep ? '2px solid #fff' : '2px solid transparent',
+            margin: '0 3px',
+            boxShadow: dep ? '0 0 8px ' + filterColors.dep.bg : 'none',
+          }}
+        >
+          <span style={{
+            width: '16px', height: '16px', borderRadius: '3px',
+            border: '2px solid #fff',
+            backgroundColor: dep ? '#fff' : 'transparent',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '10px', color: filterColors.dep.bg, fontWeight: 'bold',
+          }}>{dep ? '✓' : ''}</span>
+          Dep
+        </div>
+
+        {/* ShipMon Box */}
+        <div
+          onClick={() => { setDep(false); setShipMon(true); setLift(false); setShipPd(false); }}
+          style={{
+            flex: 1,
+            maxWidth: '20%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '8px 12px',
+            backgroundColor: shipMon ? filterColors.shipMon.bg : '#444',
+            color: '#fff',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontWeight: shipMon ? '700' : '500',
+            fontSize: '0.85rem',
+            transition: 'all 0.2s ease',
+            border: shipMon ? '2px solid #fff' : '2px solid transparent',
+            margin: '0 3px',
+            boxShadow: shipMon ? '0 0 8px ' + filterColors.shipMon.bg : 'none',
+          }}
+        >
+          <span style={{
+            width: '16px', height: '16px', borderRadius: '3px',
+            border: '2px solid #fff',
+            backgroundColor: shipMon ? '#fff' : 'transparent',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '10px', color: filterColors.shipMon.bg, fontWeight: 'bold',
+          }}>{shipMon ? '✓' : ''}</span>
+          ShipMon
+        </div>
+
+        {/* Lift Box */}
+        <div
+          onClick={() => { setDep(false); setShipMon(false); setLift(true); setShipPd(false); }}
+          style={{
+            flex: 1,
+            maxWidth: '20%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '8px 12px',
+            backgroundColor: lift ? filterColors.lift.bg : '#444',
+            color: '#fff',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontWeight: lift ? '700' : '500',
+            fontSize: '0.85rem',
+            transition: 'all 0.2s ease',
+            border: lift ? '2px solid #fff' : '2px solid transparent',
+            margin: '0 3px',
+            boxShadow: lift ? '0 0 8px ' + filterColors.lift.bg : 'none',
+          }}
+        >
+          <span style={{
+            width: '16px', height: '16px', borderRadius: '3px',
+            border: '2px solid #fff',
+            backgroundColor: lift ? '#fff' : 'transparent',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '10px', color: filterColors.lift.bg, fontWeight: 'bold',
+          }}>{lift ? '✓' : ''}</span>
+          Lift
+        </div>
+
+        {/* ShipPd Box */}
+        <div
+          onClick={() => { setDep(false); setShipMon(false); setLift(false); setShipPd(true); }}
+          style={{
+            flex: 1,
+            maxWidth: '20%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '8px 12px',
+            backgroundColor: shipPd ? filterColors.shipPd.bg : '#444',
+            color: '#fff',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontWeight: shipPd ? '700' : '500',
+            fontSize: '0.85rem',
+            transition: 'all 0.2s ease',
+            border: shipPd ? '2px solid #fff' : '2px solid transparent',
+            margin: '0 3px',
+            boxShadow: shipPd ? '0 0 8px ' + filterColors.shipPd.bg : 'none',
+          }}
+        >
+          <span style={{
+            width: '16px', height: '16px', borderRadius: '3px',
+            border: '2px solid #fff',
+            backgroundColor: shipPd ? '#fff' : 'transparent',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '10px', color: filterColors.shipPd.bg, fontWeight: 'bold',
+          }}>{shipPd ? '✓' : ''}</span>
+          ShipPd
+        </div>
+
+        {/* PDF Box */}
+        <div
+          onClick={() => { if (selectedRows.length > 0) handlePDFExport(); }}
+          style={{
+            flex: 1,
+            maxWidth: '20%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '8px 12px',
+            backgroundColor: selectedRows.length > 0 ? '#8e44ad' : '#555',
+            color: '#fff',
+            borderRadius: '6px',
+            cursor: selectedRows.length > 0 ? 'pointer' : 'not-allowed',
+            fontWeight: '600',
+            fontSize: '0.85rem',
+            transition: 'all 0.2s ease',
+            border: '2px solid transparent',
+            margin: '0 3px',
+            opacity: selectedRows.length > 0 ? 1 : 0.6,
+          }}
+        >
+          <FileText size={16} />
+          PDF
+        </div>
+      </div>
 
       {/* Remarks Modal for PDF Export */}
       <Modal
