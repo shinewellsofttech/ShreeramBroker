@@ -20,7 +20,7 @@ import { API_WEB_URLS } from "constants/constAPI"
 import { Fn_GetReport, Fn_DisplayData, Fn_FillListData } from "store/Functions"
 import { useDispatch, useSelector } from "react-redux"
 import { toast } from "react-toastify"
-import { Search, Printer, X, LogOut, Calendar, Filter, Download, FileText } from "react-feather"
+import { Search, Printer, X, LogOut, Calendar, Filter, Download, FileText, Clock } from "react-feather"
 import EditContract from "../Transaction/EditContract"
 import "./ContractRegister.scss"
 import * as XLSX from 'xlsx'
@@ -235,6 +235,7 @@ function ContractRegister() {
   const [state, setState] = useState({
     FillArray: [],
     LedgerArray: [],
+    HistoryData: [],  
     MonthArray: [],
     FromDate: globalDates.fromDate,
     ToDate: globalDates.toDate,
@@ -453,8 +454,10 @@ function ContractRegister() {
   }, [state.FillArray, shouldRefreshItemOptions])
 
   const API_URL_Get = `${API_WEB_URLS.ContractEditDataApp}/0/token`
+  const API_URL_History = `${API_WEB_URLS.ContractHHistory}/0/token`
   const API_URL_PeriodData = `${API_WEB_URLS.PeriodData}/0/token`
   const API_URL = API_WEB_URLS.MASTER + "/0/token/PartyAccount"
+
   const API_URL1 = API_WEB_URLS.MASTER + "/0/token/ItemMaster"
   const API_URL2 = API_WEB_URLS.MASTER + "/0/token/MonthMaster"
 
@@ -872,6 +875,47 @@ function ContractRegister() {
     } catch (error) {
       console.error("Print preparation error:", error)
       toast.error("Error preparing print data. Please try again.")
+    }
+  }
+
+  // History toggle: console selected rows' data and toggle button color
+  const [historyOn, setHistoryOn] = useState(false)
+
+  // Group history entries by F_ContractH for quick lookup
+  const historyByContract = useMemo(() => {
+    const map = {}
+    if (historyOn && state.HistoryData && state.HistoryData.length > 0) {
+      state.HistoryData.forEach(h => {
+        const key = h.F_ContractH
+        if (!map[key]) map[key] = []
+        map[key].push(h)
+      })
+    }
+    return map
+  }, [historyOn, state.HistoryData])
+
+  const handleHistoryToggle = async () => {
+    const next = !historyOn
+    setHistoryOn(next)
+    if (next) {
+      const selectedData = (filteredTableData || []).filter(row => selectedRows.includes(row.Id))
+      console.log('History - selected data:', selectedData)
+      const idsCsv = selectedRows.join(',')
+      if (idsCsv) {
+        const vFormData = new FormData()
+        vFormData.append("ContractIds", idsCsv)
+        await Fn_GetReport(
+          dispatch,
+          setState,
+          "HistoryData",
+          API_URL_History,
+          { arguList: { id: 0, formData: vFormData } },
+          true
+        )
+      }
+    } else {
+      // Clear history data when toggled off
+      setState(prev => ({ ...prev, HistoryData: [] }))
     }
   }
 
@@ -2047,8 +2091,10 @@ function ContractRegister() {
                         <tbody>
                           {filteredTableData.map((row, i) => {
                             const bgColor = getRowBackgroundColor(row);
+                            const historyRows = historyOn ? (historyByContract[row.Id] || []) : [];
                             return (
-                              <tr key={i} style={{ border: "1.5px solid black !important" }}>
+                              <React.Fragment key={i}>
+                              <tr style={{ border: "1.5px solid black !important" }}>
                                 {crVisibleColumns().map((col) => {
                                   const s = { backgroundColor: bgColor, padding: "2px 4px", border: "1.5px solid black !important", fontSize: "0.7rem" }
                                   switch (col.key) {
@@ -2082,6 +2128,33 @@ function ContractRegister() {
                                   }
                                 })}
                               </tr>
+                              {/* History rows for this contract */}
+                              {historyRows.map((h, hi) => {
+                                const hStyle = { backgroundColor: hi % 2 === 0 ? '#FFCCCB' : '#FFD8A8', padding: "2px 4px", border: "1.5px solid black !important", fontSize: "0.65rem", fontStyle: "italic" }
+                                return (
+                                  <tr key={`h-${row.Id}-${h.HistoryId}`} style={{ border: "1.5px solid black !important" }}>
+                                    {crVisibleColumns().map((col) => {
+                                      switch (col.key) {
+                                        case 'Checkbox': return <td key={col.key} style={hStyle}></td>
+                                        case 'ContractNo': return <td key={col.key} className="fw-semibold align-middle" style={hStyle}>{h.ContractNo || '-'}</td>
+                                        case 'Date': return <td key={col.key} className="text-center align-middle" style={hStyle}>{h.Date ? new Date(h.Date).toLocaleDateString('en-GB') : '-'}</td>
+                                        case 'Seller': return <td key={col.key} className="align-middle" style={hStyle}>{h.SellerLedgerName || '-'}</td>
+                                        case 'Buyer': return <td key={col.key} className="align-middle" style={hStyle}>{h.BuyerLedgerName || '-'}</td>
+                                        case 'Item': return <td key={col.key} className="align-middle" style={hStyle}>{row.ItemTypeName || '-'}</td>
+                                        case 'Period': return <td key={col.key} className="align-middle" style={hStyle}>{getPeriodValue(row)}</td>
+                                        case 'Qty': return <td key={col.key} className="text-end fw-semibold align-middle" style={hStyle}>{h.Qty ? parseFloat(h.Qty).toLocaleString() : '0'}</td>
+                                        case 'Rate': return <td key={col.key} className="text-end fw-semibold align-middle" style={hStyle}>{h.Rate ? parseFloat(h.Rate).toLocaleString() : '0'}</td>
+                                        case 'LiftedQty': return <td key={col.key} className="text-end fw-semibold align-middle" style={hStyle}>{'-'}</td>
+                                        case 'AdvPayment': return <td key={col.key} className="text-end fw-semibold align-middle" style={hStyle}>{h.AdvPayment ? parseFloat(h.AdvPayment).toLocaleString() : '0'}</td>
+                                        case 'AdvDate': return <td key={col.key} className="text-center align-middle" style={hStyle}>{h.AdvDate ? new Date(h.AdvDate).toLocaleDateString('en-GB') : '-'}</td>
+                                        case 'Vessel': return <td key={col.key} className="align-middle" style={hStyle}>{h.Vessel || '-'}</td>
+                                        default: return null
+                                      }
+                                    })}
+                                  </tr>
+                                )
+                              })}
+                              </React.Fragment>
                             );
                           })}
                         </tbody>
@@ -2117,7 +2190,24 @@ function ContractRegister() {
                         }}
                       >
                         <div className="d-flex align-items-center" style={{ flex: "0 0 auto" }}>
-                          <i className="fas fa-filter me-2"></i>
+                          <Button
+                            variant="light"
+                            size="sm"
+                            onClick={handleHistoryToggle}
+                            title="History"
+                            style={{
+                              height: "32px",
+                              padding: "4px 8px",
+                              backgroundColor: historyOn ? 'red' : 'transparent',
+                              color: historyOn ? '#fff' : 'inherit',
+                              border: historyOn ? '1px solid red' : 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <Clock size={14} />
+                          </Button>
                         </div>
 
                         {renderFilterBar(bottomFilterOrder, bottomFilterWidths, bottomGap, setBottomGap, bottomDragStart, bottomDragOver, bottomDrop, bottomDragEnd, bottomTouchDragStart, bottomTouchDragMove, bottomTouchDragEnd, bottomResizeDown, resetBottomLayout, renderBottomFilterContent)}
