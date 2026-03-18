@@ -977,6 +977,26 @@ const Contract = () => {
         apiId = 0
       }
 
+      // Validate lifting quantity BEFORE saving
+      const contractQtyCheck = parseFloat(
+        getCurrentFormValue("Qty") || state.Qty || state.ContractArray?.[0]?.Qty || 0
+      )
+      const validLiftingRowsCheck = liftingRows.filter(
+        row => row.Date1 || row.LorryNo || row.BNo || row.Lifted || row.Rate1
+      )
+      const totalLiftingQtyCheck = validLiftingRowsCheck.reduce((sum, row) => {
+        return sum + parseFloat(row.Lifted || 0)
+      }, 0)
+      if (contractQtyCheck > 0 && totalLiftingQtyCheck > contractQtyCheck) {
+        setState(prev => ({
+          ...prev,
+          isProgress: false,
+          showLiftingAlert: true,
+          liftingAlertMessage: `Lifting quantity (${totalLiftingQtyCheck}) cannot exceed contract quantity (${contractQtyCheck}). Please adjust the lifting quantities.`,
+        }))
+        return
+      }
+
       // Create dynamic API URL with the correct ID
       const dynamicApiUrl = `${API_WEB_URLS.ContractH}/${apiId}/token`
 
@@ -1023,30 +1043,10 @@ const Contract = () => {
         }))
       }
 
-      // Get contract quantity for validation
-      const contractQty = parseFloat(
-        getCurrentFormValue("Qty") || state.Qty || state.ContractArray?.[0]?.Qty || 0
-      )
-
-      // Calculate total lifting quantity
+      // (Lifting qty already validated above before save)
       const validLiftingRows = liftingRows.filter(
         row => row.Date1 || row.LorryNo || row.BNo || row.Lifted || row.Rate1
       )
-
-      const totalLiftingQty = validLiftingRows.reduce((sum, row) => {
-        return sum + parseFloat(row.Lifted || 0)
-      }, 0)
-
-      // Validate lifting quantity
-      if (totalLiftingQty > contractQty) {
-        setState(prev => ({
-          ...prev,
-          isProgress: false,
-          showLiftingAlert: true,
-          liftingAlertMessage: `Lifting quantity (${totalLiftingQty}) cannot exceed contract quantity (${contractQty}). Please adjust the lifting quantities.`,
-        }))
-        return
-      }
 
       // Save lifting data with the response ID from ContractH in JSON format
       if (validLiftingRows.length > 0) {
@@ -3441,7 +3441,7 @@ const Contract = () => {
                                       handleRemoveLiftingRow(index)
                                     }
                                     disabled={
-                                      (liftingRows && liftingRows.length <= 7) ||
+                                      (liftingRows && liftingRows.length <= 1) ||
                                       (state.isEditMode && !state.isEditingEnabled)
                                     }
                                     title="Remove row"
@@ -3720,6 +3720,83 @@ const Contract = () => {
             </Row>
           </Form>
         </div>
+      </div>
+
+      {/* Mobile Floating Action Buttons - Right Side Fixed */}
+      <div
+        className="d-md-none"
+        style={{
+          position: 'fixed',
+          right: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 1050,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+        }}
+      >
+        <button
+          type="button"
+          className="btn btn-warning btn-sm"
+          onClick={handleEnableEditing}
+          title="Edit"
+          style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
+        >
+          <i className="bx bx-edit" style={{ fontSize: '1.1rem' }}></i>
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={handleUpdateExistingContract}
+          disabled={state.isProgress || (state.isEditMode && !state.isEditingEnabled)}
+          title="Save / Update"
+          style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
+        >
+          <i className={`bx ${state.isProgress ? 'bx-loader-alt bx-spin' : 'bx-save'}`} style={{ fontSize: '1.1rem' }}></i>
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-danger btn-sm"
+          onClick={handleDelete}
+          disabled={state.isEditMode && !state.isEditingEnabled}
+          title="Delete"
+          style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
+        >
+          <i className="bx bx-trash" style={{ fontSize: '1.1rem' }}></i>
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-info btn-sm"
+          onClick={handlePrint}
+          title="Print"
+          style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
+        >
+          <i className="bx bx-printer" style={{ fontSize: '1.1rem' }}></i>
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-dark btn-sm"
+          onClick={handleExit}
+          title="Exit"
+          style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
+        >
+          <i className="bx bx-exit" style={{ fontSize: '1.1rem' }}></i>
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-danger btn-sm"
+          onClick={handlePDFExport}
+          title="PDF"
+          style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
+        >
+          <i className="bx bxs-file-pdf" style={{ fontSize: '1.1rem' }}></i>
+        </button>
       </div>
 
       {/* Seller Modal */}

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Container, Row, Col, Card, CardBody, Button, Spinner, Badge
 } from "reactstrap";
-import { Eye, EyeOff, Copy, FileText, Calendar } from 'react-feather';
+import { Eye, EyeOff, Copy, FileText, Calendar, Bell } from 'react-feather';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -273,7 +273,7 @@ const Dashboard = props => {
                       
                       {/* Mobile: Show with labels in format "From: FromDate - To: ToDate | TQ: TotalQuantity" */}
                       <div className="d-md-none d-flex align-items-center gap-2" style={{ whiteSpace: 'nowrap', flexWrap: 'nowrap', overflow: 'visible' }}>
-                        <label className="mb-0 fw-semibold small text-muted" style={{ whiteSpace: 'nowrap' }}>From:</label>
+                        <Bell size={18} color="red" style={{ minWidth: '18px' }} />
                         <DatePicker
                           selected={fromDate}
                           onChange={(date) => {

@@ -392,6 +392,17 @@ function ContractRegister() {
           min-height: 44px !important;
           z-index: 20 !important;
         }
+
+        @media (max-width: 767px) {
+          [data-filter-id="checkboxes"] {
+            display: none !important;
+            width: 0 !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+          }
+        }
         
         .bottom-filter-scroll-container {
           -webkit-overflow-scrolling: touch !important;
@@ -1720,12 +1731,12 @@ function ContractRegister() {
       case 'checkboxes':
         return (
           <div
+            className="d-none d-md-flex"
             style={{
               border: "1px solid #2196F3",
               borderRadius: "4px",
               padding: "2px 1px",
               backgroundColor: "#E3F2FD",
-              display: "flex",
               alignItems: "center",
               flexWrap: "nowrap",
               gap: "0",
@@ -2086,6 +2097,27 @@ function ContractRegister() {
                           })}
                         </tbody>
                       </Table>
+                    </div>
+
+                    {/* Mobile-only: Checkbox strip just above bottom filters bar */}
+                    <div className="d-md-none" style={{ backgroundColor: '#fff', borderTop: '1px solid #dee2e6', borderBottom: '1px solid #dee2e6', padding: '3px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-around', flexShrink: 0, flexWrap: 'nowrap', gap: '4px', overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer', margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        <input type="checkbox" checked={notLifted} onChange={e => { setNotLifted(e.target.checked); setSelectedPeriods([]); }} style={{ width: '13px', height: '13px', accentColor: '#000', margin: 0 }} />
+                        <span style={{ fontSize: '0.7rem', color: '#000', fontWeight: 'bold' }}>Black</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: '700', background: '#e9ecef', color: '#000', borderRadius: '10px', padding: '0 5px' }}>{filteredTableData.filter(r => { const q = parseFloat(r.Qty)||0; const l = parseFloat(r.LiftedQuantity)||0; return q > 0 && l === 0; }).reduce((s,r) => s + (parseFloat(r.Qty)||0), 0).toLocaleString()}</span>
+                      </label>
+                      <span style={{ color: '#ccc', fontSize: '0.8rem', flexShrink: 0 }}>|</span>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer', margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        <input type="checkbox" checked={partialLift} onChange={e => { setPartialLift(e.target.checked); setSelectedPeriods([]); }} style={{ width: '13px', height: '13px', accentColor: '#dc3545', margin: 0 }} />
+                        <span style={{ fontSize: '0.7rem', color: '#dc3545', fontWeight: 'bold' }}>Red</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: '700', background: '#f8d7da', color: '#dc3545', borderRadius: '10px', padding: '0 5px' }}>{filteredTableData.filter(r => { const q = parseFloat(r.Qty)||0; const l = parseFloat(r.LiftedQuantity)||0; return q > 0 && l > 0 && l < q; }).reduce((s,r) => s + (parseFloat(r.Qty)||0), 0).toLocaleString()}</span>
+                      </label>
+                      <span style={{ color: '#ccc', fontSize: '0.8rem', flexShrink: 0 }}>|</span>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer', margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        <input type="checkbox" checked={fullLift} onChange={e => { setFullLift(e.target.checked); setSelectedPeriods([]); }} style={{ width: '13px', height: '13px', accentColor: '#0d6efd', margin: 0 }} />
+                        <span style={{ fontSize: '0.7rem', color: '#0d6efd', fontWeight: 'bold' }}>Blue</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: '700', background: '#d1ecf1', color: '#0d6efd', borderRadius: '10px', padding: '0 5px' }}>{filteredTableData.filter(r => { const q = parseFloat(r.Qty)||0; const l = parseFloat(r.LiftedQuantity)||0; return q > 0 && l === q; }).reduce((s,r) => s + (parseFloat(r.Qty)||0), 0).toLocaleString()}</span>
+                      </label>
                     </div>
 
                     {/* Bottom bar - Period, Commodity, PDF (resizable/reorderable like LedgerReport) */}
