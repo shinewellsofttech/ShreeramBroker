@@ -2962,17 +2962,26 @@ const EditContract = ({
       </div>
 
       {/* Mobile Floating Action Buttons - Right Side Fixed */}
+      <style>{`
+        @media (max-width: 767px) {
+          .mobile-fab-panel {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 14px !important;
+          }
+        }
+        @media (min-width: 768px) {
+          .mobile-fab-panel { display: none !important; }
+        }
+      `}</style>
       <div
-        className="d-md-none"
+        className="mobile-fab-panel"
         style={{
           position: 'fixed',
           right: '8px',
-          top: '50%',
+          top: '30%',
           transform: 'translateY(-50%)',
           zIndex: 1050,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
         }}
       >
         <button

@@ -2607,7 +2607,7 @@ const Contract = () => {
                       }
                     `}</style>
                     <Row className="g-2">
-                      <Col md={7}>
+                      <Col md={8}>
                         <FormGroup className="mb-1">
                           <Label
                             for="F_ContractLedger"
@@ -2616,50 +2616,41 @@ const Contract = () => {
                           >
                             Contract Type
                           </Label>
-                          <select
-                            name="F_ContractLedger"
-                            id="F_ContractLedger"
-                            value={getFieldValue("F_ContractLedger") || 0}
-                            onChange={handleInputChange}
-                            className="form-control form-control-sm py-1"
-                            ref={contractTypeRef}
-                            onKeyDown={e => {
-                              handleDropdownKeyDown(e, "F_ContractLedger")
-                              handleKeyDown(e, shipMonthRef)
-                            }}
-                            disabled={state.isEditMode && !state.isEditingEnabled}
-                          >
-                            <option value="">Select Contract Type</option>
-                            {state.TaxAccountArray.map(type => (
-                              <option key={type.Id} value={type.Id}>
-                                {type.Name}
-                              </option>
-                            ))}
-                          </select>
-                        </FormGroup>
-                      </Col>
-                      <Col md={1}>
-                        <FormGroup className="mb-1">
-                          <Label
-                            className="form-label-sm mb-1"
-                            style={{ fontSize: "0.65rem" }}
-                          >
-                            &nbsp;
-                          </Label>
-                          <Button
-                            color="primary"
-                            size="sm"
-                            onClick={toggleContractModal}
-                            disabled={state.isEditMode && !state.isEditingEnabled}
-                            style={{
-                              width: "100%",
-                              height: "28px",
-                              padding: "0",
-                              fontSize: "0.8rem",
-                            }}
-                          >
-                            +
-                          </Button>
+                          <div className="input-group input-group-sm">
+                            <select
+                              name="F_ContractLedger"
+                              id="F_ContractLedger"
+                              value={getFieldValue("F_ContractLedger") || 0}
+                              onChange={handleInputChange}
+                              className="form-control form-control-sm py-1"
+                              ref={contractTypeRef}
+                              onKeyDown={e => {
+                                handleDropdownKeyDown(e, "F_ContractLedger")
+                                handleKeyDown(e, shipMonthRef)
+                              }}
+                              disabled={state.isEditMode && !state.isEditingEnabled}
+                            >
+                              <option value="">Select Contract Type</option>
+                              {state.TaxAccountArray.map(type => (
+                                <option key={type.Id} value={type.Id}>
+                                  {type.Name}
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              color="primary"
+                              size="sm"
+                              onClick={toggleContractModal}
+                              disabled={state.isEditMode && !state.isEditingEnabled}
+                              style={{
+                                height: "28px",
+                                padding: "0 8px",
+                                fontSize: "0.8rem",
+                              }}
+                            >
+                              +
+                            </Button>
+                          </div>
                         </FormGroup>
                       </Col>
 
@@ -3723,17 +3714,26 @@ const Contract = () => {
       </div>
 
       {/* Mobile Floating Action Buttons - Right Side Fixed */}
+      <style>{`
+        @media (max-width: 767px) {
+          .mobile-fab-panel {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 14px !important;
+          }
+        }
+        @media (min-width: 768px) {
+          .mobile-fab-panel { display: none !important; }
+        }
+      `}</style>
       <div
-        className="d-md-none"
+        className="mobile-fab-panel"
         style={{
           position: 'fixed',
           right: '8px',
-          top: '50%',
+          top: '30%',
           transform: 'translateY(-50%)',
           zIndex: 1050,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
         }}
       >
         <button
@@ -3755,17 +3755,6 @@ const Contract = () => {
           style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
         >
           <i className={`bx ${state.isProgress ? 'bx-loader-alt bx-spin' : 'bx-save'}`} style={{ fontSize: '1.1rem' }}></i>
-        </button>
-
-        <button
-          type="button"
-          className="btn btn-danger btn-sm"
-          onClick={handleDelete}
-          disabled={state.isEditMode && !state.isEditingEnabled}
-          title="Delete"
-          style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
-        >
-          <i className="bx bx-trash" style={{ fontSize: '1.1rem' }}></i>
         </button>
 
         <button
