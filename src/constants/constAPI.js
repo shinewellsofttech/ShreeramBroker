@@ -41,6 +41,7 @@ export const API_WEB_URLS = {
   VoucherH : "VoucherH",
   ContractEditData : "ContractEditData",
   ContractEditDataApp : "ContractEditDataApp",
+  ContractHHistory : "ContractHHistory",
   ContractForLinkRegister : "ContractForLinkRegister",
   LedgerDalaliCalculation : "LedgerDalaliCalculation",
       ContractMultiPrint : "ContractMultiPrint",
