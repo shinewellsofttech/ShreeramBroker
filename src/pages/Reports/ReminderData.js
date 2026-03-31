@@ -335,7 +335,7 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
 
   // Filter color mapping
   const filterColors = {
-    dep:     { bg: '#e74c3c', light: '#fdedec', row: '#f5b7b1', text: '#fff' },  // Red
+    dep:     { bg: '#e88a6e', light: '#fdf0ec', row: '#f7c9bb', text: '#fff' },  // Light salmon/orange
     shipMon: { bg: '#3498db', light: '#ebf5fb', row: '#aed6f1', text: '#fff' },  // Blue
     lift:    { bg: '#f39c12', light: '#fef9e7', row: '#f9e79f', text: '#fff' },  // Orange
     shipPd:  { bg: '#27ae60', light: '#eafaf1', row: '#a9dfbf', text: '#fff' },  // Green
@@ -607,8 +607,9 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
         body,
         startY: 32,
         margin: { left: 14 },
-        styles: { fontSize: 8, font: 'NotoSansDevanagari' },
-        headStyles: { fillColor: [40, 167, 69] },
+        styles: { fontSize: 8.5, font: 'NotoSansDevanagari', fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.4, textColor: [0, 0, 0] },
+        headStyles: { fillColor: [40, 167, 69], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.5, fontSize: 9 },
+        bodyStyles: { fontStyle: 'bold', textColor: [0, 0, 0] },
         alternateRowStyles: { fillColor: [245, 245, 245] }
       });
 

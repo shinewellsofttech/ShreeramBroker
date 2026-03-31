@@ -137,18 +137,18 @@ function ContractRegister() {
   const TOP_FILTER_DEFAULTS = [
     { id: 'checkboxes', defaultWidth: 260 },
     { id: 'dates', defaultWidth: 210 },
-    { id: 'clear', defaultWidth: 60 },
-    { id: 'print', defaultWidth: 80 },
-    { id: 'excel', defaultWidth: 70 },
+    { id: 'summary', defaultWidth: 130 },
     { id: 'link', defaultWidth: 60 },
+    { id: 'excel', defaultWidth: 70 },
+    { id: 'clear', defaultWidth: 60 },
     { id: 'exit', defaultWidth: 60 },
-    { id: 'summary', defaultWidth: 250 },
   ];
 
   const BOTTOM_FILTER_DEFAULTS = [
     { id: 'period', defaultWidth: 130 },
     { id: 'ledger', defaultWidth: 130 },
     { id: 'commodity', defaultWidth: 130 },
+    { id: 'print', defaultWidth: 80 },
     { id: 'pdf', defaultWidth: 80 },
   ];
 
@@ -320,12 +320,15 @@ function ContractRegister() {
       .table th,
       .table td {
         border: 1.5px solid black !important;
+        font-weight: bold !important;
       }
       .table thead tr th {
         border: 1.5px solid black !important;
+        font-weight: 900 !important;
       }
       .table tbody tr td {
         border: 1.5px solid black !important;
+        font-weight: bold !important;
       }
       
       /* Remove all gaps between card sections */
@@ -428,6 +431,61 @@ function ContractRegister() {
       }
       .col-dragging {
         opacity: 0.5 !important;
+      }
+
+      /* Fix modals when Google Translate banner shifts the body (adds top offset) */
+      body.translated-ltr,
+      body.translated-rtl {
+        top: 0 !important;
+        position: static !important;
+      }
+
+      body.translated-ltr .modal,
+      body.translated-rtl .modal,
+      body[style*="top"] .modal {
+        top: 0 !important;
+        position: fixed !important;
+      }
+
+      body.translated-ltr .modal-backdrop,
+      body.translated-rtl .modal-backdrop,
+      body[style*="top"] .modal-backdrop {
+        top: 0 !important;
+        position: fixed !important;
+      }
+
+      /* Ensure Google Translate banner does not overlap modals */
+      .goog-te-banner-frame {
+        z-index: 9999 !important;
+      }
+      .skiptranslate {
+        z-index: 9999 !important;
+      }
+      .modal {
+        z-index: 10050 !important;
+      }
+      .modal-backdrop {
+        z-index: 10040 !important;
+      }
+      .modal-backdrop-high {
+        z-index: 10040 !important;
+      }
+
+      /* On mobile, reset body top offset from Google Translate so fixed layout is not broken */
+      @media (max-width: 768px) {
+        body[style*="top"] {
+          top: 0 !important;
+          position: relative !important;
+        }
+        body.translated-ltr,
+        body.translated-rtl {
+          top: 0 !important;
+        }
+        .skiptranslate iframe,
+        .goog-te-banner-frame {
+          position: absolute !important;
+          top: 0 !important;
+        }
       }
     `
     document.head.appendChild(style)
@@ -941,13 +999,13 @@ function ContractRegister() {
       return
     }
 
-    // Validate checkbox selection - Only Black (Not Lifted) should be selected
-    if (!notLifted) {
-      toast.warning("Please select Black checkbox (Not Lifted) for chain analysis")
+    // Validate checkbox selection - Black and/or Red should be selected, not Blue
+    if (!notLifted && !partialLift) {
+      toast.warning("Please select Black and/or Red checkbox for chain analysis")
       return
     }
-    if (partialLift || fullLift) {
-      toast.warning("Only Black checkbox should be selected. Please uncheck Red and Blue checkboxes")
+    if (fullLift) {
+      toast.warning("Please uncheck Blue checkbox for chain analysis")
       return
     }
 
@@ -1459,8 +1517,9 @@ function ContractRegister() {
         body,
         startY: 32,
         margin: { left: 14 },
-        styles: { font: 'NotoSansDevanagari', fontSize: 12 },
-        headStyles: { fillColor: [40, 167, 69] },
+        styles: { font: 'NotoSansDevanagari', fontSize: 12, fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.4, textColor: [0, 0, 0] },
+        headStyles: { fillColor: [40, 167, 69], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.5, fontSize: 13 },
+        bodyStyles: { fontStyle: 'bold', textColor: [0, 0, 0] },
         alternateRowStyles: { fillColor: [245, 245, 245] }
       })
 
@@ -1821,12 +1880,6 @@ function ContractRegister() {
             <X className="me-1" size={12} /> Clear
           </Button>
         );
-      case 'print':
-        return (
-          <Button variant="outline-primary" size="sm" onClick={handleMultiPrint} disabled={selectedRows.length === 0} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Printer className="me-1" size={12} /> Print {selectedRows.length > 0 ? `(${selectedRows.length})` : ''}
-          </Button>
-        );
       case 'excel':
         return (
           <Button variant="outline-success" size="sm" onClick={handleExcelExport} disabled={selectedRows.length === 0} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1835,7 +1888,7 @@ function ContractRegister() {
         );
       case 'link':
         return (
-          <Button variant="outline-info" size="sm" onClick={handleLink} disabled={selectedPeriods.length !== 1 || !notLifted || partialLift || fullLift} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }} title={selectedPeriods.length !== 1 ? "Select exactly one period" : (!notLifted || partialLift || fullLift) ? "Only Black checkbox should be selected" : "Analyze buyback chains"}>
+          <Button variant="outline-info" size="sm" onClick={handleLink} disabled={selectedPeriods.length !== 1 || (!notLifted && !partialLift) || fullLift} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }} title={selectedPeriods.length !== 1 ? "Select exactly one period" : (!notLifted && !partialLift) ? "Select Black and/or Red checkbox" : fullLift ? "Uncheck Blue checkbox" : "Analyze buyback chains"}>
             <i className="fas fa-link me-1" style={{ fontSize: '10px' }}></i> Link
           </Button>
         );
@@ -1859,9 +1912,6 @@ function ContractRegister() {
             height: '28px',
             width: '100%',
           }}>
-            <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.55rem' }}>Contracts:</span>
-            <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.55rem' }}>{selectedRows.length.toLocaleString()}</span>
-            <span style={{ color: '#0d6efd', fontSize: '0.55rem' }}>|</span>
             <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.55rem' }}>Qty:</span>
             <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.55rem' }}>
               {filteredTableData
@@ -1898,6 +1948,12 @@ function ContractRegister() {
             <span>{selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "") ? `${selectedItems.filter(item => item !== "").length} selected` : "Commodity"}</span>
             <i className="fas fa-chevron-down ms-2"></i>
           </div>
+        );
+      case 'print':
+        return (
+          <Button variant="outline-primary" size="sm" onClick={handleMultiPrint} disabled={selectedRows.length === 0} className="d-flex align-items-center shadow-sm" style={{ fontSize: "0.65rem", height: "32px", padding: "0 10px", width: "100%", justifyContent: "center" }}>
+            <Printer className="me-1" size={14} /> Print {selectedRows.length > 0 ? `(${selectedRows.length})` : ''}
+          </Button>
         );
       case 'pdf':
         return (
@@ -2270,7 +2326,8 @@ function ContractRegister() {
         onHide={closeItemModal}
         size="lg"
         centered
-        style={{ zIndex: 10000 }}
+        style={{ zIndex: 10050 }}
+        backdropClassName="modal-backdrop-high"
       >
         <ModalHeader className="bg-primary text-white">
           <div className="d-flex justify-content-between align-items-center w-100">
@@ -2381,7 +2438,8 @@ function ContractRegister() {
         onHide={closePeriodModal}
         size="lg"
         centered
-        style={{ zIndex: 10000 }}
+        style={{ zIndex: 10050 }}
+        backdropClassName="modal-backdrop-high"
       >
         <ModalHeader className="bg-primary text-white">
           <div className="d-flex justify-content-between align-items-center w-100">
@@ -2478,7 +2536,8 @@ function ContractRegister() {
         onHide={closeLedgerModal}
         size="lg"
         centered
-        style={{ zIndex: 10000 }}
+        style={{ zIndex: 10050 }}
+        backdropClassName="modal-backdrop-high"
       >
         <ModalHeader className="bg-primary text-white">
           <div className="d-flex justify-content-between align-items-center w-100">

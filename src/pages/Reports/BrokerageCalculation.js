@@ -82,6 +82,9 @@ function BrokerageCalculation() {
     } = useFilterLayout('brokerageCalculation_filters', FILTER_DEFAULTS);
     // ─── End Filter Layout ──────────────────────────────────────────────────────
 
+    // Brokerage filter: 'all' | 'gt' (>0) | 'eq' (=0)
+    const [brokerageFilter, setBrokerageFilter] = useState('gt');
+
     // PDF Remarks Modal (same as ReminderData)
     const [showRemarksModal, setShowRemarksModal] = useState(false);
     const [remarks, setRemarks] = useState('');
@@ -518,26 +521,45 @@ const getDalaliData = async () => {
         return result.sort((a, b) => (a.LedgerName || '').localeCompare(b.LedgerName || ''));
     }, [state.FillArray, dalaliDataVersion, isDetailed, selectedLedgerIds]);
 
-        // Filter data based on selected ledger IDs
-    const filteredData = useMemo(() => {
-        if (isDetailed) {
-            const data = detailedData;
-            if (!selectedLedgerIds || selectedLedgerIds.length === 0) {
-                return data; // Show all if nothing selected
-            }
-            return data.filter(item => 
-                selectedLedgerIds.some(id => String(item.LedgerId) === String(id))
-            );
-        } else {
-            const data = state.FillArray ?? [];
-            if (!selectedLedgerIds || selectedLedgerIds.length === 0) {
-                return data; // Show all if nothing selected
-            }
-            return data.filter(item => 
+    // Base data after ledger filter only (used for computing >0 / =0 counts)
+    const baseData = useMemo(() => {
+        let data = isDetailed ? detailedData : (state.FillArray ?? []);
+        if (selectedLedgerIds && selectedLedgerIds.length > 0) {
+            data = data.filter(item =>
                 selectedLedgerIds.some(id => String(item.LedgerId) === String(id))
             );
         }
+        return data;
     }, [state.FillArray, selectedLedgerIds, isDetailed, detailedData]);
+
+    const gtCount = useMemo(() => baseData.filter(item => (item.TotalBrokerage || 0) > 0).length, [baseData]);
+    const eqCount = useMemo(() => baseData.filter(item => (item.TotalBrokerage || 0) === 0).length, [baseData]);
+
+        // Filter data based on selected ledger IDs and brokerage filter
+    const filteredData = useMemo(() => {
+        let data;
+        if (isDetailed) {
+            data = detailedData;
+            if (selectedLedgerIds && selectedLedgerIds.length > 0) {
+                data = data.filter(item =>
+                    selectedLedgerIds.some(id => String(item.LedgerId) === String(id))
+                );
+            }
+        } else {
+            data = state.FillArray ?? [];
+            if (selectedLedgerIds && selectedLedgerIds.length > 0) {
+                data = data.filter(item =>
+                    selectedLedgerIds.some(id => String(item.LedgerId) === String(id))
+                );
+            }
+        }
+        if (brokerageFilter === 'gt') {
+            data = data.filter(item => (item.TotalBrokerage || 0) > 0);
+        } else if (brokerageFilter === 'eq') {
+            data = data.filter(item => (item.TotalBrokerage || 0) === 0);
+        }
+        return data;
+    }, [state.FillArray, selectedLedgerIds, isDetailed, detailedData, brokerageFilter]);
 
     // Modal handlers
     const openLedgerModal = () => {
@@ -880,24 +902,45 @@ const getDalaliData = async () => {
         }
     };
 
+    const handleDownloadPDF = () => {
+        if (!pendingShareFile) return;
+        const url = URL.createObjectURL(pendingShareFile);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = pendingShareFile.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('PDF downloaded successfully!');
+    };
+
     const handleSharePDFClick = async () => {
-        if (!pendingShareFile || !navigator.share) return;
-        try {
-            await navigator.share({
-                title: 'Brokerage Register',
-                text: 'Please find attached the Brokerage Register',
-                files: [pendingShareFile]
-            });
-            toast.success('PDF shared successfully!');
-            setShowSharePDFModal(false);
-            setPendingShareFile(null);
-        } catch (shareError) {
-            if (shareError.name === 'AbortError') {
-                toast.info('Share cancelled.');
-            } else {
-                console.error('Share error:', shareError);
-                toast.error('Share failed. Try again.');
+        if (!pendingShareFile) return;
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [pendingShareFile] })) {
+            try {
+                await navigator.share({
+                    title: 'Brokerage Register',
+                    text: 'Please find attached the Brokerage Register',
+                    files: [pendingShareFile]
+                });
+                toast.success('PDF shared successfully!');
+                setShowSharePDFModal(false);
+                setPendingShareFile(null);
+            } catch (shareError) {
+                if (shareError.name === 'AbortError') {
+                    toast.info('Share cancelled.');
+                } else {
+                    console.error('Share error:', shareError);
+                    toast.error('Share failed. Downloading instead.');
+                    handleDownloadPDF();
+                }
+                setShowSharePDFModal(false);
+                setPendingShareFile(null);
             }
+        } else {
+            // navigator.share not available or file sharing not supported – download instead
+            handleDownloadPDF();
             setShowSharePDFModal(false);
             setPendingShareFile(null);
         }
@@ -1035,8 +1078,9 @@ const getDalaliData = async () => {
                     body,
                     startY: 31,
                     margin: { left: marginX, right: marginX },
-                    styles: { font: 'NotoSansDevanagari', fontSize: 8, cellPadding: 1, overflow: 'linebreak' },
-                    headStyles: { fillColor: [40, 167, 69], halign: 'center', valign: 'middle' },
+                    styles: { font: 'NotoSansDevanagari', fontSize: 8.5, fontStyle: 'bold', cellPadding: 1, overflow: 'linebreak', lineColor: [0, 0, 0], lineWidth: 0.4, textColor: [0, 0, 0] },
+                    headStyles: { fillColor: [40, 167, 69], halign: 'center', valign: 'middle', fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.5, fontSize: 9 },
+                    bodyStyles: { fontStyle: 'bold', textColor: [0, 0, 0] },
                     columnStyles: {
                         0: { cellWidth: 10, halign: 'center' },
                         1: { cellWidth: 'auto' },
@@ -1082,8 +1126,9 @@ const getDalaliData = async () => {
                     body,
                     startY: 31,
                     margin: { left: marginX, right: marginX },
-                    styles: { font: 'NotoSansDevanagari', fontSize: 10, cellPadding: 1.5, overflow: 'linebreak' },
-                    headStyles: { fillColor: [40, 167, 69], halign: 'center', valign: 'middle' },
+                    styles: { font: 'NotoSansDevanagari', fontSize: 10.5, fontStyle: 'bold', cellPadding: 1.5, overflow: 'linebreak', lineColor: [0, 0, 0], lineWidth: 0.4, textColor: [0, 0, 0] },
+                    headStyles: { fillColor: [40, 167, 69], halign: 'center', valign: 'middle', fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.5, fontSize: 11 },
+                    bodyStyles: { fontStyle: 'bold', textColor: [0, 0, 0] },
                     columnStyles: {
                         0: { cellWidth: 10, halign: 'center' },
                         1: { cellWidth: 'auto' },
@@ -1113,13 +1158,12 @@ const getDalaliData = async () => {
             setRemarks('');
 
             const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+            setPendingShareFile(file);
 
-            if (navigator.share) {
-                setPendingShareFile(file);
+            // Always open Share/Download modal — let the user choose
+            setTimeout(() => {
                 setShowSharePDFModal(true);
-            } else {
-                toast.warning('Share not available on this device. Use a mobile device or browser that supports sharing.');
-            }
+            }, 350);
         } catch (error) {
             console.error('PDF generation error:', error);
             toast.error('Error generating PDF. Please try again.');
@@ -1225,10 +1269,30 @@ const getDalaliData = async () => {
                     <Card className="shadow-sm border-0" style={{ flexShrink: 0, marginBottom: '0.5rem', margin: 0, borderRadius: 0 }}>
                         <div className="bg-primary text-white py-2 px-3" style={{ borderRadius: 0 }}>
                             <h6 className="mb-0 d-flex align-items-center justify-content-between flex-wrap" style={{ gap: '6px' }}>
-                                <div className="d-flex align-items-center">
+                                <div className="d-flex align-items-center" style={{ flexWrap: 'nowrap', whiteSpace: 'nowrap', gap: '6px' }}>
                                     <Filter className="me-2 desktop-only" size={16} />
                                     <span className="desktop-only">Brokerage Register</span>
-                                    <span className="mobile-only">Total Parties: {filteredData ? filteredData.length : 0}</span>
+                                    <span className="mobile-only">TP: {filteredData ? filteredData.length : 0}</span>
+                                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', cursor: 'pointer', margin: 0, fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={brokerageFilter === 'gt'}
+                                            onChange={() => setBrokerageFilter(prev => prev === 'gt' ? 'all' : 'gt')}
+                                            style={{ cursor: 'pointer', accentColor: '#28a745', width: '13px', height: '13px', flexShrink: 0 }}
+                                        />
+                                        <span style={{ color: '#90ee90', fontWeight: 600 }}>&gt;0</span>
+                                        <span style={{ color: '#90ee90', fontWeight: 700 }}>({gtCount})</span>
+                                    </label>
+                                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', cursor: 'pointer', margin: 0, fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={brokerageFilter === 'eq'}
+                                            onChange={() => setBrokerageFilter(prev => prev === 'eq' ? 'all' : 'eq')}
+                                            style={{ cursor: 'pointer', accentColor: '#dc3545', width: '13px', height: '13px', flexShrink: 0 }}
+                                        />
+                                        <span style={{ color: '#ffb3b3', fontWeight: 600 }}>=0</span>
+                                        <span style={{ color: '#ffb3b3', fontWeight: 700 }}>({eqCount})</span>
+                                    </label>
                                 </div>
                                 <div className="d-flex align-items-center" style={{ gap: '4px', flexWrap: 'nowrap' }}>
                                     <Button
@@ -1252,7 +1316,7 @@ const getDalaliData = async () => {
                                         <i className="fas fa-plus"></i>
                                     </Button>
                                     <Label className="mb-0 me-2 text-white" style={{ fontSize: '0.875rem', cursor: isLoadingDetailed ? 'not-allowed' : 'pointer' }}>
-                                        Detailed
+                                        Det
                                     </Label>
                                     <Input
                                         type="checkbox"
@@ -1919,15 +1983,24 @@ const getDalaliData = async () => {
                 </span>
             </ModalHeader>
             <ModalBody>
-                <p className="mb-0">Click Share to open the share dialog and send the PDF.</p>
+                <p className="mb-2">Your PDF is ready. Share it or download it directly.</p>
+                <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>
+                    <i className="fas fa-info-circle me-1"></i>
+                    Tap <strong>Share</strong> to open the share dialog, or <strong>Download</strong> to save the file.
+                </p>
             </ModalBody>
             <ModalFooter>
                 <Button color="secondary" onClick={() => { setShowSharePDFModal(false); setPendingShareFile(null); }}>
                     Cancel
                 </Button>
-                <Button color="primary" onClick={handleSharePDFClick}>
-                    Share PDF
+                <Button color="info" onClick={() => { handleDownloadPDF(); setShowSharePDFModal(false); setPendingShareFile(null); }}>
+                    <i className="fas fa-download me-1"></i> Download
                 </Button>
+                {navigator.share && navigator.canShare && (
+                    <Button color="primary" onClick={handleSharePDFClick}>
+                        <i className="fas fa-share-alt me-1"></i> Share PDF
+                    </Button>
+                )}
             </ModalFooter>
         </Modal>
     </div>

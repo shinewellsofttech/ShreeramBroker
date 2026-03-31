@@ -28,6 +28,8 @@ import ExcelJS from 'exceljs'
 import MultiSelectDropdown from "../../components/Common/MultiSelectDropdown"
 import useColumnResize from '../../helpers/useColumnResize'
 import '../../helpers/columnResize.css'
+import useFilterLayout from '../../helpers/useFilterLayout'
+import '../../helpers/filterLayout.css'
 
 function LinkCreateRegister() {
   const dispatch = useDispatch()
@@ -83,6 +85,58 @@ function LinkCreateRegister() {
       Vessel: 80,
   })
 
+  // ─── Filter Layout Feature ───────────────────────────────────────
+  const LCR_TOP_FILTER_DEFAULTS = [
+    { id: 'checkboxes', defaultWidth: 220 },
+    { id: 'dates', defaultWidth: 210 },
+    { id: 'party', defaultWidth: 120 },
+    { id: 'summary', defaultWidth: 200 },
+    { id: 'excel', defaultWidth: 70 },
+    { id: 'clear', defaultWidth: 60 },
+    { id: 'exit', defaultWidth: 60 },
+  ];
+
+  const LCR_BOTTOM_FILTER_DEFAULTS = [
+    { id: 'period', defaultWidth: 130 },
+    { id: 'commodity', defaultWidth: 130 },
+    { id: 'process', defaultWidth: 90 },
+    { id: 'show', defaultWidth: 80 },
+    { id: 'print', defaultWidth: 80 },
+  ];
+
+  const {
+    filterOrder: lcrTopFilterOrder,
+    filterWidths: lcrTopFilterWidths,
+    gap: lcrTopGap,
+    setGap: setLcrTopGap,
+    handleDragStart: lcrTopDragStart,
+    handleDragOver: lcrTopDragOver,
+    handleDrop: lcrTopDrop,
+    handleDragEnd: lcrTopDragEnd,
+    handleTouchDragStart: lcrTopTouchDragStart,
+    handleTouchDragMove: lcrTopTouchDragMove,
+    handleTouchDragEnd: lcrTopTouchDragEnd,
+    handleFilterResizeMouseDown: lcrTopResizeDown,
+    resetLayout: resetLcrTopLayout,
+  } = useFilterLayout('linkCreateRegister_topFilters', LCR_TOP_FILTER_DEFAULTS);
+
+  const {
+    filterOrder: lcrBottomFilterOrder,
+    filterWidths: lcrBottomFilterWidths,
+    gap: lcrBottomGap,
+    setGap: setLcrBottomGap,
+    handleDragStart: lcrBottomDragStart,
+    handleDragOver: lcrBottomDragOver,
+    handleDrop: lcrBottomDrop,
+    handleDragEnd: lcrBottomDragEnd,
+    handleTouchDragStart: lcrBottomTouchDragStart,
+    handleTouchDragMove: lcrBottomTouchDragMove,
+    handleTouchDragEnd: lcrBottomTouchDragEnd,
+    handleFilterResizeMouseDown: lcrBottomResizeDown,
+    resetLayout: resetLcrBottomLayout,
+  } = useFilterLayout('linkCreateRegister_bottomFilters', LCR_BOTTOM_FILTER_DEFAULTS);
+  // ─── End Filter Layout Setup ──────────────────────────────────────
+
   // Sorting state
   const [sortConfig, setSortConfig] = useState({
     key: null,
@@ -130,6 +184,24 @@ function LinkCreateRegister() {
       setItemOptions(buildItemOptions(state.FillArray))
     }
   }, [state.FillArray, shouldRefreshItemOptions])
+
+  // Lock body/page scroll so only the table rows scroll
+  useEffect(() => {
+    const isMobile = () => window.innerWidth <= 768
+    document.body.classList.add('lcr-mobile')
+    const handleResize = () => {
+      if (!isMobile()) {
+        document.body.classList.remove('lcr-mobile')
+      } else {
+        document.body.classList.add('lcr-mobile')
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => {
+      document.body.classList.remove('lcr-mobile')
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   const API_URL_Get = `${API_WEB_URLS.ContractForLinkRegister}/0/token`
   const API_URL_PeriodData = `${API_WEB_URLS.PeriodData}/0/token`
@@ -1140,16 +1212,293 @@ function LinkCreateRegister() {
     }
   }
 
+  // ─── Render filter content for top bar ──────────────────────────
+  const renderLcrTopFilterContent = (filterId) => {
+    switch (filterId) {
+      case 'checkboxes':
+        return (
+          <div className="d-none d-md-flex" style={{ border: "1px solid #2196F3", borderRadius: "4px", padding: "2px 1px", backgroundColor: "#E3F2FD", alignItems: "center", flexWrap: "nowrap", gap: "0", height: "28px", width: "100%" }}>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0", paddingLeft: "1.5rem" }}>
+              <input id="lcrNotLifted" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={notLifted} onChange={e => setNotLifted(e.target.checked)} />
+              <label className="form-check-label small mb-0" htmlFor="lcrNotLifted" style={{ fontSize: "0.55rem", color: "#000000", fontWeight: "bold", whiteSpace: "nowrap" }}>Black</label>
+            </div>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0" }}>
+              <input id="lcrPartialLift" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={partialLift} onChange={e => setPartialLift(e.target.checked)} />
+              <label className="form-check-label small mb-0" htmlFor="lcrPartialLift" style={{ fontSize: "0.55rem", color: "#dc3545", fontWeight: "bold", whiteSpace: "nowrap" }}>Red</label>
+            </div>
+            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
+              <input id="lcrFullLift" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={fullLift} onChange={e => setFullLift(e.target.checked)} />
+              <label className="form-check-label small mb-0" htmlFor="lcrFullLift" style={{ fontSize: "0.55rem", color: "#0d6efd", fontWeight: "bold", whiteSpace: "nowrap" }}>Blue</label>
+            </div>
+          </div>
+        );
+      case 'dates':
+        return (
+          <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap", height: "100%", width: "100%" }}>
+            <div style={{ flex: 1, height: '28px' }}>
+              <DatePicker selected={fromDate} onChange={date => setFromDate(date)} className="form-control form-control-sm custom-datepicker w-100" dateFormat="dd/MM/yyyy" placeholderText="From Date" portalId="root-portal" popperPlacement="bottom-start" openToDate={new Date()} />
+            </div>
+            <span style={{ fontSize: "0.6rem", fontWeight: "500", color: "#1976D2", margin: "0 2px" }}>To</span>
+            <div style={{ flex: 1, height: '28px' }}>
+              <DatePicker selected={toDate} onChange={date => setToDate(date)} className="form-control form-control-sm custom-datepicker w-100" dateFormat="dd/MM/yyyy" placeholderText="To Date" portalId="root-portal" popperPlacement="bottom-start" openToDate={new Date()} />
+            </div>
+          </div>
+        );
+      case 'party':
+        return (
+          <Form.Select value={ledgerId} onChange={e => setLedgerId(e.target.value)} className="form-select-sm" style={{ fontSize: '0.65rem', height: '28px', backgroundColor: '#E3F2FD', borderColor: '#2196F3', width: '100%' }}>
+            <option value={0}>Search Party</option>
+            {state.LedgerArray.map(ledger => (
+              <option key={ledger.Id} value={ledger.Id}>{ledger.Name}</option>
+            ))}
+          </Form.Select>
+        );
+      case 'summary':
+        return (
+          <div style={{ border: '2px solid #0d6efd', borderRadius: '4px', padding: '0 0.4rem', backgroundColor: '#e7f1ff', display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap', height: '28px', width: '100%' }}>
+            <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.55rem' }}>Contracts:</span>
+            <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.55rem' }}>{selectedRows.length.toLocaleString()}</span>
+            <span style={{ color: '#0d6efd', fontSize: '0.55rem' }}>|</span>
+            <span style={{ color: '#6c757d', fontWeight: '600', fontSize: '0.55rem' }}>Qty:</span>
+            <span style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '0.55rem' }}>
+              {filteredTableData.filter(row => selectedRows.includes(row.Id)).reduce((sum, row) => sum + (parseFloat(row.Qty) || 0), 0).toLocaleString()}
+            </span>
+          </div>
+        );
+      case 'excel':
+        return (
+          <Button variant="outline-success" size="sm" onClick={handleExcelExport} disabled={selectedRows.length === 0} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Download className="me-1" size={12} /> Excel
+          </Button>
+        );
+      case 'clear':
+        return (
+          <Button variant="secondary" size="sm" onClick={handleClear} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <X className="me-1" size={12} /> Clear
+          </Button>
+        );
+      case 'exit':
+        return (
+          <Button variant="danger" style={{ fontSize: "0.55rem", height: "28px", padding: "2px 8px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={handleExit}>
+            <LogOut className="me-1" size={12} /> Exit
+          </Button>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // ─── Render filter content for bottom bar ────────────────────────
+  const renderLcrBottomFilterContent = (filterId) => {
+    switch (filterId) {
+      case 'commodity':
+        return (
+          <div onClick={openItemModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "") ? `${selectedItems.filter(item => item !== "").length} selected` : "Commodity"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
+      case 'period':
+        return (
+          <div onClick={openPeriodModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedPeriods && selectedPeriods.length > 0 ? `${selectedPeriods.length} selected` : "Period"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
+      case 'process':
+        return (
+          <Button variant="primary" size="sm" onClick={handleButtonClick} disabled={selectedRows.length === 0} style={{ fontSize: "0.65rem", height: "32px", padding: "0 10px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            Process
+          </Button>
+        );
+      case 'show':
+        return (
+          <Button variant="outline-info" size="sm" onClick={() => window.open('/LinkRegisterShow', '_blank')} style={{ fontSize: "0.65rem", height: "32px", padding: "0 10px", whiteSpace: "nowrap", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Search className="me-1" size={14} /> Show
+          </Button>
+        );
+      case 'print':
+        return (
+          <Button variant="outline-primary" size="sm" onClick={handleMultiPrint} disabled={selectedRows.length === 0} className="d-flex align-items-center shadow-sm" style={{ fontSize: "0.65rem", height: "32px", padding: "0 10px", width: "100%", justifyContent: "center" }}>
+            <Printer className="me-1" size={14} /> Print {selectedRows.length > 0 ? `(${selectedRows.length})` : ''}
+          </Button>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // ─── Render filter bar (shared helper) ───────────────────────────
+  const renderLcrFilterBar = (filterOrder, filterWidths, gap, setGap, dragStart, dragOver, drop, dragEnd, touchDragStart, touchDragMove, touchDragEnd, resizeDown, resetLayout, renderContent) => {
+    return (
+      <>
+        {filterOrder.map(filterId => (
+          <div key={filterId} data-filter-id={filterId} style={{ width: `${filterWidths[filterId] || 100}px`, flexShrink: 0, position: "relative", cursor: "default", touchAction: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+              <div style={{ flex: 1, overflow: "hidden" }}>
+                {renderContent(filterId)}
+              </div>
+            </div>
+            <div className="filter-resize-handle" onMouseDown={e => resizeDown(e, filterId)} onTouchStart={e => resizeDown(e, filterId)} />
+          </div>
+        ))}
+        <div className="filter-gap-control" style={{ marginLeft: "4px" }}>
+          <button onClick={() => setGap(gap - 2)} title="Decrease gap">−</button>
+          <span>{gap}</span>
+          <button onClick={() => setGap(gap + 2)} title="Increase gap">+</button>
+        </div>
+        <button className="filter-reset-btn" onClick={resetLayout} title="Reset layout">
+          <i className="fas fa-undo" style={{ fontSize: "0.5rem" }}></i>
+        </button>
+      </>
+    );
+  };
+  // ─── End Render Helpers ───────────────────────────────────────────
+
   return (
     <>
       <style>
         {`
-          .link-create-register-card-body {
-            padding-top: 0 !important;
+          /* Bold table text, bolder headers */
+          .lcr-wrapper .table th,
+          .lcr-wrapper .table td {
+            font-weight: bold !important;
           }
-          @media (min-width: 768px) {
+          .lcr-wrapper .table thead tr th {
+            font-weight: 900 !important;
+          }
+
+          /* Lock page scroll at all times - only table rows scroll */
+          body.lcr-mobile,
+          body.lcr-mobile .page-content,
+          body.lcr-mobile .main-content {
+            overflow: hidden !important;
+            height: 100% !important;
+          }
+
+          /* Always lock outer wrappers (desktop too) */
+          .lcr-wrapper ~ * { overflow: hidden !important; }
+          html:has(.lcr-wrapper) {
+            overflow: hidden !important;
+          }
+          body:has(.lcr-wrapper) {
+            overflow: hidden !important;
+          }
+          body:has(.lcr-wrapper) .page-content {
+            overflow: hidden !important;
+          }
+          body:has(.lcr-wrapper) .main-content {
+            overflow: hidden !important;
+          }
+
+          /* Desktop: sticky thead */
+          .lcr-wrapper .table-responsive thead th {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 10 !important;
+          }
+
+          /* Mobile: additional overrides */
+          @media (max-width: 768px) {
+            body.lcr-mobile {
+              overflow: hidden !important;
+              height: 100% !important;
+            }
             .lcr-wrapper {
-              padding-top: 46px !important;
+              height: calc(100vh - 155px - env(safe-area-inset-bottom, 0px)) !important;
+              height: calc(100dvh - 155px - env(safe-area-inset-bottom, 0px)) !important;
+              max-height: calc(100vh - 155px - env(safe-area-inset-bottom, 0px)) !important;
+              overflow: hidden !important;
+              display: flex !important;
+              flex-direction: column !important;
+            }
+            .contract-register-table-section {
+              flex: 1 1 auto !important;
+              min-height: 0 !important;
+              overflow: hidden !important;
+              display: flex !important;
+              flex-direction: column !important;
+            }
+            .contract-register-table-scroll {
+              flex: 1 1 auto !important;
+              min-height: 0 !important;
+              overflow-y: auto !important;
+              overflow-x: auto !important;
+              -webkit-overflow-scrolling: touch !important;
+            }
+            .lcr-wrapper .table-responsive thead th {
+              position: sticky !important;
+              top: 0 !important;
+              z-index: 12 !important;
+              background-color: #0000FF !important;
+            }
+            .lcr-wrapper .bottom-filters-bar {
+              flex-shrink: 0 !important;
+              border-top: 2px solid #5a2d5a !important;
+              min-height: 44px !important;
+              z-index: 20 !important;
+            }
+          }
+
+          /* Hide checkboxes filter item on mobile - no space left behind */
+          @media (max-width: 767px) {
+            .lcr-wrapper [data-filter-id="checkboxes"] {
+              display: none !important;
+              width: 0 !important;
+              min-width: 0 !important;
+              max-width: 0 !important;
+              flex-basis: 0 !important;
+              flex-shrink: 1 !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              overflow: hidden !important;
+              border: none !important;
+            }
+          }
+
+          /* Fix modals when Google Translate banner shifts the body */
+          body.translated-ltr,
+          body.translated-rtl {
+            top: 0 !important;
+            position: static !important;
+          }
+          body.translated-ltr .modal,
+          body.translated-rtl .modal,
+          body[style*="top"] .modal {
+            top: 0 !important;
+            position: fixed !important;
+          }
+          body.translated-ltr .modal-backdrop,
+          body.translated-rtl .modal-backdrop,
+          body[style*="top"] .modal-backdrop {
+            top: 0 !important;
+            position: fixed !important;
+          }
+          .goog-te-banner-frame {
+            z-index: 9999 !important;
+          }
+          .skiptranslate {
+            z-index: 9999 !important;
+          }
+          .modal {
+            z-index: 10050 !important;
+          }
+          .modal-backdrop {
+            z-index: 10040 !important;
+          }
+          @media (max-width: 768px) {
+            body[style*="top"] {
+              top: 0 !important;
+              position: relative !important;
+            }
+            body.translated-ltr,
+            body.translated-rtl {
+              top: 0 !important;
+            }
+            .skiptranslate iframe,
+            .goog-te-banner-frame {
+              position: absolute !important;
+              top: 0 !important;
             }
           }
         `}
@@ -1157,374 +1506,80 @@ function LinkCreateRegister() {
       <div className="lcr-wrapper" style={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 70px)',
-        padding: 0,
+        height: 'calc(100vh - 130px)',
+        paddingTop: window.innerWidth > 768 ? '46px' : 0,
+        paddingLeft: 0,
+        paddingRight: 0,
+        paddingBottom: 0,
         margin: 0,
         overflow: 'hidden',
-        gap: 0
+        gap: 0,
+        backgroundColor: '#f4f7f6'
       }}>
 
-        {/* Filter Form */}
-        <Card className="shadow-sm border-0" style={{ flexShrink: 0, marginBottom: '0.25rem' }}>
-          <Card.Header className="bg-primary text-white py-1">
-            <h6 className="mb-0 d-flex align-items-center justify-content-between">
-              <div className="d-flex align-items-center">
-                <Filter className="me-2" size={16} />
-                <span className="d-none d-md-inline">Link Register</span>
-                <span className="d-inline d-md-none">Cont. Reg.</span>
-              </div>
-              {/* Mobile only - checkboxes in header */}
-              <div className="d-block d-md-none">
-                <div style={{
-                  border: '1px solid #ffffff',
-                  borderRadius: '4px',
-                  padding: '0.25rem 0.5rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  width: 'fit-content',
-                  whiteSpace: 'nowrap'
-                }}>
-                  <div className="d-flex gap-2">
-                    <Form.Check
-                      type="checkbox"
-                      checked={notLifted}
-                      onChange={e => setNotLifted(e.target.checked)}
-                      className="form-check-input-sm"
-                      label={<span style={{ color: '#ffffff', fontSize: '0.7rem', fontWeight: '500' }}>Black</span>}
-                    />
-                    <Form.Check
-                      type="checkbox"
-                      checked={partialLift}
-                      onChange={e => setPartialLift(e.target.checked)}
-                      className="form-check-input-sm"
-                      label={<span style={{ color: '#ffcccc', fontSize: '0.7rem', fontWeight: '500' }}>Red</span>}
-                    />
-                    <Form.Check
-                      type="checkbox"
-                      checked={fullLift}
-                      onChange={e => setFullLift(e.target.checked)}
-                      className="form-check-input-sm"
-                      label={<span style={{ color: '#b3d9ff', fontSize: '0.7rem', fontWeight: '500' }}>Blue</span>}
-                    />
-                  </div>
+        {/* Filter Form - Blue bar like ContractRegister */}
+        <div className="col-12" style={{ flex: "0 0 auto", marginBottom: "0" }}>
+          <div className="card border-0 shadow-sm" style={{ marginBottom: "0" }}>
+            <div className="card-body" style={{ padding: "0.25rem" }}>
+              <div style={{ overflowX: "auto", overflowY: "hidden" }}>
+                <div className="d-flex align-items-center filter-theme-light" style={{ backgroundColor: "#E3F2FD", padding: "4px", borderRadius: "4px", flexWrap: "nowrap", minWidth: "fit-content", border: "1px solid #2196F3", gap: `${lcrTopGap}px` }}>
+                  {renderLcrFilterBar(lcrTopFilterOrder, lcrTopFilterWidths, lcrTopGap, setLcrTopGap, lcrTopDragStart, lcrTopDragOver, lcrTopDrop, lcrTopDragEnd, lcrTopTouchDragStart, lcrTopTouchDragMove, lcrTopTouchDragEnd, lcrTopResizeDown, resetLcrTopLayout, renderLcrTopFilterContent)}
                 </div>
               </div>
-            </h6>
-          </Card.Header>
-          <Card.Body className="px-3 link-create-register-card-body" style={{ overflow: 'visible', paddingTop: '0.25rem', paddingBottom: '0.25rem' }}>
-            <Form>
-              <div style={{ overflowX: "auto", overflowY: "hidden" }}>
-                <Row className="align-items-center gx-0" style={{ flexWrap: "nowrap", minWidth: "fit-content", gap: '0.1rem' }}>
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <div
-                      onClick={openItemModal}
-                      style={{
-                        backgroundColor: "#E3F2FD",
-                        color: "#333",
-                        border: "1px solid #2196F3",
-                        borderRadius: "6px",
-                        height: "28px",
-                        padding: "2px 8px",
-                        fontSize: "0.65rem",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        width: '90px',
-                        maxWidth: '90px'
-                      }}
-                    >
-                      <span>
-                        {selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "")
-                          ? `${selectedItems.filter(item => item !== "").length} selected`
-                          : "Commodity"}
-                      </span>
-                      <i className="fas fa-chevron-down ms-2"></i>
-                    </div>
-                  </Col>
+            </div>
+          </div>
+        </div>
 
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <div
-                      onClick={openPeriodModal}
-                      style={{
-                        backgroundColor: "#E3F2FD",
-                        color: "#333",
-                        border: "1px solid #2196F3",
-                        borderRadius: "6px",
-                        height: "28px",
-                        padding: "2px 8px",
-                        fontSize: "0.65rem",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        width: '90px',
-                        maxWidth: '90px'
-                      }}
-                    >
-                      <span className="text-truncate">{periodDisplayText}</span>
-                      <i className="fas fa-chevron-down ms-2"></i>
-                    </div>
-                  </Col>
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <Button
-                      variant="outline-info"
-                      size="sm"
-                      onClick={() => window.open('/LinkRegisterShow', '_blank')}
-                      className="d-flex align-items-center"
-                      style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                    >
-                      <Search className="me-1" size={14} />
-                      Show
-                    </Button>
-                  </Col>
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={handleButtonClick}
-                      className="d-flex align-items-center"
-                      style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                      disabled={selectedRows.length === 0}
-                    >
-                      Process
-                    </Button>
-                  </Col>
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <div style={{ width: '102px', height: '28px' }}>
-                      <DatePicker
-                        selected={fromDate}
-                        onChange={date => setFromDate(date)}
-                        className="form-control form-control-sm custom-datepicker"
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="From Date"
-                        portalId="root-portal"
-                        popperPlacement="bottom-start"
-                        style={{
-                          fontSize: '0.7rem',
-                          height: '28px',
-                          padding: '0 8px',
-                          lineHeight: '28px'
-                        }}
-                        openToDate={new Date()}
-                      />
-                    </div>
-                  </Col>
-                  <Col xs="auto" style={{ flex: "0 0 auto", display: 'flex', alignItems: 'center', padding: '0 4px' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>To</span>
-                  </Col>
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <div style={{ width: '102px', height: '28px' }}>
-                      <DatePicker
-                        selected={toDate}
-                        onChange={date => setToDate(date)}
-                        className="form-control form-control-sm custom-datepicker"
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="To Date"
-                        portalId="root-portal"
-                        popperPlacement="bottom-start"
-                        style={{
-                          fontSize: '0.7rem',
-                          height: '28px',
-                          padding: '0 8px',
-                          lineHeight: '28px'
-                        }}
-                        openToDate={new Date()}
-                      />
-                    </div>
-                  </Col>
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <Form.Select
-                      value={ledgerId}
-                      onChange={e => setLedgerId(e.target.value)}
-                      className="form-select-sm"
-                      style={{
-                        fontSize: '0.7rem',
-                        minWidth: '120px',
-                        maxWidth: '120px',
-                        height: '28px',
-                        backgroundColor: '#E3F2FD',
-                        borderColor: '#2196F3',
-                        borderWidth: '1px',
-                        borderStyle: 'solid'
-                      }}
-                    >
-                      <option value={0}>Search Party</option>
-                      {state.LedgerArray.map(ledger => (
-                        <option key={ledger.Id} value={ledger.Id}>
-                          {ledger.Name}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Col>
-
-                  {/* Desktop only - checkboxes in form row */}
-                  <Col xs="auto" className="d-none d-md-block" style={{ flex: "0 0 auto" }}>
-                    <div style={{
-                      border: '1px solid #000000',
-                      borderRadius: '4px',
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: '#f8f9fa',
-                      width: 'fit-content',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      <div className="d-flex gap-2">
-                        <Form.Check
-                          type="checkbox"
-                          checked={notLifted}
-                          onChange={e => setNotLifted(e.target.checked)}
-                          className="form-check-input-sm"
-                          label={<span style={{ color: '#000000', fontSize: '0.7rem', fontWeight: '500' }}>Black</span>}
-                        />
-                        <Form.Check
-                          type="checkbox"
-                          checked={partialLift}
-                          onChange={e => setPartialLift(e.target.checked)}
-                          className="form-check-input-sm"
-                          label={<span style={{ color: '#dc3545', fontSize: '0.7rem', fontWeight: '500' }}>Red</span>}
-                        />
-                        <Form.Check
-                          type="checkbox"
-                          checked={fullLift}
-                          onChange={e => setFullLift(e.target.checked)}
-                          className="form-check-input-sm"
-                          label={<span style={{ color: '#0d6efd', fontSize: '0.7rem', fontWeight: '500' }}>Blue</span>}
-                        />
-                      </div>
-                    </div>
-                  </Col>
-
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleClear}
-                      className="d-flex align-items-center"
-                      style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                    >
-                      <X className="me-1" size={14} />
-                      Clear
-                    </Button>
-                  </Col>
-
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      onClick={handleMultiPrint}
-                      className="d-flex align-items-center"
-                      style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                      disabled={selectedRows.length === 0}
-                    >
-                      <Printer className="me-1" size={14} />
-                      Print {selectedRows.length > 0 ? `(${selectedRows.length})` : ''}
-                    </Button>
-                  </Col>
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <Button
-                      variant="outline-success"
-                      size="sm"
-                      onClick={handleExcelExport}
-                      className="d-flex align-items-center"
-                      style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                      disabled={selectedRows.length === 0}
-                      title="Export selected rows to Excel with colorful rows and totals"
-                    >
-                      <Download className="me-1" size={14} />
-                      Excel
-                    </Button>
-                  </Col>
-
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      onClick={handleExit}
-                      className="d-flex align-items-center"
-                      style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                    >
-                      <LogOut className="me-1" size={14} />
-                      Exit
-                    </Button>
-                  </Col>
-
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <div style={{
-                      border: '2px solid #0d6efd',
-                      borderRadius: '4px',
-                      padding: '0.3rem 0.6rem',
-                      backgroundColor: '#e7f1ff',
-                      display: 'flex',
-                      gap: '0.5rem',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', fontSize: '0.7rem' }}>
-                        <span style={{ color: '#6c757d', fontWeight: '600' }}>Contracts:</span>
-                        <span style={{ color: '#0d6efd', fontWeight: 'bold' }}>{selectedRows.length.toLocaleString()}</span>
-                        <span style={{ color: '#0d6efd' }}>|</span>
-                        <span style={{ color: '#6c757d', fontWeight: '600' }}>Qty:</span>
-                        <span style={{ color: '#0d6efd', fontWeight: 'bold' }}>
-                          {filteredTableData
-                            .filter(row => selectedRows.includes(row.Id))
-                            .reduce((sum, row) => sum + (parseFloat(row.Qty) || 0), 0)
-                            .toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-              </div>
-            </Form>
-          </Card.Body>
-        </Card>
-
-
-        {/* Table Data Section - Full Height Layout */}
+        {/* Table Data Section - Full Height Layout; only table scrolls */}
         {(showTable || (filteredTableData && filteredTableData.length > 0)) && (
           <div
-            className="row"
+            className="contract-register-table-section"
             style={{
               flex: "1 1 auto",
               marginBottom: "0",
               marginTop: "0",
               minHeight: "0",
               overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
             <div
-              className="col-12"
               style={{
-                height: "100%",
+                flex: "1 1 auto",
                 display: "flex",
                 flexDirection: "column",
                 padding: "0",
+                minHeight: "0",
+                overflow: "hidden",
               }}
             >
               <div
                 className="card"
-                style={{ height: "100%", marginBottom: "0", border: "none" }}
+                style={{ flex: "1 1 auto", marginBottom: "0", border: "none", display: "flex", flexDirection: "column", minHeight: "0", overflow: "hidden" }}
               >
                 <div
                   className="card-body"
                   style={{
-                    height: "100%",
+                    flex: "1 1 auto",
                     display: "flex",
                     flexDirection: "column",
                     padding: "0",
                     overflow: "hidden",
                     margin: "0",
+                    minHeight: "0",
                   }}
                 >
                   {filteredTableData.length > 0 ? (
                     <>
                       <div
-                        className="table-responsive position-relative"
+                        className="table-responsive position-relative contract-register-table-scroll"
                         style={{
                           flex: "1 1 auto",
-                          overflowY: "auto",
+                          overflow: "auto",
                           border: "1px solid #dee2e6",
                           borderRadius: "0",
                           minHeight: "0",
-                          height: "100%",
                         }}
                       >
                         <Table
@@ -2108,6 +2163,54 @@ function LinkCreateRegister() {
                           </tbody>
                         </Table>
                       </div>
+
+                      {/* Mobile-only: Checkbox strip just above bottom filters bar */}
+                      <div className="d-md-none" style={{ backgroundColor: '#fff', borderTop: '1px solid #dee2e6', borderBottom: '1px solid #dee2e6', padding: '3px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-around', flexShrink: 0, flexWrap: 'nowrap', gap: '4px', overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer', margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <input type="checkbox" checked={notLifted} onChange={e => setNotLifted(e.target.checked)} style={{ width: '13px', height: '13px', accentColor: '#000', margin: 0 }} />
+                          <span style={{ fontSize: '0.7rem', color: '#000', fontWeight: 'bold' }}>Black</span>
+                          <span style={{ fontSize: '0.65rem', fontWeight: '700', background: '#e9ecef', color: '#000', borderRadius: '10px', padding: '0 5px' }}>{filteredTableData.filter(r => { const q = parseFloat(r.Qty)||0; const l = parseFloat(r.LiftedQuantity)||0; return q > 0 && l === 0; }).reduce((s,r) => s + (parseFloat(r.Qty)||0), 0).toLocaleString()}</span>
+                        </label>
+                        <span style={{ color: '#ccc', fontSize: '0.8rem', flexShrink: 0 }}>|</span>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer', margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <input type="checkbox" checked={partialLift} onChange={e => setPartialLift(e.target.checked)} style={{ width: '13px', height: '13px', accentColor: '#dc3545', margin: 0 }} />
+                          <span style={{ fontSize: '0.7rem', color: '#dc3545', fontWeight: 'bold' }}>Red</span>
+                          <span style={{ fontSize: '0.65rem', fontWeight: '700', background: '#f8d7da', color: '#dc3545', borderRadius: '10px', padding: '0 5px' }}>{filteredTableData.filter(r => { const q = parseFloat(r.Qty)||0; const l = parseFloat(r.LiftedQuantity)||0; return q > 0 && l > 0 && l < q; }).reduce((s,r) => s + (parseFloat(r.Qty)||0), 0).toLocaleString()}</span>
+                        </label>
+                        <span style={{ color: '#ccc', fontSize: '0.8rem', flexShrink: 0 }}>|</span>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer', margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <input type="checkbox" checked={fullLift} onChange={e => setFullLift(e.target.checked)} style={{ width: '13px', height: '13px', accentColor: '#0d6efd', margin: 0 }} />
+                          <span style={{ fontSize: '0.7rem', color: '#0d6efd', fontWeight: 'bold' }}>Blue</span>
+                          <span style={{ fontSize: '0.65rem', fontWeight: '700', background: '#d1ecf1', color: '#0d6efd', borderRadius: '10px', padding: '0 5px' }}>{filteredTableData.filter(r => { const q = parseFloat(r.Qty)||0; const l = parseFloat(r.LiftedQuantity)||0; return q > 0 && l === q; }).reduce((s,r) => s + (parseFloat(r.Qty)||0), 0).toLocaleString()}</span>
+                        </label>
+                      </div>
+
+                      {/* Bottom bar - Commodity, Period, Print */}
+                      <div
+                        className="bottom-filters-bar"
+                        style={{
+                          backgroundColor: "#6C244C",
+                          color: "white",
+                          borderRadius: 0,
+                          fontSize: "0.8rem",
+                          fontWeight: "bold",
+                          marginTop: 0,
+                          marginBottom: 0,
+                          paddingTop: "6px",
+                          paddingBottom: "6px",
+                          flexShrink: 0,
+                          width: "100%",
+                          overflowX: "auto",
+                          overflowY: "hidden",
+                        }}
+                      >
+                        <div
+                          className="d-flex align-items-center"
+                          style={{ padding: "6px 12px", gap: `${lcrBottomGap}px`, flexWrap: "nowrap", minWidth: "fit-content" }}
+                        >
+                          {renderLcrFilterBar(lcrBottomFilterOrder, lcrBottomFilterWidths, lcrBottomGap, setLcrBottomGap, lcrBottomDragStart, lcrBottomDragOver, lcrBottomDrop, lcrBottomDragEnd, lcrBottomTouchDragStart, lcrBottomTouchDragMove, lcrBottomTouchDragEnd, lcrBottomResizeDown, resetLcrBottomLayout, renderLcrBottomFilterContent)}
+                        </div>
+                      </div>
                     </>
                   ) : (
                     <div className="text-center p-3">
@@ -2132,7 +2235,8 @@ function LinkCreateRegister() {
           onHide={closePeriodModal}
           size="lg"
           centered
-          style={{ zIndex: 10000 }}
+          style={{ zIndex: 10050 }}
+          backdropClassName="modal-backdrop-high"
         >
           <ModalHeader className="bg-primary text-white">
             <div className="d-flex justify-content-between align-items-center w-100">
@@ -2229,7 +2333,8 @@ function LinkCreateRegister() {
           onHide={closeItemModal}
           size="lg"
           centered
-          style={{ zIndex: 10000 }}
+          style={{ zIndex: 10050 }}
+          backdropClassName="modal-backdrop-high"
         >
           <ModalHeader className="bg-primary text-white">
             <div className="d-flex justify-content-between align-items-center w-100">

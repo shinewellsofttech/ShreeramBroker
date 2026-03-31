@@ -3007,16 +3007,6 @@ const EditContract = ({
 
         <button
           type="button"
-          className="btn btn-danger btn-sm"
-          onClick={handleDelete}
-          title="Delete"
-          style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
-        >
-          <i className="bx bx-trash" style={{ fontSize: '1.1rem' }}></i>
-        </button>
-
-        <button
-          type="button"
           className="btn btn-info btn-sm"
           onClick={handlePrint}
           title="Print"

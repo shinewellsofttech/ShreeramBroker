@@ -156,8 +156,8 @@ const LedgerRegisterH = () => {
             body: tableRows,
             startY: 28,
             theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            styles: { font: 'NotoSansDevanagari', fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+            styles: { font: 'NotoSansDevanagari', fontSize: 8, cellPadding: 2, fontStyle: 'bold' },
             columnStyles: {
                 1: { halign: 'right' },
                 2: { halign: 'right' },

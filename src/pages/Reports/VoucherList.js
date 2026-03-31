@@ -240,7 +240,7 @@ function VoucherList() {
                 body,
                 startY: 33,
                 margin: { left: 14, right: 14 },
-                styles: { fontSize: 9, cellPadding: 2, font: 'NotoSansDevanagari' },
+                styles: { fontSize: 9, cellPadding: 2, font: 'NotoSansDevanagari', fontStyle: 'bold' },
                 headStyles: { fillColor: [13, 110, 253], textColor: 255, fontStyle: 'bold' },
                 alternateRowStyles: { fillColor: [245, 248, 255] },
                 foot: [],

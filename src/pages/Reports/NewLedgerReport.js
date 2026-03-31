@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import {
   Container,
   Row,
@@ -38,6 +38,33 @@ import '../../helpers/columnResize.css'
 function NewLedgerReport() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+
+  // Wrapper ref for dynamic height calculation
+  const wrapperRef = useRef(null)
+
+  // Lock body scroll and set exact height so only table scrolls
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+
+    const updateHeight = () => {
+      if (!wrapperRef.current) return
+      const top = wrapperRef.current.getBoundingClientRect().top
+      const navFooter = document.querySelector('.mobile-footer')
+      const navFooterHeight =
+        navFooter && getComputedStyle(navFooter).display !== 'none'
+          ? navFooter.getBoundingClientRect().height
+          : 0
+      wrapperRef.current.style.height = `${window.innerHeight - top - navFooterHeight}px`
+    }
+
+    updateHeight()
+    window.addEventListener('resize', updateHeight)
+
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('resize', updateHeight)
+    }
+  }, [])
 
   // Column resize feature
   const { columnWidths, handleResizeMouseDown } = useColumnResize('newLedgerReport_columnWidths', {
@@ -368,7 +395,7 @@ function NewLedgerReport() {
   }
 
   return (
-    <div className="ledger-report-wrapper" style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <div ref={wrapperRef} className="ledger-report-wrapper" style={{ overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <style>{`
         .ledger-report-wrapper {
           margin: 0;
@@ -436,9 +463,7 @@ function NewLedgerReport() {
         
         @media (max-width: 576px) {
           .table-scroll-container {
-            padding-bottom: 70px !important;
-            margin-bottom: 0 !important;
-            margin-top: -10px !important;
+            padding-bottom: 0 !important;
             overflow-y: auto !important;
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch !important;
@@ -575,38 +600,6 @@ function NewLedgerReport() {
 
       {/* Filter Form */}
       <Card className="shadow-sm border-0 mb-2" style={{ flexShrink: 0 }}>
-        <Card.Header className="bg-primary text-white">
-          <div className="d-flex justify-content-between align-items-center">
-            <h5 className="mb-0 d-none d-md-block">
-              <i className="fas fa-book me-2"></i>
-              New Ledger Report
-            </h5>
-            <div className="d-flex flex-column align-items-center d-md-none w-100">
-              <div className="d-flex align-items-center justify-content-center flex-wrap gap-1">
-                <span className="badge bg-danger" style={{ fontSize: '0.7rem', padding: 0, marginRight: '6px' }}>
-                  B.Qty: {calculateSelectedTotals().totalBuyerQty.toFixed(2)}
-                </span>
-                <span className="badge bg-primary" style={{ fontSize: '0.7rem', padding: 0, marginRight: '6px' }}>
-                  S.Qty: {calculateSelectedTotals().totalSellerQty.toFixed(2)}
-                </span>
-                <span className="badge bg-success" style={{ fontSize: '0.7rem', padding: 0 }}>
-                  ₹{calculateSelectedTotals().totalSum.toFixed(0)}
-                </span>
-              </div>
-              <div className="d-flex align-items-center justify-content-center flex-wrap gap-2 mt-1" style={{ fontSize: '0.65rem' }}>
-                <span className="text-white">
-                  <span className="text-white-50">AvgS:</span> {calculateSelectedTotals().weightedAvgSellerRate.toFixed(2)}
-                </span>
-                <span className="text-white">
-                  <span className="text-white-50">AvgB:</span> {calculateSelectedTotals().weightedAvgBuyerRate.toFixed(2)}
-                </span>
-                <span className={calculateSelectedTotals().profitLoss >= 0 ? 'text-success' : 'text-danger'}>
-                  <span className="text-white-50">P/L:</span> {calculateSelectedTotals().profitLoss >= 0 ? '' : '-'}{Math.abs(calculateSelectedTotals().profitLoss).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </Card.Header>
         <Card.Body className="py-1 px-3" style={{ overflow: 'visible' }}>
           <Form>
             <div style={{ overflowX: "auto", overflowY: "hidden" }}>
@@ -1118,6 +1111,43 @@ function NewLedgerReport() {
           <p className="mt-2 text-muted">Generating report, please wait...</p>
         </div>
       )}
+
+      {/* Mobile-only total bar — sits naturally above footer */}
+      <div
+        className="d-block d-md-none"
+        style={{
+          flexShrink: 0,
+          backgroundColor: '#1a1a2e',
+          borderTop: '2px solid #0d6efd',
+          padding: '4px 8px',
+        }}
+      >
+        {(() => {
+          const t = calculateSelectedTotals()
+          return (
+            <>
+              <div className="d-flex align-items-center justify-content-center flex-wrap gap-1">
+                <span className="badge bg-danger" style={{ fontSize: '0.68rem' }}>
+                  B.Qty: {t.totalBuyerQty.toFixed(2)}
+                </span>
+                <span className="badge bg-primary" style={{ fontSize: '0.68rem' }}>
+                  S.Qty: {t.totalSellerQty.toFixed(2)}
+                </span>
+                <span className="badge bg-success" style={{ fontSize: '0.68rem' }}>
+                  ₹{t.totalSum.toFixed(0)}
+                </span>
+              </div>
+              <div className="d-flex align-items-center justify-content-center flex-wrap gap-2" style={{ fontSize: '0.62rem', marginTop: '2px' }}>
+                <span style={{ color: '#adb5bd' }}>AvgS: <span style={{ color: '#fff', fontWeight: 'bold' }}>{t.weightedAvgSellerRate.toFixed(2)}</span></span>
+                <span style={{ color: '#adb5bd' }}>AvgB: <span style={{ color: '#fff', fontWeight: 'bold' }}>{t.weightedAvgBuyerRate.toFixed(2)}</span></span>
+                <span style={{ color: t.profitLoss >= 0 ? '#198754' : '#dc3545', fontWeight: 'bold' }}>
+                  P/L: {t.profitLoss >= 0 ? '' : '-'}{Math.abs(t.profitLoss).toFixed(2)}
+                </span>
+              </div>
+            </>
+          )
+        })()}
+      </div>
     </div>
   )
 }

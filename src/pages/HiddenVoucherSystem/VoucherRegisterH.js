@@ -233,8 +233,8 @@ const VoucherRegisterH = ({ onVoucherUpdate }) => {
             body: tableRows,
             startY: 28,
             theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            styles: { fontSize: 8, cellPadding: 2, font: 'NotoSansDevanagari' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 8, cellPadding: 2, font: 'NotoSansDevanagari', fontStyle: 'bold' },
             columnStyles: {
                 5: { halign: 'right' }
             }

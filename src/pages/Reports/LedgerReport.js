@@ -876,10 +876,6 @@ const LedgerReport = () => {
             }}
           >
             <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0", paddingLeft: "1.5rem" }}>
-              <input id="Detailed" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={isDetailed} onClick={() => setIsDetailed(!isDetailed)} readOnly />
-              <label className="form-check-label small mb-0 mr-2" htmlFor="Detailed" style={{ fontSize: "0.55rem", color: "#198754", fontWeight: "bold", whiteSpace: "nowrap" }}>Detailed</label>
-            </div>
-            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "0" }}>
               <input id="Pending" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={state.Pending} onClick={() => { setState(prev => ({ ...prev, Pending: !prev.Pending })); setSelectedPeriod([]); }} />
               <label className="form-check-label small mb-0" htmlFor="Pending" style={{ fontSize: "0.55rem", color: "#dc3545", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-hourglass-half" style={{ fontSize: "0.5rem" }}></i>R:{state.Pending ? "Y" : "N"}</label>
             </div>
@@ -2757,24 +2753,42 @@ const LedgerReport = () => {
         .filter(Boolean)
     }
 
+    const deriveItemFields = (item, ledgerName) => {
+      let newStatus = item.Status || "-"
+      const compareName = ledgerName || item.Ledger || ""
+      if (compareName && item.Seller && item.Seller.toLowerCase().includes(compareName.toLowerCase())) {
+        newStatus = "S"
+      } else if (compareName && item.Buyer && item.Buyer.toLowerCase().includes(compareName.toLowerCase())) {
+        newStatus = "P"
+      }
+      const qty = parseFloat(item.Qty) || 0
+      return {
+        ...item,
+        Status: newStatus,
+        PurQty: newStatus === "P" ? qty : 0,
+        SelQty: newStatus === "S" ? qty : 0,
+      }
+    }
+
     if (ledgerNamesFromNav.length === 0) {
       // Fallback: show all data in one group if no ledger names
+      const mappedAll = filteredData.map(item => deriveItemFields(item, null))
       return [
         {
           isGroup: true,
           groupName: "All Records",
           ledgerName: "All Records",
-          count: filteredData.length,
-          items: filteredData,
+          count: mappedAll.length,
+          items: mappedAll,
           groupByField: "none",
         },
       ]
     }
 
     let allGroups = []
-    let usedContractNos = new Set() // To track which ContractNos have been used
 
     // Create separate groups for each ledger name
+    // Each ledger independently shows all contracts where it appears (as Seller OR Buyer)
     ledgerNamesFromNav.forEach((ledgerName, index) => {
       // Find items that match this ledger name in either Seller or Buyer
       const matchingItems = filteredData
@@ -2787,36 +2801,15 @@ const LedgerReport = () => {
             item.Buyer.toLowerCase().includes(ledgerName.toLowerCase())
           return sellerMatch || buyerMatch
         })
-        .filter(item => {
-          // Only include ContractNos not already used by previous ledgers
-          const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
-          return contractNo && !usedContractNos.has(contractNo)
-        })
-        // Deduplicate: if same ContractNo appears multiple times, keep only the first one
+        // Deduplicate within this group only: if same ContractNo appears multiple times, keep only the first one
         .filter((item, index, self) => {
           const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
           if (!contractNo) return false
           return index === self.findIndex(i => String(i.ContractNo).trim() === contractNo)
         })
 
-      // Mark these ContractNos as used
-      matchingItems.forEach(item => {
-        const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
-        if (contractNo) {
-          usedContractNos.add(contractNo)
-        }
-      })
-
       if (matchingItems.length > 0) {
-        const mappedItems = matchingItems.map(item => {
-          let newStatus = item.Status || "-";
-          if (item.Seller && item.Seller.toLowerCase().includes(ledgerName.toLowerCase())) {
-            newStatus = "S";
-          } else if (item.Buyer && item.Buyer.toLowerCase().includes(ledgerName.toLowerCase())) {
-            newStatus = "P";
-          }
-          return { ...item, Status: newStatus };
-        });
+        const mappedItems = matchingItems.map(item => deriveItemFields(item, ledgerName));
 
         allGroups.push({
           isGroup: true,
@@ -2830,13 +2823,25 @@ const LedgerReport = () => {
       }
     })
 
-    // Add remaining items that don't match any ledger
+    // Add remaining items that don't match any ledger at all
+    const matchedContractNos = new Set()
+    ledgerNamesFromNav.forEach(ledgerName => {
+      filteredData.forEach(item => {
+        const sellerMatch = item.Seller && item.Seller.toLowerCase().includes(ledgerName.toLowerCase())
+        const buyerMatch = item.Buyer && item.Buyer.toLowerCase().includes(ledgerName.toLowerCase())
+        if (sellerMatch || buyerMatch) {
+          const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
+          if (contractNo) matchedContractNos.add(contractNo)
+        }
+      })
+    })
+
     const remainingItems = filteredData
       .filter(item => {
         const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
-        return contractNo && !usedContractNos.has(contractNo)
+        return contractNo && !matchedContractNos.has(contractNo)
       })
-      // Deduplicate: if same ContractNo appears multiple times, keep only the first one
+      // Deduplicate within remaining group
       .filter((item, index, self) => {
         const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
         if (!contractNo) return false
@@ -2844,12 +2849,13 @@ const LedgerReport = () => {
       })
 
     if (remainingItems.length > 0) {
+      const mappedRemaining = remainingItems.map(item => deriveItemFields(item, null))
       allGroups.push({
         isGroup: true,
         groupName: "Other Records",
         ledgerName: "Other Records",
-        count: remainingItems.length,
-        items: remainingItems,
+        count: mappedRemaining.length,
+        items: mappedRemaining,
         groupByField: "none",
       })
     }
@@ -3316,27 +3322,19 @@ const LedgerReport = () => {
         ? ledgerDropdown.map(id => state.LedgerArray.find(l => l.Id === id)?.Name || "").filter(Boolean).join(", ")
         : "All Ledgers"
 
-    const calcTotals = items => {
-      const t = { purQty: 0, selQty: 0, advPayment: 0, count: items.length }
-      items.forEach(r => {
-        t.purQty += parseFloat(r.PurQty || 0)
-        t.selQty += parseFloat(r.SelQty || 0)
-        t.advPayment += parseFloat(r.AdvPayment || 0)
-      })
-      return t
-    }
-
-    // Row background colour matching screen UI (grey=not started, blue=fully lifted, red=partial)
+    // Row font colour matching screen UI (grey=not started, blue=fully lifted, red=partial)
     const getRowFill = row => {
       const lifted = parseFloat(row.Lifted) || 0
       const pq = parseFloat(row.PurQty) || 0
       const sq = parseFloat(row.SelQty) || 0
-      if (lifted === 0) return [228, 228, 228]
-      if ((pq > 0 && lifted >= pq) || (sq > 0 && lifted >= sq)) return [214, 235, 255]
-      return [253, 231, 233]
+      if (lifted === 0) return [108, 117, 125]
+      if ((pq > 0 && lifted >= pq) || (sq > 0 && lifted >= sq)) return [13, 110, 253]
+      return [220, 53, 69]
     }
 
-    const overall = calcTotals(rowsForExport)
+    const allDerivedRowsPDF = groupedData.flatMap(g => g.items || [])
+    const overall = calculateLedgerGroupTotals(allDerivedRowsPDF)
+    overall.diffAmt = overall.totalSelQty * overall.sellAvgRate - overall.totalPurQty * overall.purchaseAvgRate
 
     try {
       // ── Landscape A4 gives ~277 mm usable width ──
@@ -3348,9 +3346,7 @@ const LedgerReport = () => {
       const filename = `Ledger_Report_${new Date().toISOString().split('T')[0]}.pdf`
 
       // ── Top header banner ──
-      doc.setFillColor(0, 0, 180)
-      doc.rect(0, 0, pageW, 20, 'F')
-      doc.setTextColor(255, 255, 255)
+      doc.setTextColor(0, 0, 180)
       doc.setFontSize(15)
       setHindiFont(doc, 'bold')
       doc.text('Ledger Report', 8, 9)
@@ -3402,20 +3398,21 @@ const LedgerReport = () => {
       const rowMeta = [] // parallel array: { type: 'group'|'data'|'subtotal'|'overall', fill? }
 
       groupedData.forEach(group => {
-        const gt = calcTotals(group.items)
+        const gt = calculateLedgerGroupTotals(group.items)
+        const gtDiffAmt = gt.totalSelQty * gt.sellAvgRate - gt.totalPurQty * gt.purchaseAvgRate
 
-        // Group header – colSpan across all columns
-        body.push([{
-          content: `  ${group.groupName}   (${group.count} record${group.count !== 1 ? 's' : ''})`,
-          colSpan: cols.length,
-          styles: {
-            fillColor: [75, 0, 130],
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            fontSize: 8,
-            cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
-          },
-        }])
+        // Group header row – party name (colSpan 5) + stats cells matching table's tan header row
+        const grpRemCols = cols.length - 11
+        body.push([
+          { content: `${group.groupName}  (${group.count} rec)`, colSpan: 5, styles: { textColor: [44, 62, 80], fontStyle: 'bold', fontSize: 8, cellPadding: { top: 2, bottom: 2, left: 4, right: 2 } } },
+          { content: '', styles: {} },
+          { content: `Buy Qty\n${gt.totalPurQty.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+          { content: `Sell Qty\n${gt.totalSelQty.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+          { content: `Buy Avg\n${gt.purchaseAvgRate.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+          { content: `Sell Avg\n${gt.sellAvgRate.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+          { content: `Diff Amt\n${gtDiffAmt.toFixed(2)}`, styles: { textColor: gtDiffAmt >= 0 ? [25, 135, 84] : [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+          ...(grpRemCols > 0 ? [{ content: '', colSpan: grpRemCols, styles: {} }] : []),
+        ])
         rowMeta.push({ type: 'group' })
 
         // Data rows
@@ -3468,27 +3465,19 @@ const LedgerReport = () => {
           body.push(rowPushData)
           rowMeta.push({ type: 'data', fill: getRowFill(row) })
         })
-
-        // Subtotal row aligned with columns
-        body.push([
-          { content: 'Group Totals', colSpan: 6, styles: { halign: 'right' } },
-          gt.purQty.toFixed(2),
-          gt.selQty.toFixed(2),
-          { content: '', colSpan: 2 },
-          gt.advPayment.toFixed(2),
-          { content: `(${gt.count} cont.)`, colSpan: 2, styles: { halign: 'right' } }
-        ])
-        rowMeta.push({ type: 'subtotal' })
       })
 
-      // Overall totals row aligned with columns
+      // Overall totals row – same structure as group header rows
+      const overallRemCols = cols.length - 11
       body.push([
-        { content: 'OVERALL TOTALS', colSpan: 6, styles: { halign: 'right' } },
-        overall.purQty.toFixed(2),
-        overall.selQty.toFixed(2),
-        { content: '', colSpan: 2 },
-        overall.advPayment.toFixed(2),
-        { content: `(${rowsForExport.length} total)`, colSpan: 2, styles: { halign: 'right' } }
+        { content: `OVERALL TOTALS  (${rowsForExport.length} records)`, colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', textColor: [75, 0, 130] } },
+        { content: '', styles: {} },
+        { content: `Buy Qty\n${overall.totalPurQty.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+        { content: `Sell Qty\n${overall.totalSelQty.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+        { content: `Buy Avg\n${overall.purchaseAvgRate.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+        { content: `Sell Avg\n${overall.sellAvgRate.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+        { content: `Diff Amt\n${overall.diffAmt.toFixed(2)}`, styles: { textColor: overall.diffAmt >= 0 ? [25, 135, 84] : [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
+        ...(overallRemCols > 0 ? [{ content: '', colSpan: overallRemCols }] : []),
       ])
       rowMeta.push({ type: 'overall' })
 
@@ -3501,38 +3490,39 @@ const LedgerReport = () => {
         tableWidth: 'auto',
         styles: {
           font: 'NotoSansDevanagari',
-          fontSize: 7,
+          fontSize: 7.5,
+          fontStyle: 'bold',
           cellPadding: 1.8,
-          lineColor: [200, 200, 200],
-          lineWidth: 0.25,
+          lineColor: [0, 0, 0],
+          lineWidth: 0.4,
           valign: 'middle',
           overflow: 'ellipsize',
+          textColor: [0, 0, 0],
         },
         headStyles: {
-          fillColor: [0, 0, 200],
-          textColor: [255, 255, 255],
+          textColor: [0, 0, 200],
           fontStyle: 'bold',
-          fontSize: 7.5,
+          fontSize: 8,
           halign: 'center',
           cellPadding: 2.5,
-          lineColor: [255, 255, 255],
-          lineWidth: 0.4,
+          lineColor: [0, 0, 0],
+          lineWidth: 0.5,
+        },
+        bodyStyles: {
+          fontStyle: 'bold',
+          textColor: [0, 0, 0],
         },
         columnStyles,
         willDrawCell: data => {
           if (data.section !== 'body') return
           const meta = rowMeta[data.row.index]
           if (meta && meta.type === 'data' && meta.fill) {
-            // Apply status colour; cell styles already set via meta.fill
-            data.cell.styles.fillColor = meta.fill
-            data.cell.styles.textColor = [20, 20, 20]
+            data.cell.styles.textColor = meta.fill
           } else if (meta && meta.type === 'subtotal') {
-            data.cell.styles.fillColor = [220, 220, 245]
             data.cell.styles.textColor = [40, 40, 110]
             data.cell.styles.fontStyle = 'bold'
           } else if (meta && meta.type === 'overall') {
-            data.cell.styles.fillColor = [0, 0, 140]
-            data.cell.styles.textColor = [255, 255, 255]
+            data.cell.styles.textColor = [75, 0, 130]
             data.cell.styles.fontStyle = 'bold'
           }
         },
@@ -3617,33 +3607,7 @@ const LedgerReport = () => {
       state.LedgerArray.find(l => l.Id === parseInt(selectedLedger))?.Name ||
       "Unknown"
 
-    // Calculate totals for each group
-    const calculateGroupTotals = items => {
-      const totals = {
-        purQty: 0,
-        selQty: 0,
-        advPayment: 0,
-        avgPurRate: 0,
-        avgSelRate: 0,
-        count: items.length,
-      }
-
-      items.forEach(item => {
-        totals.purQty += parseFloat(item.PurQty || 0)
-        totals.selQty += parseFloat(item.SelQty || 0)
-        totals.advPayment += parseFloat(item.AdvPayment || 0)
-        totals.avgPurRate += parseFloat(item.Rate || 0)
-        totals.avgSelRate += parseFloat(item.Rate || 0)
-      })
-
-      // Calculate averages
-      if (totals.count > 0) {
-        totals.avgPurRate = totals.avgPurRate / totals.count
-        totals.avgSelRate = totals.avgSelRate / totals.count
-      }
-
-      return totals
-    }
+    // Use same calculation as the table display – calculateLedgerGroupTotals
 
     // Helper function to get row font color based on lifted status
     const getRowFontColor = row => {
@@ -3657,8 +3621,10 @@ const LedgerReport = () => {
       return "FF000000" // Black - default
     }
 
-    // Calculate overall totals
-    const overallTotals = calculateGroupTotals(rowsForExport)
+    // Calculate overall totals – same function as table display
+    const allDerivedRowsExcel = groupedData.flatMap(g => g.items || [])
+    const overallTotals = calculateLedgerGroupTotals(allDerivedRowsExcel)
+    overallTotals.diffAmt = overallTotals.totalSelQty * overallTotals.sellAvgRate - overallTotals.totalPurQty * overallTotals.purchaseAvgRate
 
     // Create a new workbook
     const workbook = new ExcelJS.Workbook()
@@ -3724,49 +3690,76 @@ const LedgerReport = () => {
 
     // Add each group with its data
     groupedData.forEach(group => {
-      const groupTotals = calculateGroupTotals(group.items)
-      const avgPurQty =
-        groupTotals.count > 0
-          ? (groupTotals.purQty / groupTotals.count).toFixed(2)
-          : "0.00"
-      const avgSelQty =
-        groupTotals.count > 0
-          ? (groupTotals.selQty / groupTotals.count).toFixed(2)
-          : "0.00"
-      const avgAdvPayment =
-        groupTotals.count > 0
-          ? (groupTotals.advPayment / groupTotals.count).toFixed(2)
-          : "0.00"
-      const differenceAmount = (
-        groupTotals.selQty * groupTotals.avgSelRate -
-        groupTotals.purQty * groupTotals.avgPurRate
-      ).toFixed(2)
+      const groupTotals = calculateLedgerGroupTotals(group.items)
+      const diffAmt = groupTotals.totalSelQty * groupTotals.sellAvgRate - groupTotals.totalPurQty * groupTotals.purchaseAvgRate
 
-      // Add group header
-      worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
+      // Group header row – party name (A:H merged) + stats cells matching table's tan header row
+      const grpBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }
+
+      worksheet.mergeCells(`A${currentRow}:H${currentRow}`)
       const groupHeaderCell = worksheet.getCell(`A${currentRow}`)
-      groupHeaderCell.value = `${group.groupName} (${group.count} records)`
-      groupHeaderCell.font = { bold: true, size: 12, color: { argb: "FF000000" } }
-      groupHeaderCell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFFFFFFF" }, // White background
+      groupHeaderCell.value = `${group.groupName}  (${group.count} records)`
+      groupHeaderCell.font = { bold: true, size: 10, color: { argb: "FF2C3E50" } }
+      groupHeaderCell.alignment = { vertical: "middle" }
+      groupHeaderCell.border = grpBorder
+
+      // Buy Qty (col I = index 9 in 1-based)
+      const buyQtyCell = worksheet.getCell(`I${currentRow}`)
+      buyQtyCell.value = parseFloat(groupTotals.totalPurQty.toFixed(2))
+      buyQtyCell.numFmt = '0.00'
+      buyQtyCell.font = { bold: true, color: { argb: "FF0066CC" } }
+      buyQtyCell.alignment = { horizontal: "center", vertical: "middle" }
+      buyQtyCell.border = grpBorder
+
+      // Sell Qty (col J)
+      const sellQtyCell = worksheet.getCell(`J${currentRow}`)
+      sellQtyCell.value = parseFloat(groupTotals.totalSelQty.toFixed(2))
+      sellQtyCell.numFmt = '0.00'
+      sellQtyCell.font = { bold: true, color: { argb: "FFB41E1E" } }
+      sellQtyCell.alignment = { horizontal: "center", vertical: "middle" }
+      sellQtyCell.border = grpBorder
+
+      // Buy Avg (col K)
+      const buyAvgCell = worksheet.getCell(`K${currentRow}`)
+      buyAvgCell.value = parseFloat(groupTotals.purchaseAvgRate.toFixed(2))
+      buyAvgCell.numFmt = '0.00'
+      buyAvgCell.font = { bold: true, color: { argb: "FF0066CC" } }
+      buyAvgCell.alignment = { horizontal: "center", vertical: "middle" }
+      buyAvgCell.border = grpBorder
+
+      // Sell Avg (col L)
+      const sellAvgCell = worksheet.getCell(`L${currentRow}`)
+      sellAvgCell.value = parseFloat(groupTotals.sellAvgRate.toFixed(2))
+      sellAvgCell.numFmt = '0.00'
+      sellAvgCell.font = { bold: true, color: { argb: "FFB41E1E" } }
+      sellAvgCell.alignment = { horizontal: "center", vertical: "middle" }
+      sellAvgCell.border = grpBorder
+
+      // Col M (Cont Period) – empty
+      const mCell = worksheet.getCell(`M${currentRow}`)
+      mCell.border = grpBorder
+
+      // Diff Amt (col N)
+      const diffAmtCell = worksheet.getCell(`N${currentRow}`)
+      diffAmtCell.value = parseFloat(diffAmt.toFixed(2))
+      diffAmtCell.numFmt = '0.00'
+      diffAmtCell.font = { bold: true, color: { argb: diffAmt >= 0 ? "FF198754" : "FFdc3545" } }
+      diffAmtCell.alignment = { horizontal: "center", vertical: "middle" }
+      diffAmtCell.border = grpBorder
+
+      // Fill remaining cols with border
+      for (let c = 15; c <= headers.length; c++) {
+        const cell = worksheet.getCell(currentRow, c)
+        cell.border = grpBorder
       }
       currentRow++
-
-      currentRow++ // Empty row
 
       // Add column headers for this group
       const headerRow = worksheet.getRow(currentRow)
       headers.forEach((header, index) => {
         const cell = headerRow.getCell(index + 1)
         cell.value = header
-        cell.font = { bold: true, color: { argb: "FFFFFFFF" } }
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FF0000FF" }, // Blue background for headers
-        }
+        cell.font = { bold: true, color: { argb: "FF0000C8" } }
         cell.alignment = { horizontal: "center", vertical: "middle" }
         cell.border = {
           top: { style: "thin" },
@@ -3836,11 +3829,6 @@ const LedgerReport = () => {
         rowData.forEach((value, index) => {
           const cell = dataRow.getCell(index + 1)
           cell.value = value
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFFFFFFF" }, // White background
-          }
           cell.font = {
             color: { argb: fontColor }, // Colored text based on status
           }
@@ -3853,162 +3841,42 @@ const LedgerReport = () => {
         })
         currentRow++
       })
-
-      currentRow++ // Empty row
-
-      // Add group totals
-      const totalsRow = worksheet.getRow(currentRow)
-      const totalsData = new Array(headers.length).fill("")
-      totalsData[0] = "Group Totals"
-      totalsData[8] = groupTotals.purQty.toFixed(2)
-      totalsData[9] = groupTotals.selQty.toFixed(2)
-      totalsData[14] = groupTotals.advPayment.toFixed(2)
-
-      totalsData.forEach((value, index) => {
-        const cell = totalsRow.getCell(index + 1)
-        cell.value = value
-        cell.font = { bold: true, color: { argb: "FF000000" } }
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFFFFFFF" }, // White background
-        }
-      })
-      currentRow++
-
-      // Add group averages
-      const averagesRow = worksheet.getRow(currentRow)
-      const averagesData = new Array(headers.length).fill("")
-      averagesData[0] = "Group Averages"
-      averagesData[8] = avgPurQty
-      averagesData[9] = avgSelQty
-      averagesData[14] = avgAdvPayment
-
-      averagesData.forEach((value, index) => {
-        const cell = averagesRow.getCell(index + 1)
-        cell.value = value
-        cell.font = { bold: true, color: { argb: "FF000000" } }
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFFFFFFF" }, // White background
-        }
-      })
-      currentRow++
-
-      // Add difference amount
-      const diffRow = worksheet.getRow(currentRow)
-      const diffData = new Array(headers.length).fill("")
-      diffData[0] = "Difference Amount (Sel*AvgSel - Pur*AvgPur)"
-      diffData[8] = differenceAmount
-
-      diffData.forEach((value, index) => {
-        const cell = diffRow.getCell(index + 1)
-        cell.value = value
-        cell.font = { bold: true, color: { argb: "FF000000" } }
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFFFFFFF" }, // White background
-        }
-      })
-      currentRow++
-
-      currentRow += 2 // Two empty rows between groups
     })
 
-    // Add overall totals
-    const overallTotalsRow = worksheet.getRow(currentRow)
-    const overallTotalsData = new Array(headers.length).fill("")
-    overallTotalsData[0] = "OVERALL TOTALS"
-    overallTotalsData[8] = overallTotals.purQty.toFixed(2)
-    overallTotalsData[9] = overallTotals.selQty.toFixed(2)
-    overallTotalsData[14] = overallTotals.advPayment.toFixed(2)
+    // Add overall totals row – same structure as group header rows (purple background)
+    const overallDiffAmt = overallTotals.diffAmt
+    const overallBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }
 
-    overallTotalsData.forEach((value, index) => {
-      const cell = overallTotalsRow.getCell(index + 1)
-      cell.value = value
-      cell.font = { bold: true, color: { argb: "FF000000" } }
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFFFFFFF" }, // White background
-      }
-    })
-    currentRow++
+    worksheet.mergeCells(`A${currentRow}:H${currentRow}`)
+    const overallHeaderCell = worksheet.getCell(`A${currentRow}`)
+    overallHeaderCell.value = `OVERALL TOTALS  (${rowsForExport.length} records)`
+    overallHeaderCell.font = { bold: true, size: 11, color: { argb: "FF4B0082" } }
+    overallHeaderCell.alignment = { vertical: "middle" }
+    overallHeaderCell.border = overallBorder
 
-    // Add overall averages
-    const overallAvgRow = worksheet.getRow(currentRow)
-    const overallAvgData = [
-      "OVERALL AVERAGES",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      (overallTotals.purQty / overallTotals.count).toFixed(2),
-      (overallTotals.selQty / overallTotals.count).toFixed(2),
-      "",
-      "",
-      "",
-      "",
-      (overallTotals.advPayment / overallTotals.count).toFixed(2),
-      "",
-      "",
-      "",
-      "",
-    ]
-    overallAvgData.forEach((value, index) => {
-      const cell = overallAvgRow.getCell(index + 1)
-      cell.value = value
-      cell.font = { bold: true, color: { argb: "FF000000" } }
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFFFFFFF" }, // White background
-      }
-    })
-    currentRow++
+    const setOverallCell = (col, value, colorArgb) => {
+      const cell = worksheet.getCell(`${col}${currentRow}`)
+      cell.value = parseFloat(value.toFixed(2))
+      cell.numFmt = '0.00'
+      cell.font = { bold: true, color: { argb: colorArgb } }
+      cell.alignment = { horizontal: "center", vertical: "middle" }
+      cell.border = overallBorder
+    }
 
-    // Add overall difference amount
-    const overallDifferenceAmount = (
-      overallTotals.selQty * overallTotals.avgSelRate -
-      overallTotals.purQty * overallTotals.avgPurRate
-    ).toFixed(2)
-    const overallDiffRow = worksheet.getRow(currentRow)
-    const overallDiffData = [
-      "OVERALL DIFFERENCE AMOUNT",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      overallDifferenceAmount,
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-    ]
-    overallDiffData.forEach((value, index) => {
-      const cell = overallDiffRow.getCell(index + 1)
-      cell.value = value
-      cell.font = { bold: true, color: { argb: "FF000000" } }
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFFFFFFF" }, // White background
-      }
-    })
+    setOverallCell('I', overallTotals.totalPurQty, "FF0066CC")
+    setOverallCell('J', overallTotals.totalSelQty, "FFB41E1E")
+    setOverallCell('K', overallTotals.purchaseAvgRate, "FF0066CC")
+    setOverallCell('L', overallTotals.sellAvgRate, "FFB41E1E")
+
+    const mOverall = worksheet.getCell(`M${currentRow}`)
+    mOverall.border = overallBorder
+
+    setOverallCell('N', overallDiffAmt, overallDiffAmt >= 0 ? "FF198754" : "FFB41E1E")
+
+    for (let c = 15; c <= headers.length; c++) {
+      const cell = worksheet.getCell(currentRow, c)
+      cell.border = overallBorder
+    }
     currentRow++
 
     currentRow++ // Empty row
@@ -4285,8 +4153,12 @@ const LedgerReport = () => {
                               <React.Fragment key={groupIndex}>
                                 {/* Group Header Row with Totals */}
                                 {(() => {
+                                  const selectedGroupItems = group.items.filter(item => {
+                                    const id = getRowIdentifier(item)
+                                    return id && selectedRowIds.has(id)
+                                  })
                                   const ledgerTotals =
-                                    calculateLedgerGroupTotals(group.items)
+                                    calculateLedgerGroupTotals(selectedGroupItems.length > 0 ? selectedGroupItems : group.items)
                                   return (
                                     <tr
                                       style={{
@@ -4308,7 +4180,7 @@ const LedgerReport = () => {
                                           boxShadow: "none",
                                         }}
                                       >
-                                        <div className="d-flex align-items-center">
+                                        <div className="d-flex align-items-center flex-wrap">
                                           <i className="fas fa-users me-2 text-primary"></i>
                                           <span
                                             className="fw-bold"
@@ -4320,6 +4192,18 @@ const LedgerReport = () => {
                                           >
                                             {group.groupName}
                                           </span>
+                                          {/* Mobile-only: Buy Qty | Sell Qty | Buy Avg | Sell Avg — right after party name */}
+                                          <small className="d-inline d-md-none ms-1" style={{ fontSize: "0.58rem", fontWeight: "bold" }}>
+                                            {" ["}
+                                            <span style={{ color: "#16a34a" }}>B:{ledgerTotals.totalPurQty.toLocaleString()}</span>
+                                            <span style={{ color: "#555" }}> | </span>
+                                            <span style={{ color: "#dc2626" }}>S:{ledgerTotals.totalSelQty.toLocaleString()}</span>
+                                            <span style={{ color: "#555" }}> | </span>
+                                            <span style={{ color: "#16a34a" }}>BA:₹{ledgerTotals.purchaseAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                            <span style={{ color: "#555" }}> | </span>
+                                            <span style={{ color: "#dc2626" }}>SA:₹{ledgerTotals.sellAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                            {"]"}
+                                          </small>
                                           <small className="text-muted ms-2" style={{ fontSize: "0.65rem" }}>
                                             ({group.count}{" "}
                                             {group.count === 1 ? "record" : "records"})
@@ -4548,7 +4432,7 @@ const LedgerReport = () => {
                                       style={{
                                         height: "25px",
                                         borderBottom: "1px solid #dee2e6",
-                                        color: row.Status === "S" ? "red" : "inherit",
+                                        color: row.Status === "S" ? "red" : row.Status === "P" ? "green" : "inherit",
                                         fontWeight: row.Status === "S" ? "bold" : "inherit",
                                       }}
                                       onMouseEnter={e => {
@@ -4606,7 +4490,7 @@ const LedgerReport = () => {
                                           verticalAlign: "middle",
                                           padding: "0",
                                           border: "1.5px solid black",
-                                          color: row.Status === "S" ? "red" : "inherit",
+                                          color: row.Status === "S" ? "red" : row.Status === "P" ? "green" : "inherit",
                                           fontWeight: row.Status === "S" ? "bold" : "inherit",
                                         }
                                         const tdNumStyle = {
@@ -4625,8 +4509,8 @@ const LedgerReport = () => {
                                               {row.ContractNo ? (
                                                 <div className="d-flex align-items-center gap-2">
                                                   <input type="checkbox" checked={rowId ? selectedRowIds.has(rowId) : false} onClick={e => { e.stopPropagation(); toggleRowSelection(row) }} style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer" }} title="Select contract" />
-                                                  <Button variant="link" className={`p-0 text-decoration-none fw-bold ${row.Status === "S" ? "text-danger" : "text-primary"}`} style={{ cursor: "pointer", transition: "all 0.2s ease", border: "none", background: "none", padding: "6px 10px", borderRadius: "4px", display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", whiteSpace: "nowrap", width: "100%", justifyContent: "flex-start", color: row.Status === "S" ? "red" : "#0d6efd", fontWeight: "bold" }} onMouseEnter={e => { e.target.style.color = row.Status === "S" ? "#cc0000" : "#0056b3"; e.target.style.textDecoration = "underline"; e.target.style.backgroundColor = "#f8f9fa" }} onMouseLeave={e => { e.target.style.color = row.Status === "S" ? "red" : "#0d6efd"; e.target.style.textDecoration = "none"; e.target.style.backgroundColor = "transparent" }} onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button">
-                                                    <i className={`fas fa-edit ${row.Status === "S" ? "text-danger" : "text-primary"}`} style={{ color: row.Status === "S" ? "red" : "#0d6efd" }}></i>
+                                                  <Button variant="link" className={`p-0 text-decoration-none fw-bold ${row.Status === "S" ? "text-danger" : row.Status === "P" ? "text-success" : "text-primary"}`} style={{ cursor: "pointer", transition: "all 0.2s ease", border: "none", background: "none", padding: "6px 10px", borderRadius: "4px", display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", whiteSpace: "nowrap", width: "100%", justifyContent: "flex-start", color: row.Status === "S" ? "red" : row.Status === "P" ? "green" : "#0d6efd", fontWeight: "bold" }} onMouseEnter={e => { e.target.style.color = row.Status === "S" ? "#cc0000" : row.Status === "P" ? "#006600" : "#0056b3"; e.target.style.textDecoration = "underline"; e.target.style.backgroundColor = "#f8f9fa" }} onMouseLeave={e => { e.target.style.color = row.Status === "S" ? "red" : row.Status === "P" ? "green" : "#0d6efd"; e.target.style.textDecoration = "none"; e.target.style.backgroundColor = "transparent" }} onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button">
+                                                    <i className={`fas fa-edit ${row.Status === "S" ? "text-danger" : row.Status === "P" ? "text-success" : "text-primary"}`} style={{ color: row.Status === "S" ? "red" : row.Status === "P" ? "green" : "#0d6efd" }}></i>
                                                     <span>{row.ContractNo}</span>
                                                   </Button>
                                                 </div>
@@ -4650,7 +4534,7 @@ const LedgerReport = () => {
                                           case 'Lifted': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Lifted ? parseFloat(row.Lifted).toFixed(2) : "0.00"}</td>
                                           case 'Contract': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Contract || "-"}</td>
                                           case 'Lifting': return (
-                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "top", padding: "0", border: "1.5px solid black", color: row.Status === "S" ? "red" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
+                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "top", padding: "0", border: "1.5px solid black", color: row.Status === "S" ? "red" : row.Status === "P" ? "green" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
                                               {(() => {
                                                 if (!row.LiftingJson) return "-";
                                                 try {
@@ -4687,7 +4571,7 @@ const LedgerReport = () => {
                                             </td>
                                           )
                                           case 'Note': return (
-                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: "300px", color: row.Status === "S" ? "red" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
+                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: "300px", color: row.Status === "S" ? "red" : row.Status === "P" ? "green" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
                                               {getCombinedNotes(row)}
                                             </td>
                                           )
@@ -4726,11 +4610,10 @@ const LedgerReport = () => {
                                 border: "1.5px solid black",
                               }}
                             >
-                              B: {state.FillArray.reduce(
-                                (sum, row) =>
-                                  sum + (parseFloat(row.PurQty) || 0),
-                                0
-                              ).toFixed(2)}
+                              B: {flattenedVisibleRows
+                                .filter(r => r.Status === "P")
+                                .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
+                                .toFixed(2)}
                             </td>
                             <td
                               className="text-center fw-bold"
@@ -4740,11 +4623,10 @@ const LedgerReport = () => {
                                 border: "1.5px solid black",
                               }}
                             >
-                              S: {state.FillArray.reduce(
-                                (sum, row) =>
-                                  sum + (parseFloat(row.SelQty) || 0),
-                                0
-                              ).toFixed(2)}
+                              S: {flattenedVisibleRows
+                                .filter(r => r.Status === "S")
+                                .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
+                                .toFixed(2)}
                             </td>
                             <td
                               className="text-start fw-bold"
@@ -4759,16 +4641,15 @@ const LedgerReport = () => {
                                 let totalSelQty = 0
                                 let totalPurchaseAmount = 0
                                 let totalSellAmount = 0
-                                state.FillArray.forEach(row => {
-                                  const purQty = parseFloat(row.PurQty) || 0
-                                  const selQty = parseFloat(row.SelQty) || 0
+                                flattenedVisibleRows.forEach(row => {
+                                  const qty = parseFloat(row.Qty) || 0
                                   const rate = parseFloat(row.Rate) || 0
                                   if (row.Status === "P") {
-                                    totalPurQty += purQty
-                                    totalPurchaseAmount += purQty * rate
+                                    totalPurQty += qty
+                                    totalPurchaseAmount += qty * rate
                                   } else if (row.Status === "S") {
-                                    totalSelQty += selQty
-                                    totalSellAmount += selQty * rate
+                                    totalSelQty += qty
+                                    totalSellAmount += qty * rate
                                   }
                                 })
                                 const purchaseAvgRate = totalPurQty > 0 ? totalPurchaseAmount / totalPurQty : 0
@@ -4924,7 +4805,7 @@ const LedgerReport = () => {
 
                           {/* Selected Rows Totals */}
                           {selectedRowIds.size > 0 && (() => {
-                            const selectedRows = state.FillArray.filter(row =>
+                            const selectedRows = flattenedVisibleRows.filter(row =>
                               selectedRowIds.has(getRowIdentifier(row))
                             );
                             return (
@@ -4944,11 +4825,10 @@ const LedgerReport = () => {
                                     border: "1.5px solid black",
                                   }}
                                 >
-                                  B: {selectedRows.reduce(
-                                    (sum, row) =>
-                                      sum + (parseFloat(row.PurQty) || 0),
-                                    0
-                                  ).toFixed(2)}
+                                  B: {selectedRows
+                                    .filter(r => r.Status === "P")
+                                    .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
+                                    .toFixed(2)}
                                 </td>
                                 <td
                                   className="text-center fw-bold"
@@ -4958,11 +4838,10 @@ const LedgerReport = () => {
                                     border: "1.5px solid black",
                                   }}
                                 >
-                                  S: {selectedRows.reduce(
-                                    (sum, row) =>
-                                      sum + (parseFloat(row.SelQty) || 0),
-                                    0
-                                  ).toFixed(2)}
+                                  S: {selectedRows
+                                    .filter(r => r.Status === "S")
+                                    .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
+                                    .toFixed(2)}
                                 </td>
                                 <td
                                   className="text-start fw-bold"
@@ -4978,15 +4857,14 @@ const LedgerReport = () => {
                                     let totalPurchaseAmount = 0
                                     let totalSellAmount = 0
                                     selectedRows.forEach(row => {
-                                      const purQty = parseFloat(row.PurQty) || 0
-                                      const selQty = parseFloat(row.SelQty) || 0
+                                      const qty = parseFloat(row.Qty) || 0
                                       const rate = parseFloat(row.Rate) || 0
                                       if (row.Status === "P") {
-                                        totalPurQty += purQty
-                                        totalPurchaseAmount += purQty * rate
+                                        totalPurQty += qty
+                                        totalPurchaseAmount += qty * rate
                                       } else if (row.Status === "S") {
-                                        totalSelQty += selQty
-                                        totalSellAmount += selQty * rate
+                                        totalSelQty += qty
+                                        totalSellAmount += qty * rate
                                       }
                                     })
                                     const purchaseAvgRate = totalPurQty > 0 ? totalPurchaseAmount / totalPurQty : 0
@@ -5173,12 +5051,26 @@ const LedgerReport = () => {
                           minWidth: "fit-content"
                         }}
                       >
-                        {/* Left side - Icon */}
+                        {/* Left side - Icon: toggles Detailed view */}
                         <div
                           className="d-flex align-items-center"
                           style={{ flex: "0 0 auto" }}
+                          onClick={() => setIsDetailed(prev => !prev)}
+                          title={isDetailed ? "Detailed ON — click to turn OFF" : "Detailed OFF — click to turn ON"}
                         >
-                          <i className="fas fa-chart-line me-2"></i>
+                          <i
+                            className="fas fa-list-alt me-2"
+                            style={{
+                              fontSize: "1rem",
+                              cursor: "pointer",
+                              color: isDetailed ? "#fff" : "#6c757d",
+                              backgroundColor: isDetailed ? "#198754" : "#e9ecef",
+                              borderRadius: "4px",
+                              padding: "4px 5px",
+                              border: isDetailed ? "1px solid #146c43" : "1px solid #ced4da",
+                              transition: "all 0.2s",
+                            }}
+                          ></i>
                         </div>
 
                         {renderFilterBar(bottomFilterOrder, bottomFilterWidths, bottomGap, setBottomGap, bottomDragStart, bottomDragOver, bottomDrop, bottomDragEnd, bottomTouchDragStart, bottomTouchDragMove, bottomTouchDragEnd, bottomResizeDown, resetBottomLayout, renderBottomFilterContent)}
