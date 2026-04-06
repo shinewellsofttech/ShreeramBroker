@@ -178,6 +178,9 @@ const SidebarContent = props => {
                   <Link to="/UnitMaster">{props.t("Unit Master")}</Link>
                 </li>
                 <li>
+                  <Link to="/ContractTypeMaster">{props.t("Contract Type")}</Link>
+                </li>
+                <li>
                   <Link to="/CityMaster">{props.t("City Master")}</Link>
                 </li>
                 <li>

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Row, Col, Collapse } from "reactstrap";
 import withRouter from "components/Common/withRouter";
 import classname from "classnames";
-import ShreeRamLogo from "../../assets/images/contract/ShreeRam.jpeg";
+import ShreeRamLogo from "../../assets/images/contract/ShreeRam.jpg";
 import MobileSidebar from "./MobileSidebar";
 import VoucherAccessModal from "../Common/VoucherAccessModal";
 
@@ -233,6 +233,9 @@ const Navbar = props => {
                     </a>
                     <a href="/UnitMaster" target="_blank" rel="noopener noreferrer" className="dropdown-item" onClick={() => setmasters(false)}>
                       {props.t("Unit Master")}
+                    </a>
+                    <a href="/ContractTypeMaster" target="_blank" rel="noopener noreferrer" className="dropdown-item" onClick={() => setmasters(false)}>
+                      {props.t("Contract Type")}
                     </a>
                     <a href="/TransportMaster" target="_blank" rel="noopener noreferrer" className="dropdown-item" onClick={() => setmasters(false)}>
                       {props.t("Transport Master")}

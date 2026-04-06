@@ -201,6 +201,21 @@ const MobileSidebar = ({ isOpen, onClose, t }) => {
                 {t("Unit Master")}
               </a>
               <a
+                href="/ContractTypeMaster"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "block",
+                  padding: "10px 16px",
+                  color: "#6c757d",
+                  textDecoration: "none",
+                  fontSize: "13px",
+                }}
+                onClick={handleClose}
+              >
+                {t("Contract Type")}
+              </a>
+              <a
                 href="/TransportMaster"
                 target="_blank"
                 rel="noopener noreferrer"

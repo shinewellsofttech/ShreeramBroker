@@ -148,6 +148,7 @@ function ContractRegister() {
     { id: 'period', defaultWidth: 130 },
     { id: 'ledger', defaultWidth: 130 },
     { id: 'commodity', defaultWidth: 130 },
+    { id: 'vessel', defaultWidth: 130 },
     { id: 'print', defaultWidth: 80 },
     { id: 'pdf', defaultWidth: 80 },
   ];
@@ -203,6 +204,9 @@ function ContractRegister() {
   const [tempSelectedItems, setTempSelectedItems] = useState([])
   const [tempSelectedPeriods, setTempSelectedPeriods] = useState([])
   const [tempSelectedLedgerIds, setTempSelectedLedgerIds] = useState([])
+  const [showVesselModal, setShowVesselModal] = useState(false)
+  const [tempSelectedVessels, setTempSelectedVessels] = useState([])
+  const [selectedVessels, setSelectedVessels] = useState([])
 
   const [showTable, setShowTable] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -681,6 +685,11 @@ function ContractRegister() {
       })
     }
 
+    if (selectedVessels.length > 0) {
+      const vesselSet = selectedVessels.map(v => v.toLowerCase())
+      filtered = filtered.filter(row => row.Vessel && vesselSet.includes(row.Vessel.trim().toLowerCase()))
+    }
+
     // Apply sorting
     if (sortConfig.key) {
       filtered = [...filtered].sort((a, b) => {
@@ -698,7 +707,7 @@ function ContractRegister() {
     }
 
     return filtered
-  }, [state.FillArray, selectedItems, sortConfig])
+  }, [state.FillArray, selectedItems, selectedVessels, sortConfig])
 
   // Auto-select all rows when data is loaded
   useEffect(() => {
@@ -816,6 +825,21 @@ function ContractRegister() {
     }
     setShowItemModal(false)
   }
+
+  // Modal functions for Vessel
+  const openVesselModal = () => {
+    setTempSelectedVessels([...selectedVessels])
+    setShowVesselModal(true)
+  }
+  const closeVesselModal = () => setShowVesselModal(false)
+  const handleVesselModalDone = () => {
+    setSelectedVessels([...tempSelectedVessels])
+    setShowVesselModal(false)
+  }
+  const getUniqueVesselsFromData = () =>
+    Array.from(new Set((state.FillArray || []).map(r => r.Vessel).filter(Boolean)))
+      .sort()
+      .map(v => ({ value: v, label: v }))
 
   // Modal functions for Period
   const openPeriodModal = () => {
@@ -1949,6 +1973,13 @@ function ContractRegister() {
             <i className="fas fa-chevron-down ms-2"></i>
           </div>
         );
+      case 'vessel':
+        return (
+          <div onClick={openVesselModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedVessels.length > 0 ? `${selectedVessels.length} selected` : "Vessel"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
       case 'print':
         return (
           <Button variant="outline-primary" size="sm" onClick={handleMultiPrint} disabled={selectedRows.length === 0} className="d-flex align-items-center shadow-sm" style={{ fontSize: "0.65rem", height: "32px", padding: "0 10px", width: "100%", justifyContent: "center" }}>
@@ -2171,7 +2202,7 @@ function ContractRegister() {
                                       </td>
                                     )
                                     case 'ContractNo': return (
-                                      <td key={col.key} className="fw-semibold align-middle" style={s}>
+                                      <td key={col.key} className="fw-semibold align-middle" style={{ ...s, backgroundColor: selectedRows.includes(row.Id) ? '#fffec8' : 'white' }}>
                                         {row.ContractNo ? (
                                           <Button variant="link" className="p-0 text-decoration-none" onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button" style={{ fontSize: "0.7rem" }}>
                                             <i className="fas fa-edit text-primary me-1"></i>
@@ -2426,6 +2457,95 @@ function ContractRegister() {
             Select All
           </Button>
           <Button variant="primary" onClick={handleItemModalDone}>
+            <i className="fas fa-check me-2"></i>
+            Done
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Vessel Filter Modal */}
+      <Modal
+        show={showVesselModal}
+        onHide={closeVesselModal}
+        size="lg"
+        centered
+        style={{ zIndex: 10050 }}
+        backdropClassName="modal-backdrop-high"
+      >
+        <ModalHeader className="bg-primary text-white">
+          <div className="d-flex justify-content-between align-items-center w-100">
+            <h5 className="mb-0">
+              <i className="fas fa-ship me-2"></i>
+              Select Vessel
+            </h5>
+            <Button
+              variant="light"
+              onClick={closeVesselModal}
+              className="btn-close btn-close-white"
+              style={{ border: "none", background: "transparent" }}
+            >
+              <i className="fas fa-times"></i>
+            </Button>
+          </div>
+        </ModalHeader>
+        <ModalBody style={{ padding: "1.5rem", maxHeight: "60vh", overflowY: "auto" }}>
+          <Form>
+            <div className="mb-3">
+              <Form.Label className="fw-semibold mb-0">Vessel</Form.Label>
+            </div>
+            <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px", padding: "10px" }}>
+              {getUniqueVesselsFromData().map((vessel) => (
+                <div
+                  key={vessel.value}
+                  style={{
+                    padding: "8px",
+                    cursor: "pointer",
+                    borderRadius: "4px",
+                    backgroundColor: tempSelectedVessels.includes(vessel.value) ? "#e7f3ff" : "transparent",
+                    marginBottom: "4px",
+                  }}
+                  onClick={() => {
+                    if (tempSelectedVessels.includes(vessel.value)) {
+                      setTempSelectedVessels(tempSelectedVessels.filter(v => v !== vessel.value))
+                    } else {
+                      setTempSelectedVessels([...tempSelectedVessels, vessel.value])
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!tempSelectedVessels.includes(vessel.value)) e.currentTarget.style.backgroundColor = "#f8f9fa"
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!tempSelectedVessels.includes(vessel.value)) e.currentTarget.style.backgroundColor = "transparent"
+                  }}
+                >
+                  <div className="d-flex align-items-center">
+                    <input
+                      type="checkbox"
+                      checked={tempSelectedVessels.includes(vessel.value)}
+                      onChange={() => {}}
+                      style={{ marginRight: "10px", cursor: "pointer" }}
+                    />
+                    <span>{vessel.label}</span>
+                  </div>
+                </div>
+              ))}
+              {getUniqueVesselsFromData().length === 0 && (
+                <div className="text-center text-muted py-3">No vessels available</div>
+              )}
+            </div>
+          </Form>
+        </ModalBody>
+        <ModalFooter className="d-flex justify-content-end gap-2">
+          <Button variant="outline-secondary" size="sm" onClick={() => setTempSelectedVessels([])}>
+            Clear
+          </Button>
+          <Button variant="outline-primary" size="sm" onClick={() => {
+            const allVessels = getUniqueVesselsFromData().map(v => v.value)
+            setTempSelectedVessels(allVessels)
+          }}>
+            Select All
+          </Button>
+          <Button variant="primary" onClick={handleVesselModalDone}>
             <i className="fas fa-check me-2"></i>
             Done
           </Button>

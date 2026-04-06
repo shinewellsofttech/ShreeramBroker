@@ -183,7 +183,7 @@ const Contract = () => {
   const [contractModal, setContractModal] = useState(false)
 
 
-  const [newContractData, setNewContractData] = useState({ Name: "" })
+  const [newContractData, setNewContractData] = useState({ Name: "", IsVessel: false, IsShipmentMonth: false, IsShipmentPeriod: false, IsLiftingPeriod: false })
 
   const [showSharePDFModal, setShowSharePDFModal] = useState(false)
   const [pendingShareFile, setPendingShareFile] = useState(null)
@@ -193,7 +193,7 @@ const Contract = () => {
   const API_URL_SAVE = `${API_WEB_URLS.ContractH}/0/token`
   const API_URL_Lifting = `${API_WEB_URLS.AddLifting}/0/token`
   const API_URL = API_WEB_URLS.MASTER + "/0/token/PartyAccount"
-  const API_URL1 = API_WEB_URLS.MASTER + "/0/token/TaxAccount"
+  const API_URL1 = API_WEB_URLS.MASTER + "/0/token/ContractType"
   const API_URL2 = API_WEB_URLS.MASTER + "/0/token/UnitMaster"
   const API_URL3 = API_WEB_URLS.MASTER + "/0/token/ItemMaster"
   const API_URL4 = API_WEB_URLS.MASTER + "/0/token/MonthMaster"
@@ -209,6 +209,7 @@ const Contract = () => {
 
   const API_SaveLedger = `${API_WEB_URLS.LedgerMaster}/0/token`
   const API_SaveCommodity = `${API_WEB_URLS.ItemMaster}/0/token`
+  const API_SaveContractType = `${API_WEB_URLS.ContractType}/0/token`
 
   useEffect(() => {
     // Load master data
@@ -535,10 +536,8 @@ const Contract = () => {
     // Update state directly for all fields including notes
     setState(prev => ({ ...prev, [name]: newValue }))
 
-    // Auto-update InvRate when Rate is changed
+    // Auto-update InvRate when Rate is changed (InvRate = Rate + calPerTonDuty)
     if (name === "Rate") {
-      setState(prev => ({ ...prev, InvRate: value || 0 }))
-
       // Recalculate DiffAmt when contract rate changes
       const invoiceRate = parseFloat(value || 0)
       let totalDiffAmt = 0
@@ -555,11 +554,14 @@ const Contract = () => {
 
       const diffAmt = totalDiffAmt
 
-      setState(prev => ({
-        ...prev,
-        InvRate: value || 0,
-        DiffAmt: diffAmt.toFixed(2),
-      }))
+      setState(prev => {
+        const newInvRate = parseFloat(value || 0) + parseFloat(prev.calPerTonDuty || 0)
+        return {
+          ...prev,
+          InvRate: newInvRate,
+          DiffAmt: diffAmt.toFixed(2),
+        }
+      })
     }
 
     // Recalculate lifting quantities when contract quantity changes
@@ -578,6 +580,28 @@ const Contract = () => {
           totalLiftingQty > contractQty
             ? `Lifting quantity (${totalLiftingQty}) exceeds contract quantity (${contractQty}). Please adjust.`
             : "",
+      }))
+    }
+
+    // Auto-calculate Duty per Ton = (Import Duty * Tariff * Exchange Rate) / 100
+    // Also update InvRate = Rate + new calPerTonDuty
+    if (name === "importDuty" || name === "tariff" || name === "exchangeRate") {
+      setState(prev => {
+        const duty = parseFloat(name === "importDuty" ? value : prev.importDuty) || 0
+        const tariffVal = parseFloat(name === "tariff" ? value : prev.tariff) || 0
+        const exchange = parseFloat(name === "exchangeRate" ? value : prev.exchangeRate) || 0
+        const result = (duty * tariffVal * exchange) / 100
+        const calPerTonDuty = (Math.trunc(result * 100) / 100).toFixed(2)
+        const newInvRate = parseFloat(prev.Rate || 0) + parseFloat(calPerTonDuty)
+        return { ...prev, calPerTonDuty, InvRate: newInvRate }
+      })
+    }
+
+    // When calPerTonDuty is edited directly, update InvRate = Rate + calPerTonDuty
+    if (name === "calPerTonDuty") {
+      setState(prev => ({
+        ...prev,
+        InvRate: parseFloat(prev.Rate || 0) + parseFloat(value || 0),
       }))
     }
 
@@ -770,7 +794,7 @@ const Contract = () => {
   const toggleContractModal = () => {
     setContractModal(!contractModal)
     if (!contractModal) {
-      setNewContractData({ Name: "" })
+      setNewContractData({ Name: "", IsVessel: false, IsShipmentMonth: false, IsShipmentPeriod: false, IsLiftingPeriod: false })
     }
   }
 
@@ -829,15 +853,20 @@ const Contract = () => {
 
   // Save new contract data
   const handleSaveNewContract = async () => {
+    const obj = JSON.parse(localStorage.getItem("authUser"))
     const formData = new FormData()
     formData.append("Name", newContractData.Name || "")
-    formData.append("F_LedgerGroupMaster", 12)
+    formData.append("IsVessel", newContractData.IsVessel ? "true" : "false")
+    formData.append("IsShipmentMonth", newContractData.IsShipmentMonth ? "true" : "false")
+    formData.append("IsShipmentPeriod", newContractData.IsShipmentPeriod ? "true" : "false")
+    formData.append("IsLiftingPeriod", newContractData.IsLiftingPeriod ? "true" : "false")
+    formData.append("UserId", obj.uid)
 
-    const res = await Fn_AddEditData(
+    await Fn_AddEditData(
       dispatch,
       setNewContractData,
       { arguList: { id: 0, formData } },
-      API_SaveLedger,
+      API_SaveContractType,
       true,
       "NewTender",
       navigate,
@@ -2040,6 +2069,13 @@ const Contract = () => {
     handleCombinedContractChange(event)
   }
 
+  // Derive ContractType flags from selected F_ContractLedger
+  const _selectedContractType = state.TaxAccountArray.find(t => String(t.Id) === String(state.F_ContractLedger)) || null
+  const ctIsVessel = _selectedContractType ? !!_selectedContractType.IsVessel : true
+  const ctIsShipmentMonth = _selectedContractType ? !!_selectedContractType.IsShipmentMonth : true
+  const ctIsShipmentPeriod = _selectedContractType ? !!_selectedContractType.IsShipmentPeriod : true
+  const ctIsLiftingPeriod = _selectedContractType ? !!_selectedContractType.IsLiftingPeriod : true
+
   return (
     <div className="contract-page">
       <div
@@ -2114,7 +2150,7 @@ const Contract = () => {
                       }
                     `}</style>
                     <Row className="g-1">
-                      <Col xs={12} sm={6} md={4}>
+                      <Col xs={3} sm={6} md={4}>
                         <FormGroup className="mb-1">
                           <Label
                             for="date"
@@ -2139,7 +2175,7 @@ const Contract = () => {
 
 
 
-                      <Col xs={12} sm={6} md={4}>
+                      <Col xs={3} sm={6} md={4}>
                         <FormGroup className="mb-1">
                           <Label
                             for="ContractCombined"
@@ -2147,11 +2183,11 @@ const Contract = () => {
                             style={{ fontSize: "0.75rem" }}
                           >
                             Contract No
-                            {state.lastContractNo && (
+                            {/* {state.lastContractNo && (
                               <span className="text-muted ms-1" style={{ fontSize: "0.65rem" }}>
                                 ({state.lastContractNo})
                               </span>
-                            )}
+                            )} */}
                           </Label>
                           <input
                             name="ContractCombined"
@@ -2170,12 +2206,62 @@ const Contract = () => {
                           />
                         </FormGroup>
                       </Col>
+
+                      <Col xs={6} sm={6} md={4} className="pe-5 pe-md-0">
+                        <FormGroup className="mb-1">
+                          <Label
+                            for="F_ContractLedger"
+                            className="form-label-sm mb-1"
+                            style={{ fontSize: "0.75rem" }}
+                          >
+                            Contract Type
+                          </Label>
+                          <div className="input-group input-group-sm" style={{ flexWrap: "nowrap" }}>
+                            <select
+                              name="F_ContractLedger"
+                              id="F_ContractLedger"
+                              value={getFieldValue("F_ContractLedger") || 0}
+                              onChange={handleInputChange}
+                              className="form-control form-control-sm py-1"
+                              ref={contractTypeRef}
+                              onKeyDown={e => {
+                                handleDropdownKeyDown(e, "F_ContractLedger")
+                                handleKeyDown(e, shipMonthRef)
+                              }}
+                              disabled={state.isEditMode && !state.isEditingEnabled}
+                            >
+                              <option value="">Select Contract Type</option>
+                              {state.TaxAccountArray.map(type => (
+                                <option key={type.Id} value={type.Id}>
+                                  {type.Name}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="input-group-append">
+                              <Button
+                                color="primary"
+                                size="sm"
+                                onClick={toggleContractModal}
+                                disabled={state.isEditMode && !state.isEditingEnabled}
+                                style={{
+                                  height: "18px",
+                                  padding: "0 8px",
+                                  fontSize: "0.8rem",
+                                  borderRadius: "0 4px 4px 0",
+                                }}
+                              >
+                                +
+                              </Button>
+                            </span>
+                          </div>
+                        </FormGroup>
+                      </Col>
                     </Row>
 
 
 
                     <Row className="g-1">
-                      <Col xs={10} sm={10} md={7}>
+                      <Col xs={6} sm={10} md={7}>
                         <FormGroup className="mb-1">
                           <Label
                             for="F_SellerLedger"
@@ -2220,8 +2306,8 @@ const Contract = () => {
                             onClick={toggleSellerModal}
                             disabled={state.isEditMode && !state.isEditingEnabled}
                             style={{
-                              width: "100%",
-                              height: "28px",
+                              width: "74%",
+                              height: "18px",
                               padding: "0",
                               fontSize: "0.8rem",
                             }}
@@ -2231,7 +2317,7 @@ const Contract = () => {
                         </FormGroup>
                       </Col>
 
-                      <Col xs={12} sm={12} md={4}>
+                      <Col xs={4} sm={12} md={4}>
                         <FormGroup className="mb-1">
                           <Label
                             for="sellerName"
@@ -2255,7 +2341,7 @@ const Contract = () => {
                     </Row>
 
                     <Row className="g-2">
-                      <Col xs={10} sm={10} md={7}>
+                      <Col xs={6} sm={10} md={7}>
                         <FormGroup className="mb-1">
                           <Label
                             for="F_BuyerLedger"
@@ -2301,8 +2387,8 @@ const Contract = () => {
                             onClick={toggleSellerModal}
                             disabled={state.isEditMode && !state.isEditingEnabled}
                             style={{
-                              width: "100%",
-                              height: "28px",
+                              width: "74%",
+                              height: "18px",
                               padding: "0",
                               fontSize: "0.8rem",
                             }}
@@ -2312,7 +2398,7 @@ const Contract = () => {
                         </FormGroup>
                       </Col>
 
-                      <Col xs={12} sm={12} md={4}>
+                      <Col xs={4} sm={12} md={4}>
                         <FormGroup className="mb-1">
                           <Label
                             for="Person"
@@ -2336,7 +2422,7 @@ const Contract = () => {
                     </Row>
 
                     <Row className="g-2">
-                      <Col xs={10} sm={10} md={4}>
+                      <Col xs={4} sm={10} md={4}>
                         <FormGroup className="mb-1">
                           <Label
                             for="Item"
@@ -2382,8 +2468,8 @@ const Contract = () => {
                             onClick={toggleCommodityModal}
                             disabled={state.isEditMode && !state.isEditingEnabled}
                             style={{
-                              width: "100%",
-                              height: "28px",
+                              width: "74%",
+                              height: "18px",
                               padding: "0",
                               fontSize: "0.8rem",
                             }}
@@ -2392,7 +2478,7 @@ const Contract = () => {
                           </Button>
                         </FormGroup>
                       </Col>
-                      <Col xs={6} sm={4} md={2}>
+                      <Col xs={3} sm={4} md={2}>
                         <FormGroup className="mb-1">
                           <Label
                             for="Qty"
@@ -2415,7 +2501,7 @@ const Contract = () => {
                           />
                         </FormGroup>
                       </Col>
-                      <Col xs={6} sm={4} md={2}>
+                      <Col xs={3} sm={4} md={2}>
                         <FormGroup className="mb-1">
                           <Label
                             for="unit"
@@ -2464,7 +2550,7 @@ const Contract = () => {
                     </Row>
 
                     <Row className="g-2">
-                      <Col xs={12} sm={6} md={3}>
+                      <Col xs={3} sm={6} md={3}>
                         <FormGroup className="mb-1">
                           <Label
                             for="importDuty"
@@ -2482,12 +2568,13 @@ const Contract = () => {
                             className="form-control form-control-sm py-1"
                             placeholder="0.00"
                             ref={importDutyRef}
+                            onFocus={e => e.target.select()}
                             onKeyDown={e => handleKeyDown(e, tariffRef)}
                             disabled={state.isEditMode && !state.isEditingEnabled}
                           />
                         </FormGroup>
                       </Col>
-                      <Col xs={12} sm={6} md={2}>
+                      <Col xs={3} sm={6} md={2}>
                         <FormGroup className="mb-1">
                           <Label
                             for="tariff"
@@ -2505,20 +2592,21 @@ const Contract = () => {
                             className="form-control form-control-sm py-1"
                             placeholder="0.00"
                             ref={tariffRef}
+                            onFocus={e => e.target.select()}
                             onKeyDown={e => handleKeyDown(e, exchangeRateRef)}
                             disabled={state.isEditMode && !state.isEditingEnabled}
                           />
                         </FormGroup>
                       </Col>
 
-                      <Col xs={12} sm={6} md={4}>
+                      <Col xs={3} sm={6} md={4}>
                         <FormGroup className="mb-1">
                           <Label
                             for="exchangeRate"
                             className="form-label-sm mb-1"
                             style={{ fontSize: "0.75rem" }}
                           >
-                            Exchange $ Rate
+                            Ex $ Rate
                           </Label>
                           <input
                             type="number"
@@ -2529,12 +2617,13 @@ const Contract = () => {
                             className="form-control form-control-sm py-1"
                             placeholder="0.00"
                             ref={exchangeRateRef}
+                            onFocus={e => e.target.select()}
                             onKeyDown={e => handleKeyDown(e, calPerTonDutyRef)}
                             disabled={state.isEditMode && !state.isEditingEnabled}
                           />
                         </FormGroup>
                       </Col>
-                      <Col xs={12} sm={6} md={3}>
+                      <Col xs={3} sm={6} md={3}>
                         <FormGroup className="mb-1">
                           <Label
                             for="calPerTonDuty"
@@ -2567,7 +2656,7 @@ const Contract = () => {
                         <i className="bx bx-calculator me-2"></i>
                         Invoice Rate:{" "}
                         <span className="text-primary fw-bold ms-2">
-                          {state.InvRate || state.Rate || "0.00"}
+                          {(parseFloat(state.Rate || 0) + parseFloat(state.calPerTonDuty || 0)).toFixed(2)}
                         </span>
                       </Label>
                     </FormGroup>
@@ -2607,54 +2696,7 @@ const Contract = () => {
                       }
                     `}</style>
                     <Row className="g-2">
-                      <Col md={8}>
-                        <FormGroup className="mb-1">
-                          <Label
-                            for="F_ContractLedger"
-                            className="form-label-sm mb-1"
-                            style={{ fontSize: "0.75rem" }}
-                          >
-                            Contract Type
-                          </Label>
-                          <div className="input-group input-group-sm">
-                            <select
-                              name="F_ContractLedger"
-                              id="F_ContractLedger"
-                              value={getFieldValue("F_ContractLedger") || 0}
-                              onChange={handleInputChange}
-                              className="form-control form-control-sm py-1"
-                              ref={contractTypeRef}
-                              onKeyDown={e => {
-                                handleDropdownKeyDown(e, "F_ContractLedger")
-                                handleKeyDown(e, shipMonthRef)
-                              }}
-                              disabled={state.isEditMode && !state.isEditingEnabled}
-                            >
-                              <option value="">Select Contract Type</option>
-                              {state.TaxAccountArray.map(type => (
-                                <option key={type.Id} value={type.Id}>
-                                  {type.Name}
-                                </option>
-                              ))}
-                            </select>
-                            <Button
-                              color="primary"
-                              size="sm"
-                              onClick={toggleContractModal}
-                              disabled={state.isEditMode && !state.isEditingEnabled}
-                              style={{
-                                height: "28px",
-                                padding: "0 8px",
-                                fontSize: "0.8rem",
-                              }}
-                            >
-                              +
-                            </Button>
-                          </div>
-                        </FormGroup>
-                      </Col>
-
-                      <Col md={2}>
+                      <Col xs={6} md={2}>
                         <FormGroup className="mb-1">
                           <Label
                             for="shipMonth"
@@ -2670,10 +2712,7 @@ const Contract = () => {
                             onChange={handleInputChange}
                             className="form-control form-control-sm py-1"
                             disabled={
-                              (getFieldValue("ShipMentFromDate") &&
-                                getFieldValue("ShipMentToDate")) ||
-                              (getFieldValue("LiftedFromDate") &&
-                                getFieldValue("LiftedToDate")) ||
+                              !ctIsShipmentMonth ||
                               (state.isEditMode && !state.isEditingEnabled)
                             }
                             ref={shipMonthRef}
@@ -2691,7 +2730,7 @@ const Contract = () => {
                           </select>
                         </FormGroup>
                       </Col>
-                      <Col md={2}>
+                      <Col xs={6} md={2}>
                         <FormGroup className="mb-1">
                           <Label
                             for="shipYear"
@@ -2707,10 +2746,7 @@ const Contract = () => {
                             onChange={handleInputChange}
                             className="form-control form-control-sm py-1"
                             disabled={
-                              (getFieldValue("ShipMentFromDate") &&
-                                getFieldValue("ShipMentToDate")) ||
-                              (getFieldValue("LiftedFromDate") &&
-                                getFieldValue("LiftedToDate")) ||
+                              !ctIsShipmentMonth ||
                               (state.isEditMode && !state.isEditingEnabled)
                             }
                             ref={shipYearRef}
@@ -2731,7 +2767,7 @@ const Contract = () => {
                     </Row>
 
                     <Row className="g-2">
-                      <Col md={6}>
+                      <Col xs={6} md={6}>
                         <FormGroup className="mb-1">
                           <Label
                             for="Vessel"
@@ -2750,11 +2786,11 @@ const Contract = () => {
                             placeholder="Enter vessel name"
                             ref={vesselRef}
                             onKeyDown={e => handleKeyDown(e, deliveryPortRef)}
-                            disabled={state.isEditMode && !state.isEditingEnabled}
+                            disabled={!ctIsVessel || (state.isEditMode && !state.isEditingEnabled)}
                           />
                         </FormGroup>
                       </Col>
-                      <Col md={6}>
+                      <Col xs={6} md={6}>
                         <FormGroup className="mb-1">
                           <Label
                             htmlFor="DeliveryPort"
@@ -2780,7 +2816,7 @@ const Contract = () => {
                     </Row>
 
                     <Row className="g-2">
-                      <Col md={6}>
+                      <Col xs={6} md={6}>
                         <FormGroup className="mb-1">
                           <Label
                             for="ShipMentFromDate"
@@ -2799,9 +2835,7 @@ const Contract = () => {
                             onChange={handleInputChange}
                             className="form-control form-control-sm py-1"
                             disabled={
-                              (getFieldValue("F_MonthMaster") || getFieldValue("F_YearMaster")) ||
-                              (getFieldValue("LiftedFromDate") &&
-                                getFieldValue("LiftedToDate")) ||
+                              !ctIsShipmentPeriod ||
                               (state.isEditMode && !state.isEditingEnabled)
                             }
                             ref={shipmentFromRef}
@@ -2809,7 +2843,7 @@ const Contract = () => {
                           />
                         </FormGroup>
                       </Col>
-                      <Col md={6}>
+                      <Col xs={6} md={6}>
                         <FormGroup className="mb-1">
                           <Label
                             for="ShipMentToDate"
@@ -2828,9 +2862,7 @@ const Contract = () => {
                             onChange={handleInputChange}
                             className="form-control form-control-sm py-1"
                             disabled={
-                              (getFieldValue("F_MonthMaster") || getFieldValue("F_YearMaster")) ||
-                              (getFieldValue("LiftedFromDate") &&
-                                getFieldValue("LiftedToDate")) ||
+                              !ctIsShipmentPeriod ||
                               (state.isEditMode && !state.isEditingEnabled)
                             }
                             ref={shipmentToRef}
@@ -2841,7 +2873,7 @@ const Contract = () => {
                     </Row>
 
                     <Row className="g-2">
-                      <Col md={6}>
+                      <Col xs={6} md={6}>
                         <FormGroup className="mb-1">
                           <Label
                             for="LiftedFromDate"
@@ -2860,9 +2892,7 @@ const Contract = () => {
                             onChange={handleInputChange}
                             className="form-control form-control-sm py-1"
                             disabled={
-                              (getFieldValue("F_MonthMaster") || getFieldValue("F_YearMaster")) ||
-                              (getFieldValue("ShipMentFromDate") &&
-                                getFieldValue("ShipMentToDate")) ||
+                              !ctIsLiftingPeriod ||
                               (state.isEditMode && !state.isEditingEnabled)
                             }
                             ref={liftedFromRef}
@@ -2870,7 +2900,7 @@ const Contract = () => {
                           />
                         </FormGroup>
                       </Col>
-                      <Col md={6}>
+                      <Col xs={6} md={6}>
                         <FormGroup className="mb-1">
                           <Label
                             for="LiftedToDate"
@@ -2889,9 +2919,7 @@ const Contract = () => {
                             onChange={handleInputChange}
                             className="form-control form-control-sm py-1"
                             disabled={
-                              (getFieldValue("F_MonthMaster") || getFieldValue("F_YearMaster")) ||
-                              (getFieldValue("ShipMentFromDate") &&
-                                getFieldValue("ShipMentToDate")) ||
+                              !ctIsLiftingPeriod ||
                               (state.isEditMode && !state.isEditingEnabled)
                             }
                             ref={liftedToRef}
@@ -2902,7 +2930,7 @@ const Contract = () => {
                     </Row>
 
                     <Row className="g-2">
-                      <Col md={5}>
+                      <Col xs={4} md={5}>
                         <FormGroup className="mb-1">
                           <Label
                             className="form-label-sm mb-1"
@@ -2924,7 +2952,7 @@ const Contract = () => {
                           />
                         </FormGroup>
                       </Col>
-                      <Col md={3}>
+                      <Col xs={4} md={3}>
                         <FormGroup className="mb-1">
                           <Label
                             className="form-label-sm mb-1"
@@ -2947,7 +2975,7 @@ const Contract = () => {
                         </FormGroup>
                       </Col>
 
-                      <Col md={4}>
+                      <Col xs={4} md={4}>
                         <FormGroup className="mb-1">
                           <Label
                             className="form-label-sm mb-1"
@@ -2970,7 +2998,7 @@ const Contract = () => {
                       </Col>
                     </Row>
 
-                    <Row>
+                    <Row className="d-none d-md-flex">
                       <Col lg={4}>
                         <Input
                           type="text"
@@ -3738,7 +3766,7 @@ const Contract = () => {
       >
         <button
           type="button"
-          className="btn btn-warning btn-sm"
+          className="btn btn-danger btn-sm"
           onClick={handleEnableEditing}
           title="Edit"
           style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}
@@ -3748,7 +3776,7 @@ const Contract = () => {
 
         <button
           type="button"
-          className="btn btn-primary btn-sm"
+          className="btn btn-success btn-sm"
           onClick={handleUpdateExistingContract}
           disabled={state.isProgress || (state.isEditMode && !state.isEditingEnabled)}
           title="Save / Update"
@@ -3859,7 +3887,7 @@ const Contract = () => {
         </ModalFooter>
       </Modal>
 
-      {/* Seller Modal */}
+      {/* Contract Type Modal */}
       <Modal
         isOpen={contractModal}
         toggle={toggleContractModal}
@@ -3867,33 +3895,53 @@ const Contract = () => {
         centered
       >
         <ModalHeader toggle={toggleContractModal}>
-          <h5 className="modal-title">Add New Contract</h5>
+          <h5 className="modal-title">Add Contract Type</h5>
         </ModalHeader>
         <ModalBody>
-          <FormGroup>
-            <Label for="newContractName" className="form-label-sm">
-              Contract Type *
+          <FormGroup className="mb-3">
+            <Label for="newContractName" className="form-label-sm fw-semibold">
+              Contract Type Name <span className="text-danger">*</span>
             </Label>
             <Input
               type="text"
               id="newContractName"
               value={newContractData.Name}
-              onChange={e =>
-                handleContractModalInputChange("Name", e.target.value)
-              }
-              placeholder="Enter contract type"
+              onChange={e => handleContractModalInputChange("Name", e.target.value)}
+              placeholder="Enter contract type name"
               className="form-control-sm"
             />
+          </FormGroup>
+          <FormGroup className="mb-2">
+            <Label className="form-label-sm fw-semibold d-block mb-2">Options</Label>
+            <div className="d-flex flex-wrap gap-3">
+              {[
+                { name: "IsVessel", label: "Vessel" },
+                { name: "IsShipmentMonth", label: "Shipment Month" },
+                { name: "IsShipmentPeriod", label: "Shipment Period" },
+                { name: "IsLiftingPeriod", label: "Lifting Period" },
+              ].map(({ name, label }) => (
+                <div key={name} className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id={`modal_${name}`}
+                    checked={!!newContractData[name]}
+                    onChange={() => handleContractModalInputChange(name, !newContractData[name])}
+                    style={{ cursor: "pointer", width: "2.5em", height: "1.25em" }}
+                  />
+                  <label className="form-check-label fw-semibold ms-2" htmlFor={`modal_${name}`}>
+                    {label}
+                  </label>
+                </div>
+              ))}
+            </div>
           </FormGroup>
         </ModalBody>
         <ModalFooter>
           <Button color="secondary" onClick={toggleContractModal}>
             Cancel
           </Button>
-          <Button
-            color="primary"
-            onClick={() => handleSaveNewContract("contract")}
-          >
+          <Button color="primary" onClick={handleSaveNewContract}>
             Save
           </Button>
         </ModalFooter>

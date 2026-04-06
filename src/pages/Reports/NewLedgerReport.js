@@ -600,7 +600,13 @@ function NewLedgerReport() {
 
       {/* Filter Form */}
       <Card className="shadow-sm border-0 mb-2" style={{ flexShrink: 0 }}>
-        <Card.Body className="py-1 px-3" style={{ overflow: 'visible' }}>
+        <Card.Body
+          className={window.innerWidth > 576 ? "px-3" : "py-1 px-3"}
+          style={{
+            overflow: 'visible',
+            paddingTop: window.innerWidth > 576 ? '2.5rem' : undefined,
+          }}
+        >
           <Form>
             <div style={{ overflowX: "auto", overflowY: "hidden" }}>
               <Row className="g-2 align-items-center" style={{ flexWrap: "nowrap", minWidth: "fit-content" }}>

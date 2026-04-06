@@ -596,7 +596,7 @@ const Dashboard = props => {
                   <CardBody className="text-center p-5" style= {{backgroundColor: '#fff9c4'}}>
                     <div className="mb-4">
                       <img 
-                        src={require("../../assets/images/contract/ShreeRam.jpeg")} 
+                        src={require("../../assets/images/contract/ShreeRam.jpg")} 
                         alt="Shri Ram" 
                         className="img-fluid rounded-circle shadow"
                         style={{ 

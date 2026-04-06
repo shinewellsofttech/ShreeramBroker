@@ -5,12 +5,13 @@ export const API_WEB_URLS = {
   // BASE: "http://192.168.31.70:7037/api/V1/",
   // BASE: "https://localhost:44379/api/V1/",
   // BASE: "https://localhost:44379/api/V1/",
-    // BASE: "https://ApiDemoBroker.shinewellsofttech.co.in/api/V1/",
-    BASE: "https://ApiBrokerShreeram.shinewellsofttech.co.in/api/V1/",
+    // BASE: "https://ApiBrokerShreeram.shinewellsofttech.co.in/api/V1/",
+    BASE: "https://ApiBrokerGta.shinewellsofttech.co.in/api/V1/",
+    // BASE: "https://ApiSKumar.shinewellsofttech.co.in/api/V1/",
 
   LOGIN: "Authentication/Login",
   // IMAGEURL: "https://10.222.92.203:7037/MemberImages/",
- IMAGEURL: "https://ApiBrokerShreeram.shinewellsofttech.co.in/MemberImages/",  
+ IMAGEURL: "https://ApiBrokerGta.shinewellsofttech.co.in/MemberImages/",  
   
 //IMAGEURL_PDF: "https://ApiBrokerShreeram.shinewellsofttech.co.in/MemberImages/PDF/",
    
@@ -29,6 +30,7 @@ export const API_WEB_URLS = {
   ItemTypeMaster: "ItemTypeMaster",
   UnitMaster: "UnitMaster",
   ItemMaster: "ItemMaster",
+  ContractType: "ContractType",
  TransportMaster: "TransportMaster",
  DeleteContract: "DeleteContract",
  DalaliMaster: "DalaliMaster",

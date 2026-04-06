@@ -2017,7 +2017,7 @@ function LinkCreateRegister() {
                                   <td
                                     className="fw-semibold align-middle"
                                     style={{
-                                      backgroundColor: bgColor,
+                                      backgroundColor: selectedRows.includes(row.Id) ? '#fffec8' : 'white',
                                       padding: "2px 4px",
                                       border: "1.5px solid black !important",
                                       fontSize: "0.7rem",

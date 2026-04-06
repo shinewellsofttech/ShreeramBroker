@@ -350,7 +350,7 @@ const ContractPrint = () => {
                 <div className="header-middle-section">
                   <div className="logo-section">
                     <img
-                      src={require("../../assets/images/contract/ShreeRam.jpeg")}
+                      src={require("../../assets/images/contract/ShreeRam.jpg")}
                       alt="ShreeRam Logo"
                       className="company-logo"
                     />

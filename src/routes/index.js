@@ -59,6 +59,8 @@ import ReminderData from "pages/Reports/ReminderData";
 import Voucher from "pages/Transaction/Voucher";
 import AddEdit_PartyAccount from "pages/Masters/AddEdit_PartyAccount";
 import PageList_PartyAccount from "pages/Masters/PageList_PartyAccount";
+import AddEdit_ContractType from "pages/Masters/AddEdit_ContractType";
+import PageList_ContractType from "pages/Masters/PageList_ContractType";
 import TabVoucherSystemBro from "pages/BroVoucherSystem/TabVoucherSystemBro";
 import TabVoucherSystemH from "pages/HiddenVoucherSystem/TabVoucherSystemH";
 
@@ -129,6 +131,10 @@ const authProtectedRoutes = [
   { path: "/AddPartyAccount", component: <AddEdit_PartyAccount /> },
   { path: "/EditPartyAccount", component: <AddEdit_PartyAccount /> },
   { path: "/PartyAccountMaster", component: <PageList_PartyAccount /> },
+
+  { path: "/AddContractType", component: <AddEdit_ContractType /> },
+  { path: "/EditContractType", component: <AddEdit_ContractType /> },
+  { path: "/ContractTypeMaster", component: <PageList_ContractType /> },
 
   { path: "/Contract", component: <Contract /> },
   { path: "/EditContract", component: <EditContract /> },

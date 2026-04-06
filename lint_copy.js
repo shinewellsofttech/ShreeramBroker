@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect } from "react"
 import {
   Row,
   Col,
@@ -36,24 +36,11 @@ import Select from "react-select"
 import EditContract from "../Transaction/EditContract"
 import MultiSelectDropdown from "../../components/Common/MultiSelectDropdown"
 import ExcelJS from "exceljs"
-import { FileText } from "react-feather"
-import jsPDF from "jspdf"
-import { applyPlugin as applyAutoTable } from "jspdf-autotable"
-applyAutoTable(jsPDF)
-import { registerHindiFont, setHindiFont } from "../../helpers/pdfHindiFont"
-import useFilterLayout from "../../helpers/useFilterLayout"
-import "../../helpers/filterLayout.css"
 
 const LedgerReport = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
-
-  // State for scroll to top button
-  const [showScrollTop, setShowScrollTop] = useState(false)
-
-  // Ref for table container
-  const tableContainerRef = useRef(null)
 
   // Add CSS to ensure borders persist during scrolling and fix hover backgrounds
   useEffect(() => {
@@ -76,28 +63,36 @@ const LedgerReport = () => {
         border: 1.5px solid black !important;
       }
       
-      /* Lighter grey for table-secondary rows (not started contracts) */
+      /* Fix hover background for all table rows and cells */
+      .table-hover tbody tr:hover {
+        background-color: black !important;
+      }
+      .table-hover tbody tr:hover td {
+        background-color: black !important;
+      }
+      .table-hover tbody tr.table-secondary:hover,
+      .table-hover tbody tr.table-secondary:hover td {
+        background-color: black !important;
+      }
+      .table-hover tbody tr.table-info:hover,
+      .table-hover tbody tr.table-info:hover td {
+        background-color: black !important;
+      }
+      .table-hover tbody tr.table-danger:hover,
+      .table-hover tbody tr.table-danger:hover td {
+        background-color: black !important;
+      }
+      .table-hover tbody tr:hover td.fw-semibold,
+      .table-hover tbody tr:hover td.text-end {
+        background-color: black !important;
+      }
+      
+      /* Darker grey for table-secondary rows (not started contracts) */
       .table-secondary {
-        background-color: #e8e8e8 !important;
+        background-color: #b0b0b0 !important;
       }
       .table-secondary td {
-        background-color: #e8e8e8 !important;
-      }
-      
-      /* Lighter blue for table-info rows (fully lifted contracts) */
-      .table-info {
-        background-color: #d6ebff !important;
-      }
-      .table-info td {
-        background-color: #d6ebff !important;
-      }
-      
-      /* Lighter red for table-danger rows (partially lifted contracts) */
-      .table-danger {
-        background-color: #fde7e9 !important;
-      }
-      .table-danger td {
-        background-color: #fde7e9 !important;
+        background-color: #b0b0b0 !important;
       }
       
       /* Force totals row background color */
@@ -164,53 +159,6 @@ const LedgerReport = () => {
         height: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
-      }
-      
-      /* Bottom filters bar - sab controls ki same height (32px) */
-      .bottom-filters-bar input.form-control,
-      .bottom-filters-bar .form-control-sm,
-      .bottom-filters-bar input[type="text"] {
-        height: 32px !important;
-        min-height: 32px !important;
-        box-sizing: border-box !important;
-      }
-      .bottom-filters-bar .react-select__control {
-        height: 32px !important;
-        min-height: 32px !important;
-        box-sizing: border-box !important;
-        display: flex !important;
-        align-items: center !important;
-      }
-      .bottom-filters-bar .react-select__value-container {
-        display: flex !important;
-        align-items: center !important;
-        padding: 0 8px !important;
-      }
-      .bottom-filters-bar .react-select__placeholder,
-      .bottom-filters-bar .react-select__single-value {
-        margin: 0 !important;
-        line-height: 1 !important;
-      }
-      .bottom-filters-bar .react-select__input-container {
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      .bottom-filters-bar .btn {
-        height: 32px !important;
-        min-height: 32px !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        box-sizing: border-box !important;
-      }
-      .bottom-filters-bar .d-flex.align-items-center > div > div,
-      .bottom-filters-bar .bottom-filter-control {
-        height: 32px !important;
-        min-height: 32px !important;
-        box-sizing: border-box !important;
-        display: flex !important;
-        align-items: center !important;
       }
       
       /* Fix dropdown in table footer to render outside table */
@@ -357,232 +305,51 @@ const LedgerReport = () => {
         width: 100% !important;
       }
       
-      /* Hide calendar icon in native date inputs */
-      input[type="date"]::-webkit-calendar-picker-indicator {
-        display: none;
-        -webkit-appearance: none;
-      }
-      
       /* Ensure datepicker dropdown appears above sticky headers */
       .react-datepicker-popper {
         z-index: 12000 !important;
       }
       
-      /* Remove pagination controls spacing */
-      .pagination-controls {
-        margin: 0 !important;
-        padding: 0 !important;
-        min-height: 0 !important;
+      /* Filters row — horizontal scroll, scrollbar styling */
+      .ledger-report-filters-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: #8B4513 #f4e4d4;
+      }
+      .ledger-report-filters-scroll::-webkit-scrollbar {
+        height: 8px;
+      }
+      .ledger-report-filters-scroll::-webkit-scrollbar-track {
+        background: #f4e4d4;
+        border-radius: 4px;
+      }
+      .ledger-report-filters-scroll::-webkit-scrollbar-thumb {
+        background: #8B4513;
+        border-radius: 4px;
+      }
+      .ledger-report-filters-scroll::-webkit-scrollbar-thumb:hover {
+        background: #6d3410;
       }
       
-      /* Mobile: lock body scroll so only table scrolls */
-      @media (max-width: 768px) {
-        body.ledger-report-mobile {
-          overflow: hidden !important;
-          height: 100% !important;
+      /* Sab top spacing dynamic: body par --header-height set hota hai (_vertical.scss). */
+      .ledger-report-root {
+        padding-top: var(--header-height, 70px) !important;
+        margin-top: 0 !important;
+      }
+      @media (max-width: 991.98px) {
+        .ledger-report-root {
+          padding-top: calc(var(--header-height, 70px) + env(safe-area-inset-top, 0px)) !important;
         }
       }
-      
-      /* Mobile: fix layout - only table data scrolls; container height excludes fixed nav footer so no overlap */
-      @media (max-width: 768px) {
-        /* Nav footer space - container shorter; table height thodi aur kam */
-        .ledger-report-container {
-          height: calc(100vh - 115px - env(safe-area-inset-bottom, 0px)) !important;
-          height: calc(100dvh - 115px - env(safe-area-inset-bottom, 0px)) !important;
-          max-height: calc(100vh - 115px - env(safe-area-inset-bottom, 0px)) !important;
-          max-height: calc(100dvh - 115px - env(safe-area-inset-bottom, 0px)) !important;
-          overflow: hidden !important;
-          padding-top: 0 !important;
-          padding-bottom: 0 !important;
-          box-sizing: border-box !important;
-          display: flex !important;
-          flex-direction: column !important;
-          touch-action: none !important;
-        }
-        
-        .ledger-report-container .col-12:first-child {
-          flex: 0 0 auto !important;
-          min-height: auto !important;
-        }
-        
-        /* Table section: takes remaining space, only inner table scrolls */
-        .ledger-report-container .row.ledger-table-section {
-          flex: 1 1 auto !important;
-          min-height: 0 !important;
-          overflow: hidden !important;
-          display: flex !important;
-          flex-direction: column !important;
-        }
-        
-        .ledger-report-container .ledger-table-section .col-12 {
-          min-height: 0 !important;
-          display: flex !important;
-          flex-direction: column !important;
-        }
-        
-        .ledger-report-container .ledger-table-section .card {
-          min-height: 0 !important;
-          flex: 1 !important;
-          display: flex !important;
-          flex-direction: column !important;
-          overflow: hidden !important;
-        }
-        
-        /* Table section card-body: bottom padding reduces table height so filters stay above nav footer */
-        .ledger-report-container .ledger-table-section .card-body {
-          min-height: 0 !important;
-          flex: 1 !important;
-          display: flex !important;
-          flex-direction: column !important;
-          overflow: hidden !important;
-          padding-bottom: 32px !important;
-        }
-        
-        /* ContractNo column selected/unselected background */
-        .ledger-report-container td.contractno-selected {
-          background-color: #fffec8 !important;
-          box-shadow: none !important;
-        }
-        .ledger-report-container td.contractno-unselected {
-          background-color: white !important;
-          box-shadow: none !important;
-        }
-        
-        /* Only this div scrolls - table height thodi kam so no overlap with nav footer */
-        .ledger-report-container .table-responsive.ledger-table-scroll {
-          flex: 1 1 auto !important;
-          min-height: 0 !important;
-          max-height: 100% !important;
-          overflow-y: auto !important;
-          overflow-x: auto !important;
-          -webkit-overflow-scrolling: touch !important;
-          margin-bottom: 0 !important;
-          padding-bottom: 0 !important;
-          border-bottom: none !important;
-        }
-        
-        /* Sticky header - fixed at top when scrolling */
-        .ledger-report-container .table-responsive thead th {
-          position: sticky !important;
-          top: 0 !important;
-          z-index: 12 !important;
-          background-color: #0000FF !important;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
-        }
-        
-        /* Sticky footer - both total rows fixed at bottom when scrolling */
-        .ledger-report-container .table-responsive tfoot {
-          position: sticky !important;
-          bottom: 0 !important;
-          z-index: 11 !important;
-        }
-        
-        .ledger-report-container .table-responsive tfoot tr {
-          box-shadow: 0 -2px 4px rgba(0,0,0,0.15) !important;
-        }
-        
-        /* Bottom filters bar - attached to table top, sits above app footer (no overlap) */
-        .ledger-report-container .bottom-filters-bar {
-          flex-shrink: 0 !important;
-          margin-top: 0 !important;
-          margin-bottom: 0 !important;
-          padding-top: 6px !important;
-          padding-bottom: 6px !important;
-          border-top: 2px solid #5a2d5a !important;
-          border-bottom: none !important;
-          min-height: 40px !important;
-          /* stays in container above padding-bottom = above app footer */
-        }
-        
-        .ledger-report-container .card-body {
-          gap: 0 !important;
-        }
-        
-        .ledger-report-container .text-center.py-2 {
-          padding-top: 0.5rem !important;
-          padding-bottom: 0.5rem !important;
-        }
-        
-        /* Note column - single line on mobile, wider column, scroll horizontally if long */
-        .ledger-report-container .table-responsive .ledger-note-cell {
-          min-width: 200px !important;
-          max-width: 320px !important;
-          width: auto !important;
-          padding: 6px 8px !important;
-          font-size: 0.7rem !important;
-          line-height: 1.35 !important;
-          white-space: nowrap !important;
-          overflow-x: auto !important;
-          overflow-y: hidden !important;
-          -webkit-overflow-scrolling: touch !important;
-        }
-        
-        .bottom-filters-bar::-webkit-scrollbar {
-          height: 6px;
-        }
-        .bottom-filters-bar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 3px;
-        }
-        .bottom-filters-bar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 3px;
-        }
+      /* Sticky thead bhi navbar height ke hisaab se (scroll par niche na chhupaye) */
+      .ledger-report-root .table thead th,
+      .ledger-report-root .table-responsive thead th {
+        top: var(--header-height, 70px) !important;
       }
-      
-      @media (max-width: 480px) {
-        .party-dropdown-upward button,
-        .period-dropdown-upward button {
-          font-size: 0.6rem !important;
-          padding: 1px 6px !important;
-          height: 26px !important;
-          min-height: 26px !important;
+      @media (max-width: 991.98px) {
+        .ledger-report-root .table thead th,
+        .ledger-report-root .table-responsive thead th {
+          top: calc(var(--header-height, 70px) + env(safe-area-inset-top, 0px)) !important;
         }
-        .party-dropdown-upward button span,
-        .period-dropdown-upward button span {
-          font-size: 0.6rem !important;
-        }
-      }
-      /* Column resize handle styles */
-      .col-resize-handle {
-        position: absolute;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        width: 6px;
-        cursor: col-resize;
-        background: transparent;
-        z-index: 20;
-        touch-action: none;
-      }
-      .col-resize-handle:hover,
-      .col-resize-handle.active {
-        background: rgba(255, 255, 0, 0.5);
-      }
-      .col-resize-handle::after {
-        content: '';
-        position: absolute;
-        right: 2px;
-        top: 25%;
-        bottom: 25%;
-        width: 2px;
-        background: rgba(255,255,255,0.5);
-        border-radius: 1px;
-      }
-      /* Ensure td cells handle overflow for fixed table layout */
-      .table td {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      /* Column drag reorder styles */
-      .col-drag-over {
-        outline: 2px solid #FFD700 !important;
-        outline-offset: -2px !important;
-        background-color: rgba(255,215,0,0.25) !important;
-      }
-      .col-dragging {
-        opacity: 0.5 !important;
       }
     `
     document.head.appendChild(style)
@@ -590,586 +357,6 @@ const LedgerReport = () => {
       document.head.removeChild(style)
     }
   }, [])
-
-  // On mobile: lock body scroll so only table content scrolls
-  useEffect(() => {
-    const isMobile = () => window.innerWidth <= 768
-    if (isMobile()) {
-      document.body.classList.add("ledger-report-mobile")
-    }
-    const handleResize = () => {
-      if (!isMobile()) {
-        document.body.classList.remove("ledger-report-mobile")
-      } else {
-        document.body.classList.add("ledger-report-mobile")
-      }
-    }
-    window.addEventListener("resize", handleResize)
-    return () => {
-      document.body.classList.remove("ledger-report-mobile")
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [])
-
-  // --- Column Resize Feature ---------------------------------------
-  const COLUMN_DEFAULT_WIDTHS = {
-    CheckBox: 35,
-    ContractNo: 110,
-    ContractDate: 90,
-    Seller: 120,
-    Buyer: 120,
-    Status: 45,
-    Unit: 55,
-    Item: 90,
-    PurQty: 70,
-    SelQty: 70,
-    Vessel: 80,
-    Rate: 65,
-    ContPeriod: 85,
-    DeliveryPort: 90,
-    AdvPayment: 80,
-    AdvDate: 80,
-    Lifted: 65,
-    Contract: 70,
-    Lifting: 260,
-    Note: 120,
-  }
-
-  const LOCALSTORAGE_KEY = 'ledgerReport_columnWidths'
-
-  const getInitialColumnWidths = () => {
-    try {
-      const saved = localStorage.getItem(LOCALSTORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        // Merge with defaults so new columns get a default width
-        return { ...COLUMN_DEFAULT_WIDTHS, ...parsed }
-      }
-    } catch (e) {
-      console.warn('Failed to load column widths from localStorage', e)
-    }
-    return { ...COLUMN_DEFAULT_WIDTHS }
-  }
-
-  const [columnWidths, setColumnWidths] = useState(getInitialColumnWidths)
-  const resizingCol = useRef(null)  // { key, startX, startWidth }
-  const resizeActiveRef = useRef(false)
-  const resizeRafRef = useRef(null)  // requestAnimationFrame id for throttling
-
-  const handleResizeMouseDown = (e, colKey) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const touch = e.touches && e.touches[0]
-    resizingCol.current = {
-      key: colKey,
-      startX: touch ? touch.clientX : e.clientX,
-      startWidth: columnWidths[colKey] || COLUMN_DEFAULT_WIDTHS[colKey] || 80,
-    }
-    resizeActiveRef.current = true
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-  }
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!resizeActiveRef.current || !resizingCol.current) return
-      // Prevent page scroll during touch-resize (must be synchronous)
-      if (e.cancelable) e.preventDefault()
-      const touch = e.touches && e.touches[0]
-      const clientX = touch ? touch.clientX : e.clientX
-      if (clientX == null) return
-      const diff = clientX - resizingCol.current.startX
-      const newWidth = Math.max(30, resizingCol.current.startWidth + diff)
-      const colKey = resizingCol.current.key
-      // Throttle React state updates to one per animation frame (prevents mobile crash)
-      if (resizeRafRef.current) cancelAnimationFrame(resizeRafRef.current)
-      resizeRafRef.current = requestAnimationFrame(() => {
-        resizeRafRef.current = null
-        setColumnWidths(prev => ({
-          ...prev,
-          [colKey]: newWidth,
-        }))
-      })
-    }
-
-    const handleMouseUp = () => {
-      if (!resizeActiveRef.current) return
-      // Cancel any pending frame before final save
-      if (resizeRafRef.current) {
-        cancelAnimationFrame(resizeRafRef.current)
-        resizeRafRef.current = null
-      }
-      resizeActiveRef.current = false
-      resizingCol.current = null
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-      // Save to localStorage
-      setColumnWidths(prev => {
-        try {
-          localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(prev))
-        } catch (e) {
-          console.warn('Failed to save column widths to localStorage', e)
-        }
-        return prev
-      })
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    document.addEventListener('touchmove', handleMouseMove, { passive: false })
-    document.addEventListener('touchend', handleMouseUp)
-    document.addEventListener('touchcancel', handleMouseUp)
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.removeEventListener('touchmove', handleMouseMove)
-      document.removeEventListener('touchend', handleMouseUp)
-      document.removeEventListener('touchcancel', handleMouseUp)
-    }
-  }, [])
-  // --- End Column Resize Feature ----------------------------------
-
-  // --- Column Reorder Feature -------------------------------------
-  const ALL_COLUMNS = [
-    { key: 'CheckBox', label: '', sortKey: null },
-    { key: 'ContractNo', label: 'Contract No', sortKey: 'ContractNo' },
-    { key: 'ContractDate', label: 'Contract Date', sortKey: 'ContractDate' },
-    { key: 'Seller', label: 'Seller', sortKey: 'Seller' },
-    { key: 'Buyer', label: 'Buyer', sortKey: 'Buyer' },
-    { key: 'Status', label: 'S/P', sortKey: 'Status' },
-    { key: 'Unit', label: 'Unit', sortKey: 'Unit' },
-    { key: 'Item', label: 'Item', sortKey: 'Item' },
-    { key: 'PurQty', label: 'Pur Qty', sortKey: 'PurQty' },
-    { key: 'SelQty', label: 'Sel Qty', sortKey: 'SelQty' },
-    { key: 'Vessel', label: 'Vessel', sortKey: null },
-    { key: 'Rate', label: 'Rate', sortKey: null },
-    { key: 'ContPeriod', label: 'Cont Period', sortKey: null },
-    { key: 'DeliveryPort', label: 'Delivery Port', sortKey: null },
-    { key: 'SAdvPayment', label: 'S Adv Pay', sortKey: null },
-    { key: 'PAdvPayment', label: 'P Adv Pay', sortKey: null },
-    { key: 'AdvDate', label: 'Adv Date', sortKey: null },
-    { key: 'Lifted', label: 'Lifted', sortKey: null },
-    { key: 'Contract', label: 'Contract', sortKey: null },
-    { key: 'Lifting', label: 'Lifting', sortKey: null, detailedOnly: true },
-    { key: 'Note', label: 'Note', sortKey: null },
-  ]
-  const DEFAULT_COLUMN_ORDER = ALL_COLUMNS.map(c => c.key)
-  const COL_ORDER_LOCALSTORAGE_KEY = 'ledgerReport_columnOrder'
-
-  const getInitialColumnOrder = () => {
-    try {
-      const saved = localStorage.getItem(COL_ORDER_LOCALSTORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        const merged = [
-          ...parsed.filter(k => DEFAULT_COLUMN_ORDER.includes(k)),
-          ...DEFAULT_COLUMN_ORDER.filter(k => !parsed.includes(k)),
-        ]
-        return merged
-      }
-    } catch (e) {
-      console.warn('Failed to load column order', e)
-    }
-    return [...DEFAULT_COLUMN_ORDER]
-  }
-
-  const [columnOrder, setColumnOrder] = useState(getInitialColumnOrder)
-
-  const saveColumnOrder = (order) => {
-    try {
-      localStorage.setItem(COL_ORDER_LOCALSTORAGE_KEY, JSON.stringify(order))
-    } catch (e) {
-      console.warn('Failed to save column order', e)
-    }
-  }
-
-  const colDragSrcRef = useRef(null)
-  const [colDragOverKey, setColDragOverKey] = useState(null)
-
-  const handleColDragStart = (e, colKey) => {
-    if (resizeActiveRef.current) { e.preventDefault(); return }
-    colDragSrcRef.current = colKey
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', colKey)
-  }
-
-  const handleColDragOver = (e, colKey) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    if (colKey !== colDragSrcRef.current) setColDragOverKey(colKey)
-  }
-
-  const handleColDrop = (e, targetKey) => {
-    e.preventDefault()
-    const srcKey = colDragSrcRef.current
-    if (!srcKey || srcKey === targetKey) { setColDragOverKey(null); return }
-    setColumnOrder(prev => {
-      const next = [...prev]
-      const fromIdx = next.indexOf(srcKey)
-      const toIdx = next.indexOf(targetKey)
-      if (fromIdx === -1 || toIdx === -1) return prev
-      next.splice(fromIdx, 1)
-      next.splice(toIdx, 0, srcKey)
-      saveColumnOrder(next)
-      return next
-    })
-    setColDragOverKey(null)
-    colDragSrcRef.current = null
-  }
-
-  const handleColDragEnd = () => {
-    setColDragOverKey(null)
-    colDragSrcRef.current = null
-  }
-
-  const resetColumnOrder = () => {
-    setColumnOrder([...DEFAULT_COLUMN_ORDER])
-    saveColumnOrder([...DEFAULT_COLUMN_ORDER])
-  }
-
-  // Get effective visible columns based on isDetailed flag
-  const getVisibleColumns = () => columnOrder
-    .map(key => ALL_COLUMNS.find(c => c.key === key))
-    .filter(c => c && (!c.detailedOnly || isDetailed))
-  // --- End Column Reorder Feature ----------------------------------
-
-  // --- Filter Layout Feature (resizable, reorderable, gap control) ---
-  const TOP_FILTER_DEFAULTS = [
-    { id: 'checkboxes', defaultWidth: 260 },
-    { id: 'dates', defaultWidth: 210 },
-    { id: 'ledger', defaultWidth: 70 },
-    { id: 'voucher', defaultWidth: 60 },
-    { id: 'addContract', defaultWidth: 40 },
-    { id: 'lapLip', defaultWidth: 150 },
-    { id: 'notes', defaultWidth: 250 },
-    { id: 'exit', defaultWidth: 60 },
-  ];
-
-  const BOTTOM_FILTER_DEFAULTS = [
-    { id: 'period', defaultWidth: 130 },
-    { id: 'item', defaultWidth: 130 },
-    { id: 'exportButtons', defaultWidth: 140 },
-    { id: 'party', defaultWidth: 230 },
-    { id: 'contractType', defaultWidth: 150 },
-    { id: 'vessel', defaultWidth: 110 },
-    { id: 'port', defaultWidth: 110 },
-  ];
-
-  const {
-    filterOrder: topFilterOrder,
-    filterWidths: topFilterWidths,
-    gap: topGap,
-    setGap: setTopGap,
-    handleDragStart: topDragStart,
-    handleDragOver: topDragOver,
-    handleDrop: topDrop,
-    handleDragEnd: topDragEnd,
-    handleTouchDragStart: topTouchDragStart,
-    handleTouchDragMove: topTouchDragMove,
-    handleTouchDragEnd: topTouchDragEnd,
-    handleFilterResizeMouseDown: topResizeDown,
-    resetLayout: resetTopLayout,
-  } = useFilterLayout('ledgerReport_topFilters', TOP_FILTER_DEFAULTS);
-
-  const {
-    filterOrder: bottomFilterOrder,
-    filterWidths: bottomFilterWidths,
-    gap: bottomGap,
-    setGap: setBottomGap,
-    handleDragStart: bottomDragStart,
-    handleDragOver: bottomDragOver,
-    handleDrop: bottomDrop,
-    handleDragEnd: bottomDragEnd,
-    handleTouchDragStart: bottomTouchDragStart,
-    handleTouchDragMove: bottomTouchDragMove,
-    handleTouchDragEnd: bottomTouchDragEnd,
-    handleFilterResizeMouseDown: bottomResizeDown,
-    resetLayout: resetBottomLayout,
-  } = useFilterLayout('ledgerReport_bottomFilters', BOTTOM_FILTER_DEFAULTS);
-
-  // --- Filter Content Renderers ---------------------------------
-  const renderTopFilterContent = (filterId) => {
-    switch (filterId) {
-      case 'checkboxes':
-        return (
-          <div
-            style={{
-              border: "1px solid #2196F3",
-              borderRadius: "4px",
-              padding: "2px 1px",
-              backgroundColor: "#E3F2FD",
-              display: "flex",
-              alignItems: "center",
-              flexWrap: "nowrap",
-              gap: "0",
-              height: "28px",
-              width: "100%",
-            }}
-          >
-            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "3px", paddingLeft: "0" }}>
-              <input id="Pending" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={state.Pending} onClick={() => { setState(prev => ({ ...prev, Pending: !prev.Pending })); }} />
-              <label className="form-check-label small mb-0" htmlFor="Pending" style={{ fontSize: "0.55rem", color: "#dc3545", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-hourglass-half" style={{ fontSize: "0.5rem" }}></i>R:{state.Pending ? "Y" : "N"}</label>
-            </div>
-            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "3px", paddingLeft: "0" }}>
-              <input id="NotStarted" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={state.NotStarted} onClick={() => { setState(prev => ({ ...prev, NotStarted: !prev.NotStarted })); }} />
-              <label className="form-check-label small mb-0" htmlFor="NotStarted" style={{ fontSize: "0.55rem", color: "#000000", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-clock" style={{ fontSize: "0.5rem" }}></i>Bk:{state.NotStarted ? "Y" : "N"}</label>
-            </div>
-            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", paddingLeft: "0" }}>
-              <input id="Completed" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} checked={state.Completed} onClick={() => { setState(prev => ({ ...prev, Completed: !prev.Completed })); }} />
-              <label className="form-check-label small mb-0" htmlFor="Completed" style={{ fontSize: "0.55rem", color: "#007bff", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>Bl:{state.Completed ? "Y" : "N"}</label>
-            </div>
-          </div>
-        );
-      case 'dates':
-        return (
-          <FormGroup className="mb-0" style={{ width: "100%", height: "100%", paddingRight: "6px" }}>
-            <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap", height: "100%", width: "100%" }}>
-              <div style={{ flex: 1, height: '28px' }}>
-                <DatePicker selected={fromDate} onChange={date => setFromDate(date)} className="form-control form-control-sm custom-datepicker w-100" dateFormat="dd/MM/yyyy" placeholderText="From Date" portalId="root-portal" popperPlacement="bottom-start" openToDate={new Date()} />
-              </div>
-              <span style={{ fontSize: "0.6rem", fontWeight: "500", color: "#1976D2", margin: "0 2px" }}>To</span>
-              <div style={{ flex: 1, height: '28px' }}>
-                <DatePicker selected={toDate} onChange={date => setToDate(date)} className="form-control form-control-sm custom-datepicker w-100" dateFormat="dd/MM/yyyy" placeholderText="To Date" portalId="root-portal" popperPlacement="bottom-start" openToDate={new Date()} />
-              </div>
-            </div>
-          </FormGroup>
-        );
-      case 'ledger':
-        return (
-          <FormGroup className="mb-0">
-            <Button variant="outline-primary" onClick={handleOpenLedgerModal} style={{ fontSize: "0.55rem", height: "28px", padding: "2px 4px", display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#E3F2FD", border: "1px solid #2196F3", color: "#1976D2", whiteSpace: "nowrap", minWidth: "fit-content", width: "100%" }}>
-              Ledger
-              <i className="fas fa-chevron-down" style={{ fontSize: "0.5rem", marginLeft: "2px" }}></i>
-            </Button>
-          </FormGroup>
-        );
-      case 'voucher':
-        return (
-          <Button color="info" style={{ fontSize: "0.55rem", height: "28px", padding: "2px 6px", minWidth: "50px", whiteSpace: "nowrap", width: "100%" }} onClick={() => window.open('/VoucherList', '_blank')}>
-            <i className="fas fa-receipt"></i>Vch
-          </Button>
-        );
-      case 'addContract':
-        return (
-          <Button variant="success" style={{ fontSize: "0.6rem", height: "28px", padding: "2px 6px", minWidth: "32px", width: "100%" }} onClick={() => window.open('/Contract', '_blank')}>
-            <i className="fas fa-plus"></i>
-          </Button>
-        );
-      case 'lapLip':
-        return (
-          <div style={{ border: "1px solid #2196F3", borderRadius: "4px", padding: "2px 3px", backgroundColor: "#E3F2FD", display: "flex", alignItems: "center", flexWrap: "nowrap", height: "28px", width: "100%" }}>
-            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "2px" }}>
-              <input id="LAP" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} onClick={() => { const newLapValue = !state.LAP; setState(prev => ({ ...prev, LAP: newLapValue })); handleLapLipDateChange(newLapValue, state.LIP); }} checked={state.LAP} />
-              <label className="form-check-label small mb-0" htmlFor="LAP" style={{ fontSize: "0.55rem", color: "#28a745", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>LAP:{state.LAP ? "Y" : "N"}</label>
-            </div>
-            <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
-              <input id="LIP" type="checkbox" className="form-check-input" style={{ width: "12px", height: "12px", margin: "0" }} onClick={() => { const newLipValue = !state.LIP; setState(prev => ({ ...prev, LIP: newLipValue })); handleLapLipDateChange(state.LAP, newLipValue); }} checked={state.LIP} />
-              <label className="form-check-label small mb-0" htmlFor="LIP" style={{ fontSize: "0.55rem", color: "#dc3545", fontWeight: "bold", whiteSpace: "nowrap" }}><i className="fas fa-check-circle" style={{ fontSize: "0.5rem" }}></i>LIP:{state.LIP ? "Y" : "N"}</label>
-            </div>
-          </div>
-        );
-      case 'notes':
-        return (
-          <div style={{ border: "1px solid #2196F3", borderRadius: "4px", padding: "2px 4px", backgroundColor: "#E3F2FD", height: "28px", display: "flex", alignItems: "center", width: "100%" }}>
-            <label className="fw-bold small mb-0" style={{ fontSize: "0.55rem", whiteSpace: "nowrap", marginRight: "2px", color: "#1976D2" }}>
-              <i className="fas fa-sticky-note" style={{ fontSize: "0.5rem" }}></i>Note:
-            </label>
-            <div style={{ display: "flex", alignItems: "center" }}>
-              {[1, 2, 3, 4, 5, 6].map(n => (
-                <div key={n} className="form-check" style={{ display: "flex", alignItems: "center", margin: "0" }}>
-                  <input id={`note${n}`} type="checkbox" className="form-check-input" style={{ width: "10px", height: "10px", margin: "0 1px" }} onClick={() => setVisibleNotes(prev => ({ ...prev, [`Note${n}`]: !prev[`Note${n}`] }))} checked={visibleNotes[`Note${n}`]} />
-                  <label className="form-check-label mb-0" htmlFor={`note${n}`} style={{ fontSize: "0.5rem" }}>{n}</label>
-                </div>
-              ))}
-              <Button size="sm" variant="outline-secondary" style={{ fontSize: "0.45rem", padding: "1px 3px", height: "16px", lineHeight: "1", marginLeft: "2px" }} onClick={() => { const allChecked = Object.values(visibleNotes).every(v => v); toggleAllNotes(!allChecked); }}>All</Button>
-            </div>
-          </div>
-        );
-      case 'exit':
-        return (
-          <Button variant="danger" style={{ fontSize: "0.6rem", height: "28px", padding: "2px 8px", minWidth: "55px", whiteSpace: "nowrap", width: "100%" }} onClick={() => window.close()}>
-            <i className="fas fa-times"></i> Exit
-          </Button>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const renderBottomFilterContent = (filterId) => {
-    switch (filterId) {
-      case 'period':
-        return (
-          <div onClick={openPeriodModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-            <span>{selectedPeriod && selectedPeriod.length > 0 ? `${selectedPeriod.length} selected` : "Period"}</span>
-            <i className="fas fa-chevron-down ms-2"></i>
-          </div>
-        );
-      case 'item':
-        return (
-          <div onClick={openItemModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-            <span>{selectedItems && selectedItems.length > 0 && !(selectedItems.length === 1 && selectedItems[0] === "") ? `${selectedItems.filter(item => item !== "").length} selected` : "Items"}</span>
-            <i className="fas fa-chevron-down ms-2"></i>
-          </div>
-        );
-      case 'exportButtons':
-        return (
-          <div className="d-flex align-items-center" style={{ gap: "8px" }}>
-            <Button color="success" onClick={exportToExcel} className="shadow-sm" size="sm" style={{ fontSize: "0.6rem", whiteSpace: "nowrap", height: "32px", minHeight: "32px", padding: "0 10px" }}>
-              <i className="fas fa-file-excel me-1"></i>Excel
-            </Button>
-            <Button color="danger" onClick={exportToPDF} className="shadow-sm" size="sm" style={{ fontSize: "0.6rem", whiteSpace: "nowrap", height: "32px", minHeight: "32px", padding: "0 10px" }}>
-              <i className="fas fa-file-pdf me-1"></i>PDF
-            </Button>
-          </div>
-        );
-      case 'party':
-        return (
-          <div onClick={openPartyModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-            <span>{selectedParties && selectedParties.length > 0 ? `${selectedParties.length} selected` : "Party"}</span>
-            <i className="fas fa-chevron-down ms-2"></i>
-          </div>
-        );
-      case 'contractType':
-        return (
-          <Select
-            options={state.TaxAccountArray.map(tax => ({ value: tax.Id, label: tax.Name }))}
-            value={state.TaxAccountArray.find(t => t.Id === parseInt(selectedTax)) ? { value: selectedTax, label: state.TaxAccountArray.find(t => t.Id === parseInt(selectedTax))?.Name } : null}
-            onChange={option => setSelectedTax(option?.value || "")}
-            placeholder="Contract"
-            className="party-dropdown"
-            isSearchable
-            classNamePrefix="react-select"
-            noOptionsMessage={() => "No contract types found"}
-            isClearable
-            menuPosition="fixed"
-            menuPortalTarget={document.body}
-            styles={{
-              control: provided => ({ ...provided, fontSize: "0.65rem", minHeight: "32px", height: "32px", border: "1px solid #2196F3", backgroundColor: "#E3F2FD", boxShadow: "none", display: "flex", alignItems: "center" }),
-              valueContainer: provided => ({ ...provided, display: "flex", alignItems: "center", padding: "0 8px" }),
-              option: provided => ({ ...provided, fontSize: "0.65rem" }),
-              singleValue: provided => ({ ...provided, fontSize: "0.65rem", lineHeight: "1" }),
-              placeholder: provided => ({ ...provided, fontSize: "0.65rem", lineHeight: "1", margin: 0 }),
-              input: provided => ({ ...provided, margin: 0, padding: 0 }),
-              menu: provided => ({ ...provided, zIndex: 10000 }),
-              menuPortal: provided => ({ ...provided, fontSize: "0.65rem", zIndex: 10000 }),
-            }}
-          />
-        );
-      case 'vessel':
-        return (
-          <div onClick={openVesselModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-            <span>{selectedVessels.length > 0 ? `${selectedVessels.length} selected` : "Vessel"}</span>
-            <i className="fas fa-chevron-down ms-2"></i>
-          </div>
-        );
-      case 'port':
-        return (
-          <Input id="deliveryPort" type="text" value={state.DeliveryPort} onChange={e => setState({ ...state, DeliveryPort: e.target.value })} className="form-control-sm shadow-sm" style={{ backgroundColor: "#E3F2FD", color: "#333", fontSize: "0.65rem", padding: "0 8px", height: "32px", minHeight: "32px", borderRadius: "6px", border: "1px solid #2196F3", width: "100%" }} placeholder="Port" />
-        );
-      default:
-        return null;
-    }
-  };
-
-  // Helper to render a filter bar with drag/resize/gap support
-  const renderFilterBar = (filterOrder, filterWidths, gap, setGap, dragStart, dragOver, drop, dragEnd, touchDragStart, touchDragMove, touchDragEnd, resizeDown, resetLayout, renderContent) => {
-    return (
-      <>
-        {filterOrder.map(filterId => (
-          <div
-            key={filterId}
-            data-filter-id={filterId}
-            style={{
-              width: `${filterWidths[filterId] || 100}px`,
-              flexShrink: 0,
-              position: "relative",
-              cursor: "default",
-              touchAction: "auto",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                {renderContent(filterId)}
-              </div>
-            </div>
-            <div className="filter-resize-handle" onMouseDown={e => resizeDown(e, filterId)} onTouchStart={e => resizeDown(e, filterId)} />
-          </div>
-        ))}
-        {/* Gap & Reset controls */}
-        <div className="filter-gap-control" style={{ marginLeft: "4px" }}>
-          <button onClick={() => setGap(gap - 2)} title="Decrease gap">-</button>
-          <span>{gap}</span>
-          <button onClick={() => setGap(gap + 2)} title="Increase gap">+</button>
-        </div>
-        <button className="filter-reset-btn" onClick={resetLayout} title="Reset layout">
-          <i className="fas fa-undo" style={{ fontSize: "0.5rem" }}></i>
-        </button>
-      </>
-    );
-  };
-  // --- End Filter Layout Feature ---------------------------------
-
-  // Scroll event handler for table container
-  const handleTableScroll = () => {
-    const tableContainer = tableContainerRef.current
-    if (tableContainer) {
-      const scrollPosition = tableContainer.scrollTop
-      console.log("Table scroll position:", scrollPosition)
-      if (scrollPosition > 200) {
-        setShowScrollTop(true)
-      } else {
-        setShowScrollTop(false)
-      }
-    }
-  }
-
-  // Scroll to top button visibility handler for table container
-  useEffect(() => {
-    // Use a small delay to ensure table is rendered
-    const timer = setTimeout(() => {
-      const tableContainer = tableContainerRef.current
-      if (tableContainer) {
-        // Initial check
-        handleTableScroll()
-
-        // Add scroll event listener to table container
-        tableContainer.addEventListener("scroll", handleTableScroll)
-      }
-    }, 100)
-
-    return () => {
-      clearTimeout(timer)
-      const tableContainer = tableContainerRef.current
-      if (tableContainer) {
-        tableContainer.removeEventListener("scroll", handleTableScroll)
-      }
-    }
-  }, [])
-
-  // Scroll to top function for table container
-  const scrollToTop = () => {
-    console.log("Scroll to top button clicked!")
-
-    const tableContainer = tableContainerRef.current
-    if (tableContainer) {
-      try {
-        // Smooth scroll the table container to top
-        tableContainer.scrollTo({
-          top: 0,
-          behavior: "smooth"
-        })
-        console.log("Table scrolled to top")
-      } catch (error) {
-        // Fallback for browsers that don't support smooth scroll
-        tableContainer.scrollTop = 0
-        console.log("Table scrolled to top (fallback)")
-      }
-    } else {
-      console.error("Table container not found")
-    }
-  }
 
   const breadCrumbTitle = "Ledger Report"
   const breadcrumbItem = "Reports"
@@ -1179,39 +366,15 @@ const LedgerReport = () => {
   const [selectedTax, setSelectedTax] = useState("")
   const [selectedParty, setSelectedParty] = useState("")
   const [selectedParties, setSelectedParties] = useState([])
-  const [selectedVessels, setSelectedVessels] = useState([])
   const [selectedItem, setSelectedItem] = useState("")
   const [selectedItems, setSelectedItems] = useState([])
-  const [itemOptions, setItemOptions] = useState([{ value: "", label: "All" }])
-  const [shouldRefreshItemOptions, setShouldRefreshItemOptions] = useState(true)
   const [ledgerDropdown, setLedgerDropdown] = useState([]) // Multi-select ledger dropdown
   const [showLedgerModal, setShowLedgerModal] = useState(false)
   const [tempLedgerSelection, setTempLedgerSelection] = useState([]) // Temporary selection in modal
   const [selectedLedgerNames, setSelectedLedgerNames] = useState([]) // Store selected ledger names for grouping
   const [ledgerSearchTerm, setLedgerSearchTerm] = useState("") // Search term for ledger modal
-  const [selectedRowIds, setSelectedRowIds] = useState(new Set())
-  const selectAllRef = useRef(null)
 
   const [selectedPeriod, setSelectedPeriod] = useState([])
-  const selectedPeriodRef = useRef([])
-  const periodChangedByUser = useRef(false)
-
-  // Filters Modal State - for individual dropdown modals
-  const [showPartyModal, setShowPartyModal] = useState(false)
-  const [showItemModal, setShowItemModal] = useState(false)
-  const [showVesselModal, setShowVesselModal] = useState(false)
-  const [tempSelectedVessels, setTempSelectedVessels] = useState([])
-
-  // PDF Remarks Modal state
-  const [showRemarksModal, setShowRemarksModal] = useState(false)
-  const [remarks, setRemarks] = useState('')
-  const [pendingShareFile, setPendingShareFile] = useState(null)
-  const [showSharePDFModal, setShowSharePDFModal] = useState(false)
-  const [showPeriodModal, setShowPeriodModal] = useState(false)
-  const [tempSelectedParties, setTempSelectedParties] = useState([])
-  const [tempSelectedItems, setTempSelectedItems] = useState([])
-  const [tempSelectedPeriod, setTempSelectedPeriod] = useState([])
-
 
   const [toDate, setToDate] = useState(new Date()) // Default to date: Today's date
   const [loading, setLoading] = useState(false)
@@ -1234,7 +397,7 @@ const LedgerReport = () => {
 
   // Grouping state - always grouped, determine field based on navigation ledger
   const getGroupByField = () => {
-    if (location.state?.ledgerNames) {
+    if (location.state && location.state.ledgerNames) {
       const ledgerNames = location.state.ledgerNames
         .split(",")
         .map(name => name.trim())
@@ -1300,19 +463,16 @@ const LedgerReport = () => {
 
   // State for managing visible notes
   const [visibleNotes, setVisibleNotes] = useState({
-    Note1: true, // Default to Note1
+    Note1: false,
     Note2: false,
     Note3: false,
     Note4: false,
-    Note5: false,
+    Note5: true, // Default to Note5 as it was already showing
     Note6: false,
   })
 
-  // State for Detailed view (Lifting data)
-  const [isDetailed, setIsDetailed] = useState(false)
-
   const API_URL = API_WEB_URLS.MASTER + "/0/token/PartyAccount"
-  const API_URL_Get = `${API_WEB_URLS.GetLedgerReportApp}/0/token`
+  const API_URL_Get = `${API_WEB_URLS.GetLedgerReportAppParty}/0/token`
   const API_URL_PeriodData = `${API_WEB_URLS.PeriodData}/0/token`
   const API_URL_SAVE = `${API_WEB_URLS.VoucherH}/0/token`
   const API_URL1 = API_WEB_URLS.MASTER + "/0/token/TaxAccount"
@@ -1336,15 +496,15 @@ const LedgerReport = () => {
   // Helper function to handle LAP/LIP date logic
   const handleLapLipDateChange = (lapValue, lipValue) => {
     if (lapValue || lipValue) {
-      // If either LAP or LIP is selected, set dates to previous financial year (last completed FY)
-      // Previous Financial Year: April 1st of year before last to March 31st of last year
+      // If either LAP or LIP is selected, set dates to last financial year
+      // Last Financial Year: April 1st of last year to March 31st of current year
       const currentDate = new Date()
       const currentYear = currentDate.getFullYear()
-
-      // Set to previous financial year (one year back from current FY)
-      const financialYearStart = new Date(currentYear - 2, 3, 1, 0, 0, 0) // April 1 of year before last
-      const financialYearEnd = new Date(currentYear - 1, 2, 31, 0, 0, 0) // March 31 of last year
-
+      
+      // Always set to last financial year
+      const financialYearStart = new Date(currentYear - 1, 3, 1, 0, 0, 0) // April 1 of last year
+      const financialYearEnd = new Date(currentYear, 2, 31, 0, 0, 0) // March 31 of current year
+      
       setFromDate(financialYearStart)
       setToDate(financialYearEnd)
     } else {
@@ -1382,18 +542,45 @@ const LedgerReport = () => {
     // Inject custom styles to prevent hover effects
     const styleElement = document.createElement("style")
     styleElement.textContent = `
-      /* Disable all hover effects on table rows */
-      .table tbody tr:hover,
-      .table-hover tbody tr:hover {
-        background-color: inherit !important;
-      }
-      
-      .table tbody tr:hover td,
-      .table tbody tr:hover th,
-      .table-hover tbody tr:hover td,
-      .table-hover tbody tr:hover th {
+      /* Prevent hover effects on totals and averages rows */
+      .table tbody tr[style*="background-color: #cfe2ff"]:hover,
+      .table tbody tr[style*="background-color: #fff3cd"]:hover {
         background-color: inherit !important;
         color: inherit !important;
+        border-color: inherit !important;
+      }
+      
+      .table tbody tr[style*="background-color: #cfe2ff"]:hover td,
+      .table tbody tr[style*="background-color: #fff3cd"]:hover td {
+        background-color: inherit !important;
+        color: inherit !important;
+      }
+      
+      /* More specific selectors to override Bootstrap */
+      .table-hover tbody tr[style*="background-color: #cfe2ff"]:hover,
+      .table-hover tbody tr[style*="background-color: #fff3cd"]:hover {
+        background-color: inherit !important;
+        color: inherit !important;
+      }
+      
+      .table-hover tbody tr[style*="background-color: #cfe2ff"]:hover td,
+      .table-hover tbody tr[style*="background-color: #fff3cd"]:hover td {
+        background-color: inherit !important;
+        color: inherit !important;
+      }
+      
+      /* Override any Bootstrap table hover classes */
+      .table tbody tr.table-primary:hover,
+      .table tbody tr[style*="background-color: #cfe2ff"]:hover {
+        background-color: #cfe2ff !important;
+        color: #084298 !important;
+        border-color: #9ec5fe !important;
+      }
+      
+      .table tbody tr[style*="background-color: #fff3cd"]:hover {
+        background-color: #fff3cd !important;
+        color: #664d03 !important;
+        border-color: #ffecb5 !important;
       }
       
       /* Custom styles for react-select */
@@ -1764,10 +951,10 @@ const LedgerReport = () => {
         background: #a8a8a8;
       }
       
-      /* Ensure table header and footer are visible during scroll */
+      /* Sticky table header — navbar ke niche (dynamic --header-height) */
       .table-responsive thead th {
         position: sticky;
-        top: 0;
+        top: var(--header-height, 70px);
         z-index: 10;
         background-color: #0000FF !important;
         color: white !important;
@@ -1942,9 +1129,30 @@ const LedgerReport = () => {
         box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
       }
       
-      /* Table row transition for smooth interactions */
+      /* Enhanced Table Styling */
+      .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.1) !important;
+        transform: scale(1.001);
+        transition: all 0.2s ease-in-out;
+      }
+      
       .table tbody tr {
         transition: all 0.2s ease-in-out;
+      }
+      
+      .table tbody tr.table-secondary:hover {
+        background-color: #e9ecef !important;
+        transform: scale(1.001);
+      }
+      
+      .table tbody tr.table-info:hover {
+        background-color: #b8daff !important;
+        transform: scale(1.001);
+      }
+      
+      .table tbody tr.table-danger:hover {
+        background-color: #f5c6cb !important;
+        transform: scale(1.001);
       }
       
       /* Improved scrollbar styling */
@@ -1982,10 +1190,10 @@ const LedgerReport = () => {
         border: 1px solid #dee2e6;
       }
       
-      /* Enhanced sticky header */
+      /* Enhanced sticky header — navbar ke niche (dynamic) */
       .table thead th {
         position: sticky;
-        top: 0;
+        top: var(--header-height, 70px);
         z-index: 10;
         background-color: #0000FF !important;
         color: white !important;
@@ -2062,15 +1270,16 @@ const LedgerReport = () => {
     }
   }, [selectedLedger])
 
-  // Auto-fetch data when any filter changes (excluding multi-select items)
+  // Auto-fetch data when any filter changes
   useEffect(() => {
     if (selectedLedger && state.LedgerArray && state.LedgerArray.length > 0) {
-      fetchReportData(null, true)
+      fetchReportData()
     }
   }, [
     selectedParty,
     selectedTax,
     selectedItem,
+    selectedPeriod,
     fromDate,
     toDate,
     state.Pending,
@@ -2079,25 +1288,11 @@ const LedgerReport = () => {
     state.LAP,
     state.LIP,
   ])
-
-  // Separate useEffect for period changes - only fetch when user explicitly changes period
-  useEffect(() => {
-    if (periodChangedByUser.current && selectedLedger && state.LedgerArray && state.LedgerArray.length > 0) {
-      periodChangedByUser.current = false
-      fetchReportData(null, true)
-    }
-  }, [selectedPeriod])
-
-  useEffect(() => {
-    if (selectedLedger && state.LedgerArray && state.LedgerArray.length > 0) {
-      fetchReportData(null, false)
-    }
-  }, [selectedItems])
-
-  // Note: selectedParties is intentionally NOT in the dependency arrays
+  
+  // Note: selectedParties is intentionally NOT in the above dependency array
   // because party filtering happens on frontend only, not via API call
 
-  // Debounced auto-fetch for text inputs (DeliveryPort)
+  // Debounced auto-fetch for text inputs (Vessel and DeliveryPort)
   useEffect(() => {
     if (selectedLedger && state.LedgerArray && state.LedgerArray.length > 0) {
       const timeoutId = setTimeout(() => {
@@ -2106,47 +1301,25 @@ const LedgerReport = () => {
 
       return () => clearTimeout(timeoutId)
     }
-  }, [state.DeliveryPort])
+  }, [state.Vessel, state.DeliveryPort])
 
-  // Handle navigation state from NewLedgerReport (or contractIds for "sirf payload wale contracts")
+  // Handle navigation state from NewLedgerReport
   useEffect(() => {
     if (location.state) {
-      const { ledgerIds: navLedgerIds, ledgerNames, fromDate, toDate, itemIds, contractIds, completed, notStarted, pending } = location.state
+      const { LedgerId, LedgerName, ledgerNames, fromDate, toDate, itemIds } = location.state
 
-      // Apply filter overrides from nav (Completed: false, NotStarted: true, Pending: true when coming from NewLedgerReport)
-      const filterOverrides = (completed !== undefined || notStarted !== undefined || pending !== undefined)
-        ? {
-          completed: completed !== undefined ? Boolean(completed) : false,
-          notStarted: notStarted !== undefined ? Boolean(notStarted) : true,
-          pending: pending !== undefined ? Boolean(pending) : true,
-        }
-        : null
-      if (filterOverrides) {
-        setState(prev => ({
-          ...prev,
-          Completed: filterOverrides.completed,
-          NotStarted: filterOverrides.notStarted,
-          Pending: filterOverrides.pending,
-        }))
+      console.log("Navigation state:", { LedgerId, LedgerName, ledgerNames, fromDate, toDate, itemIds })
+      
+      // Use direct LedgerId and LedgerName if available (new system)
+      if (LedgerId && LedgerName) {
+        console.log("Using direct LedgerId and LedgerName")
+        setSelectedLedger(LedgerId)
+        setLedgerDropdown(LedgerId.split(",").map(id => parseInt(id.trim())))
+        setSelectedLedgerNames(LedgerName.split(",").map(name => name.trim()))
       }
-
-      // Prefer comma-separated ledgerIds from NewLedgerReport (no dependency on LedgerArray)
-      if (navLedgerIds && typeof navLedgerIds === 'string' && navLedgerIds.trim()) {
-        const ledgerIdsStr = navLedgerIds.trim()
-        const ledgerIdList = ledgerIdsStr.split(",").map(id => id.trim()).filter(id => id)
-        if (ledgerIdList.length > 0) {
-          setSelectedLedger(ledgerIdList.join(","))
-          setLedgerDropdown(ledgerIdList)
-          if (ledgerNames && typeof ledgerNames === 'string') {
-            setSelectedLedgerNames(ledgerNames.split(",").map(name => name.trim()).filter(Boolean))
-          }
-          const contractIdsStr = Array.isArray(contractIds)
-            ? contractIds.join(",")
-            : (typeof contractIds === 'string' ? contractIds : '')
-          autoFetchLedgerData(ledgerIdsStr, fromDate, toDate, itemIds, contractIdsStr, filterOverrides)
-        }
-      } else if (ledgerNames && state.LedgerArray.length > 0) {
-        // Fallback: convert ledger names to IDs when LedgerArray is loaded
+      // Fallback: Convert ledger names to IDs using LedgerArray (legacy system)
+      else if (ledgerNames && state.LedgerArray.length > 0) {
+        console.log("Using ledgerNames lookup for legacy system")
         const ledgerNameList = ledgerNames.split(",").map(name => name.trim())
         const ledgerIds = ledgerNameList
           .map(name => {
@@ -2158,34 +1331,59 @@ const LedgerReport = () => {
         if (ledgerIds.length > 0) {
           setSelectedLedger(ledgerIds.join(","))
           setLedgerDropdown(ledgerIds)
+          // Also set the ledger names for grouping
           setSelectedLedgerNames(ledgerNameList)
-          const contractIdsStr = Array.isArray(contractIds)
-            ? contractIds.join(",")
-            : (typeof contractIds === 'string' ? contractIds : '')
-          autoFetchLedgerData(ledgerIds.join(","), fromDate, toDate, itemIds, contractIdsStr, filterOverrides)
         }
       }
 
       // Set the dates - ensure they are parsed as local dates, not UTC
       if (fromDate) {
-        const parsedFromDate = fromDate instanceof Date
-          ? fromDate
+        // If fromDate is already a Date object, use it directly
+        // If it's a string, parse it as local time by appending time component
+        const parsedFromDate = fromDate instanceof Date 
+          ? fromDate 
           : new Date(fromDate.split('T')[0] + 'T00:00:00')
         setFromDate(parsedFromDate)
       }
       if (toDate) {
-        const parsedToDate = toDate instanceof Date
-          ? toDate
+        // If toDate is already a Date object, use it directly
+        // If it's a string, parse it as local time by appending time component
+        const parsedToDate = toDate instanceof Date 
+          ? toDate 
           : new Date(toDate.split('T')[0] + 'T00:00:00')
         setToDate(parsedToDate)
+      }
+
+      // Auto-fetch data if ledger data is provided
+      if ((LedgerId && LedgerName) || (ledgerNames && state.LedgerArray.length > 0)) {
+        let ledgerIdsToFetch = ""
+        
+        if (LedgerId && LedgerName) {
+          // Use direct LedgerId
+          ledgerIdsToFetch = LedgerId
+        } else if (ledgerNames && state.LedgerArray.length > 0) {
+          // Convert ledger names to IDs (legacy)
+          const ledgerNameList = ledgerNames.split(",")
+          const ledgerIds = ledgerNameList
+            .map(name => {
+              const ledger = state.LedgerArray.find(l => l.Name === name.trim())
+              return ledger ? ledger.Id : null
+            })
+            .filter(id => id !== null)
+          
+          ledgerIdsToFetch = ledgerIds.join(",")
+        }
+
+        if (ledgerIdsToFetch) {
+          autoFetchLedgerData(ledgerIdsToFetch, fromDate, toDate, itemIds)
+        }
       }
     }
   }, [location.state, state.LedgerArray])
 
-  // Auto-fetch ledger data function (contractIds = comma-separated IDs; filterOverrides = { completed, notStarted, pending } from nav)
-  const autoFetchLedgerData = async (ledgerIds, fromDate, toDate, itemIds, contractIds = '', filterOverrides = null) => {
+  // Auto-fetch ledger data function
+  const autoFetchLedgerData = async (ledgerIds, fromDate, toDate, itemIds) => {
     try {
-      setShouldRefreshItemOptions(true)
       setLoading(true)
       setShowReport(false)
 
@@ -2196,32 +1394,10 @@ const LedgerReport = () => {
         return formatDateForInput(date)
       }
 
-      const completed = filterOverrides ? filterOverrides.completed : state.Completed
-      const notStarted = filterOverrides ? filterOverrides.notStarted : state.NotStarted
-      const pending = filterOverrides ? filterOverrides.pending : state.Pending
-
       let vformData = new FormData()
       vformData.append("LedgerIds", ledgerIds)
       vformData.append("FromDate", formatDate(fromDate))
       vformData.append("ToDate", formatDate(toDate))
-      vformData.append("Completed", completed ? true : false)
-      vformData.append("NotStarted", notStarted ? true : false)
-      vformData.append("Pending", pending ? true : false)
-
-      const itemIdsCsv = Array.isArray(itemIds)
-        ? itemIds.map(id => id?.toString().trim()).filter(id => id).join(",")
-        : itemIds
-          ? itemIds
-            .toString()
-            .split(",")
-            .map(id => id.trim())
-            .filter(id => id)
-            .join(",")
-          : ""
-      vformData.append("ItemIds", itemIdsCsv)
-
-      const contractIdsStr = typeof contractIds === 'string' ? contractIds.trim() : (Array.isArray(contractIds) ? contractIds.join(",") : '')
-      if (contractIdsStr) vformData.append("ContractIds", contractIdsStr)
 
       const result = await Fn_GetReport(
         dispatch,
@@ -2232,13 +1408,12 @@ const LedgerReport = () => {
         true
       )
 
-      // Fetch period data for dropdown (pass filter overrides so NotLifted/PartialLift/FullLift match)
+      // Fetch period data for dropdown
       await fetchPeriodData(
         ledgerIds,
         formatDate(fromDate),
         formatDate(toDate),
-        itemIdsCsv,
-        filterOverrides ? { completed, notStarted, pending } : null
+        itemIds
       )
 
       setShowReport(true)
@@ -2250,22 +1425,14 @@ const LedgerReport = () => {
     }
   }
 
-  // Fetch period data for dropdown (filterOverrides = { completed, notStarted, pending } when from nav)
-  const fetchPeriodData = async (ledgerIds, fromDate, toDate, itemIds, filterOverrides = null) => {
+  // Fetch period data for dropdown
+  const fetchPeriodData = async (ledgerIds, fromDate, toDate, itemIds) => {
     try {
-      const notStarted = filterOverrides ? filterOverrides.notStarted : state.NotStarted
-      const pending = filterOverrides ? filterOverrides.pending : state.Pending
-      const completed = filterOverrides ? filterOverrides.completed : state.Completed
-
       let vformData = new FormData()
       vformData.append("LedgerIds", ledgerIds)
       // fromDate and toDate are already formatted strings here
       vformData.append("FromDate", fromDate || "")
       vformData.append("ToDate", toDate || "")
-      vformData.append("ItemIds", itemIds || "")
-      vformData.append("NotLifted", notStarted ? true : false)
-      vformData.append("PartialLift", pending ? true : false)
-      vformData.append("FullLift", completed ? true : false)
 
       await Fn_GetReport(
         dispatch,
@@ -2308,7 +1475,7 @@ const LedgerReport = () => {
       // Save mode: Get next voucher number from VoucherNoArray
       const nextVoucherNo =
         state.VoucherNoArray && state.VoucherNoArray.length > 0
-          ? state.VoucherNoArray[0]?.VoucherNoNew || ""
+          ? state.VoucherNoArray[0].VoucherNoNew || ""
           : ""
 
       setVoucherData({
@@ -2417,7 +1584,7 @@ const LedgerReport = () => {
             id: 0,
             VoucherNo:
               state.VoucherNoArray && state.VoucherNoArray.length > 0
-                ? state.VoucherNoArray[0]?.VoucherNoNew || ""
+                ? state.VoucherNoArray[0].VoucherNoNew || ""
                 : "",
             VoucherDate: new Date(),
             F_LedgerMasterDr: "",
@@ -2526,26 +1693,22 @@ const LedgerReport = () => {
   }
 
   // Get unique items from FillArray
-  const buildItemOptions = data => {
-    if (!data || data.length === 0) {
-      return [{ value: "", label: "All" }]
-    }
+  const getUniqueItems = () => {
+    if (!state.FillArray || state.FillArray.length === 0) return []
 
-    const uniqueItemsMap = new Map()
-    data.forEach(row => {
-      if (row.Item && row.Item.trim() && row.F_ItemType !== null && row.F_ItemType !== undefined) {
-        const key = String(row.F_ItemType)
-        if (!uniqueItemsMap.has(key)) {
-          uniqueItemsMap.set(key, row.Item.trim())
-        }
+    const uniqueItems = new Set()
+    state.FillArray.forEach(row => {
+      if (row.Item && row.Item.trim()) {
+        uniqueItems.add(row.Item.trim())
       }
     })
 
-    const items = Array.from(uniqueItemsMap.entries())
-      .sort((a, b) => a[1].localeCompare(b[1]))
-      .map(([value, label]) => ({ value, label }))
-
-    return [{ value: "", label: "All" }, ...items]
+    return Array.from(uniqueItems)
+      .sort()
+      .map(item => ({
+        value: item,
+        label: item,
+      }))
   }
 
   // Calculate totals for a specific ledger group
@@ -2556,8 +1719,6 @@ const LedgerReport = () => {
         totalSelQty: 0,
         purchaseAvgRate: 0,
         sellAvgRate: 0,
-        totalSAdvPayment: 0,
-        totalPAdvPayment: 0,
       }
     }
 
@@ -2567,25 +1728,20 @@ const LedgerReport = () => {
     let totalSellWeightedValue = 0
     let purchaseCount = 0
     let sellCount = 0
-    let totalSAdvPayment = 0
-    let totalPAdvPayment = 0
 
-    // First pass: Calculate total quantities and adv payments
+    // First pass: Calculate total quantities
     groupItems.forEach(item => {
       const purQty = parseFloat(item.PurQty) || 0
       const selQty = parseFloat(item.SelQty) || 0
-      const advPayment = parseFloat(item.AdvPayment) || 0
 
       if (item.Status === "P") {
         // Purchase/Buy
         totalPurQty += purQty
         purchaseCount++
-        totalPAdvPayment += advPayment
       } else if (item.Status === "S") {
         // Sell
         totalSelQty += selQty
         sellCount++
-        totalSAdvPayment += advPayment
       }
     })
 
@@ -2615,8 +1771,6 @@ const LedgerReport = () => {
           : 0,
       sellAvgRate:
         sellCount > 0 ? parseFloat(totalSellWeightedValue.toFixed(2)) : 0,
-      totalSAdvPayment,
-      totalPAdvPayment,
     }
   }
 
@@ -2703,9 +1857,9 @@ const LedgerReport = () => {
   // Extract unique parties from Buyer and Seller columns
   const getUniquePartiesFromData = () => {
     if (!state.FillArray || state.FillArray.length === 0) return []
-
+    
     const partiesSet = new Set()
-
+    
     state.FillArray.forEach(row => {
       if (row.Buyer && row.Buyer.trim()) {
         partiesSet.add(row.Buyer.trim())
@@ -2714,7 +1868,7 @@ const LedgerReport = () => {
         partiesSet.add(row.Seller.trim())
       }
     })
-
+    
     // Convert to array of objects with label and value properties
     return Array.from(partiesSet).sort().map(party => ({
       value: party,
@@ -2722,204 +1876,112 @@ const LedgerReport = () => {
     }))
   }
 
-  const getRowIdentifier = row => {
-    if (!row) return ""
-    if (row.Id !== undefined && row.Id !== null) {
-      return String(row.Id)
-    }
-    if (row.AutoId !== undefined && row.AutoId !== null) {
-      return String(row.AutoId)
-    }
-    return [
-      row.ContractNo || "NA",
-      row.ContractDate || "NA",
-      row.Seller || "NA",
-      row.Buyer || "NA",
-      row.Item || "NA",
-      row.Rate || "NA",
-    ].join("_")
-  }
-
-  const toggleRowSelection = row => {
-    const rowId = getRowIdentifier(row)
-    if (!rowId) return
-    setSelectedRowIds(prev => {
-      const updated = new Set(prev)
-      if (updated.has(rowId)) {
-        updated.delete(rowId)
-      } else {
-        updated.add(rowId)
-      }
-      return updated
-    })
-  }
-
-  // Select all rows by default when FillArray is populated
-  useEffect(() => {
-    if (state.FillArray && state.FillArray.length > 0) {
-      const allRowIds = state.FillArray
-        .map(row => getRowIdentifier(row))
-        .filter(id => Boolean(id))
-      setSelectedRowIds(new Set(allRowIds))
-    }
-  }, [state.FillArray])
-
   // Group data by ledger names function - create separate groups for each ledger
   const getGroupedData = data => {
     if (!data || data.length === 0) return data
 
-    // Filter data by selected items if any specific items are selected
+    // Filter data by selected items if any items are selected
     let filteredData = data
-    const hasSpecificItemsSelected =
-      selectedItems &&
-      selectedItems.length > 0 &&
-      !(selectedItems.length === 1 && selectedItems[0] === "")
-
-    if (hasSpecificItemsSelected) {
+    if (selectedItems && selectedItems.length > 0) {
       filteredData = data.filter(row =>
-        row.F_ItemType !== null &&
-        row.F_ItemType !== undefined &&
-        selectedItems.some(selectedItem => String(row.F_ItemType) === String(selectedItem))
+        selectedItems.some(
+          selectedItem =>
+            row.Item &&
+            row.Item.trim().toLowerCase() === selectedItem.toLowerCase()
+        )
       )
     }
-
+    
     // Filter data by selected parties if any parties are selected
     if (selectedParties && selectedParties.length > 0) {
       filteredData = filteredData.filter(row =>
         selectedParties.some(
           selectedParty =>
-            (row.Buyer && row.Buyer.trim().toLowerCase() === selectedParty.toLowerCase()) ||
-            (row.Seller && row.Seller.trim().toLowerCase() === selectedParty.toLowerCase())
+            (row.PartyLedger && row.PartyLedger.trim().toLowerCase() === selectedParty.toLowerCase())
         )
-      )
-    }
-
-    // Filter data by selected vessel if one is selected
-    if (selectedVessels.length > 0) {
-      const vesselSet = selectedVessels.map(v => v.toLowerCase())
-      filteredData = filteredData.filter(row =>
-        row.Vessel && vesselSet.includes(row.Vessel.trim().toLowerCase())
       )
     }
 
     // Get all ledger names - prioritize modal selection over navigation
     let ledgerNamesFromNav = []
-
+    
     // First, check if we have selected ledger names from modal
     if (selectedLedgerNames.length > 0) {
       ledgerNamesFromNav = selectedLedgerNames
-    }
+    } 
     // Otherwise, use navigation state ledger names
-    else if (location.state?.ledgerNames) {
+    else if (location.state.ledgerNames) {
       ledgerNamesFromNav = location.state.ledgerNames
         .split(",")
         .map(name => name.trim())
         .filter(Boolean)
     }
 
-    const deriveItemFields = (item, ledgerName) => {
-      let newStatus = item.Status || "-"
-      const compareName = ledgerName || item.Ledger || ""
-      if (compareName && item.Seller && item.Seller.toLowerCase().includes(compareName.toLowerCase())) {
-        newStatus = "S"
-      } else if (compareName && item.Buyer && item.Buyer.toLowerCase().includes(compareName.toLowerCase())) {
-        newStatus = "P"
-      }
-      const qty = parseFloat(item.Qty) || 0
-      return {
-        ...item,
-        Status: newStatus,
-        PurQty: newStatus === "P" ? qty : 0,
-        SelQty: newStatus === "S" ? qty : 0,
-      }
-    }
-
     if (ledgerNamesFromNav.length === 0) {
       // Fallback: show all data in one group if no ledger names
-      const mappedAll = filteredData.map(item => deriveItemFields(item, null))
       return [
         {
           isGroup: true,
           groupName: "All Records",
           ledgerName: "All Records",
-          count: mappedAll.length,
-          items: mappedAll,
+          count: filteredData.length,
+          items: filteredData,
           groupByField: "none",
         },
       ]
     }
 
     let allGroups = []
+    let usedItems = new Set() // To track which items have been used
 
     // Create separate groups for each ledger name
-    // Each ledger independently shows all contracts where it appears (as Seller OR Buyer)
     ledgerNamesFromNav.forEach((ledgerName, index) => {
-      // Find items that match this ledger name in either Seller or Buyer
+      // Find items that match this ledger name in PartyLedger
       const matchingItems = filteredData
         .filter(item => {
-          const sellerMatch =
-            item.Seller &&
-            item.Seller.toLowerCase().includes(ledgerName.toLowerCase())
-          const buyerMatch =
-            item.Buyer &&
-            item.Buyer.toLowerCase().includes(ledgerName.toLowerCase())
-          return sellerMatch || buyerMatch
+          const partyMatch =
+            item.PartyLedger &&
+            item.PartyLedger.toLowerCase().includes(ledgerName.toLowerCase())
+          return partyMatch
         })
-        // Deduplicate within this group only: if same ContractNo appears multiple times, keep only the first one
-        .filter((item, index, self) => {
-          const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
-          if (!contractNo) return false
-          return index === self.findIndex(i => String(i.ContractNo).trim() === contractNo)
+        .filter(item => {
+          // Only include items not already used by previous ledgers
+          const itemId = `${item.ContractNo}_${item.ContractDate}`
+          return !usedItems.has(itemId)
         })
+
+      // Mark these items as used
+      matchingItems.forEach(item => {
+        const itemId = `${item.ContractNo}_${item.ContractDate}`
+        usedItems.add(itemId)
+      })
 
       if (matchingItems.length > 0) {
-        const mappedItems = matchingItems.map(item => deriveItemFields(item, ledgerName));
-
         allGroups.push({
           isGroup: true,
           groupName: ledgerName,
           ledgerName: ledgerName,
           ledgerIndex: index + 1,
-          count: mappedItems.length,
-          items: mappedItems,
+          count: matchingItems.length,
+          items: matchingItems,
           groupByField: "ledger",
         })
       }
     })
 
-    // Add remaining items that don't match any ledger at all
-    const matchedContractNos = new Set()
-    ledgerNamesFromNav.forEach(ledgerName => {
-      filteredData.forEach(item => {
-        const sellerMatch = item.Seller && item.Seller.toLowerCase().includes(ledgerName.toLowerCase())
-        const buyerMatch = item.Buyer && item.Buyer.toLowerCase().includes(ledgerName.toLowerCase())
-        if (sellerMatch || buyerMatch) {
-          const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
-          if (contractNo) matchedContractNos.add(contractNo)
-        }
-      })
+    // Add remaining items that don't match any ledger
+    const remainingItems = filteredData.filter(item => {
+      const itemId = `${item.ContractNo}_${item.ContractDate}`
+      return !usedItems.has(itemId)
     })
 
-    const remainingItems = filteredData
-      .filter(item => {
-        const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
-        return contractNo && !matchedContractNos.has(contractNo)
-      })
-      // Deduplicate within remaining group
-      .filter((item, index, self) => {
-        const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
-        if (!contractNo) return false
-        return index === self.findIndex(i => String(i.ContractNo).trim() === contractNo)
-      })
-
     if (remainingItems.length > 0) {
-      const mappedRemaining = remainingItems.map(item => deriveItemFields(item, null))
       allGroups.push({
         isGroup: true,
         groupName: "Other Records",
         ledgerName: "Other Records",
-        count: mappedRemaining.length,
-        items: mappedRemaining,
+        count: remainingItems.length,
+        items: remainingItems,
         groupByField: "none",
       })
     }
@@ -2997,14 +2059,6 @@ const LedgerReport = () => {
     setCurrentPage(1)
   }, [state.FillArray])
 
-  useEffect(() => {
-    if (!state.FillArray) return
-
-    if (shouldRefreshItemOptions) {
-      setItemOptions(buildItemOptions(state.FillArray))
-    }
-  }, [state.FillArray, shouldRefreshItemOptions])
-
   // Pagination handlers
   const handlePageChange = page => {
     if (page >= 1 && page <= totalPages) {
@@ -3026,43 +2080,6 @@ const LedgerReport = () => {
     setSortConfig({ key, direction })
   }
 
-  const tableData = currentPageData()
-  const flattenedVisibleRows = tableData.reduce((acc, group) => {
-    if (group && Array.isArray(group.items)) {
-      return acc.concat(group.items)
-    }
-    return acc
-  }, [])
-  const visibleRowIds = flattenedVisibleRows
-    .map(getRowIdentifier)
-    .filter(id => Boolean(id))
-  const allVisibleRowsSelected =
-    visibleRowIds.length > 0 &&
-    visibleRowIds.every(id => selectedRowIds.has(id))
-  const someVisibleRowsSelected = visibleRowIds.some(id =>
-    selectedRowIds.has(id)
-  )
-
-  const handleSelectAllVisibleRows = () => {
-    if (visibleRowIds.length === 0) return
-    setSelectedRowIds(prev => {
-      const updated = new Set(prev)
-      if (allVisibleRowsSelected) {
-        visibleRowIds.forEach(id => updated.delete(id))
-      } else {
-        visibleRowIds.forEach(id => updated.add(id))
-      }
-      return updated
-    })
-  }
-
-  useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate =
-        someVisibleRowsSelected && !allVisibleRowsSelected
-    }
-  }, [someVisibleRowsSelected, allVisibleRowsSelected])
-
   // Handle ledger modal OK button
   const handleLedgerModalOk = async () => {
     if (tempLedgerSelection.length === 0) {
@@ -3082,12 +2099,12 @@ const LedgerReport = () => {
         return ledger ? ledger.Name : null
       })
       .filter(Boolean)
-
+    
     setSelectedLedgerNames(names)
 
     // Close modal
     setShowLedgerModal(false)
-
+    
     toast.success(`${tempLedgerSelection.length} ledger(s) selected`)
 
     // Auto-fetch report data with the selected ledger IDs
@@ -3103,7 +2120,7 @@ const LedgerReport = () => {
 
   // Handle ledger toggle in modal
   const handleLedgerToggle = (ledgerId) => {
-    setTempLedgerSelection(prev =>
+    setTempLedgerSelection(prev => 
       prev.includes(ledgerId)
         ? prev.filter(id => id !== ledgerId)
         : [...prev, ledgerId]
@@ -3122,139 +2139,22 @@ const LedgerReport = () => {
     setTempLedgerSelection([])
   }
 
-  // Handle multi-select item changes with support for the "All" option
-  const handleSelectedItemsChange = newSelectedItems => {
-    if (!newSelectedItems || newSelectedItems.length === 0) {
-      setSelectedItems([])
-      return
-    }
-
-    let normalized = newSelectedItems.map(item => (item === "" ? "" : String(item)))
-
-    if (normalized.includes("") && normalized.length > 1) {
-      normalized = normalized.filter(item => item !== "")
-    }
-
-    setSelectedItems(normalized)
-  }
-
-  // Vessel modal handlers
-  const openVesselModal = () => {
-    setTempSelectedVessels([...selectedVessels])
-    setShowVesselModal(true)
-  }
-  const closeVesselModal = () => setShowVesselModal(false)
-  const handleVesselModalDone = () => {
-    setSelectedVessels([...tempSelectedVessels])
-    setShowVesselModal(false)
-  }
-  const getUniqueVesselsFromData = () => {
-    return Array.from(new Set((state.FillArray || []).map(r => r.Vessel).filter(Boolean))).sort().map(v => ({ value: v, label: v }))
-  }
-
-  // Filters Modal Handlers - Individual dropdown modals
-  const openPartyModal = () => {
-    setTempSelectedParties(selectedParties)
-    setShowPartyModal(true)
-  }
-
-  const closePartyModal = () => {
-    setShowPartyModal(false)
-  }
-
-  const handlePartyModalDone = () => {
-    console.log("=== PARTY CHANGE ===")
-    console.log("selectedParties:", JSON.stringify(tempSelectedParties))
-    console.log("selectedPeriod state:", JSON.stringify(selectedPeriod))
-    console.log("selectedPeriodRef:", JSON.stringify(selectedPeriodRef.current))
-    setSelectedParties(tempSelectedParties)
-    setShowPartyModal(false)
-  }
-
-  const openItemModal = () => {
-    setTempSelectedItems(selectedItems)
-    setShowItemModal(true)
-  }
-
-  const closeItemModal = () => {
-    setShowItemModal(false)
-  }
-
-  const handleItemModalDone = () => {
-    console.log("=== ITEM CHANGE ===")
-    console.log("tempSelectedItems:", JSON.stringify(tempSelectedItems))
-    console.log("selectedPeriod state:", JSON.stringify(selectedPeriod))
-    console.log("selectedPeriodRef:", JSON.stringify(selectedPeriodRef.current))
-    // Handle items with normalization
-    if (!tempSelectedItems || tempSelectedItems.length === 0) {
-      setSelectedItems([])
-    } else {
-      let normalized = tempSelectedItems.map(item => (item === "" ? "" : String(item)))
-      if (normalized.includes("") && normalized.length > 1) {
-        normalized = normalized.filter(item => item !== "")
-      }
-      setSelectedItems(normalized)
-    }
-    setShowItemModal(false)
-  }
-
-  const openPeriodModal = () => {
-    console.log("=== OPEN PERIOD MODAL ===")
-    console.log("selectedPeriod state:", JSON.stringify(selectedPeriod))
-    console.log("selectedPeriodRef:", JSON.stringify(selectedPeriodRef.current))
-    const current = selectedPeriod.length > 0 ? selectedPeriod : selectedPeriodRef.current
-    console.log("setting tempSelectedPeriod to:", JSON.stringify(current))
-    setTempSelectedPeriod([...current])
-    setShowPeriodModal(true)
-  }
-
-  const closePeriodModal = () => {
-    setShowPeriodModal(false)
-  }
-
-  const handlePeriodModalDone = () => {
-    console.log("=== PERIOD CHANGE ===")
-    console.log("tempSelectedPeriod:", JSON.stringify(tempSelectedPeriod))
-    console.log("selectedPeriod state before:", JSON.stringify(selectedPeriod))
-    console.log("selectedPeriodRef before:", JSON.stringify(selectedPeriodRef.current))
-    periodChangedByUser.current = true
-    setSelectedPeriod(tempSelectedPeriod)
-    selectedPeriodRef.current = [...tempSelectedPeriod]
-    setShowPeriodModal(false)
-  }
-
-  const handleTempSelectedItemsChange = newSelectedItems => {
-    if (!newSelectedItems || newSelectedItems.length === 0) {
-      setTempSelectedItems([])
-      return
-    }
-
-    let normalized = newSelectedItems.map(item => (item === "" ? "" : String(item)))
-
-    if (normalized.includes("") && normalized.length > 1) {
-      normalized = normalized.filter(item => item !== "")
-    }
-
-    setTempSelectedItems(normalized)
-  }
-
   // Get filtered ledgers based on search term
   const getFilteredLedgers = () => {
     if (!state.LedgerArray) return []
-
+    
     if (!ledgerSearchTerm) return state.LedgerArray
-
+    
     return state.LedgerArray.filter(ledger =>
       ledger.Name && ledger.Name.toLowerCase().includes(ledgerSearchTerm.toLowerCase())
     )
   }
 
   // Auto-fetch data function
-  const fetchReportData = async (overrideLedgerIds = null, refreshItemOptions = true, contractIdsOverride = '') => {
-    setShouldRefreshItemOptions(refreshItemOptions)
+  const fetchReportData = async (overrideLedgerIds = null) => {
     // Use override if provided, otherwise use state
     const ledgerIds = overrideLedgerIds || selectedLedger
-
+    
     // Validate that a ledger is selected
     if (!ledgerIds) {
       return
@@ -3272,21 +2172,28 @@ const LedgerReport = () => {
       vformData.append("LiftingInPeriod", state.LIP ? true : false)
 
       vformData.append("F_ItemMaster", selectedItem || 0)
-      const selectedItemIds =
-        selectedItems && selectedItems.length > 0
-          ? selectedItems.filter(item => item !== "")
-          : []
-      const itemIdsCsv =
-        selectedItemIds.length > 0
-          ? selectedItemIds.map(id => id.toString().trim()).filter(id => id !== "").join(",")
-          : ""
-      vformData.append("ItemIds", itemIdsCsv)
 
-      // Send selected periods' names as comma-separated string in SearchValue, or "All" if nothing selected
-      const activePeriod = selectedPeriodRef.current
+      // Send only the selected period's label (name) to API
+      // Send selected periods' labels (names) as comma-separated string in SearchValue, or "All" if nothing selected
       let searchValue = "All"
-      if (activePeriod && activePeriod.length > 0) {
-        searchValue = activePeriod.join(",")
+      if (
+        selectedPeriod &&
+        selectedPeriod.length > 0 &&
+        state.PeriodDataArray &&
+        state.PeriodDataArray.length > 0
+      ) {
+        const selectedPeriodLabels = selectedPeriod
+          .map(periodId => {
+            const period = state.PeriodDataArray.find(
+              p => p.Id === parseInt(periodId)
+            )
+            return period ? period.Name : null
+          })
+          .filter(Boolean)
+
+        if (selectedPeriodLabels.length > 0) {
+          searchValue = selectedPeriodLabels.join(",")
+        }
       }
       vformData.append("SearchValue", searchValue)
 
@@ -3300,18 +2207,12 @@ const LedgerReport = () => {
       vformData.append("FromDate", formatDateForInput(fromDate) || "")
       vformData.append("ToDate", formatDateForInput(toDate) || "")
 
-      // When contractIds provided, API returns only those contracts (sirf payload wale)
-      const contractIdsParam = typeof contractIdsOverride === 'string' && contractIdsOverride.trim()
-        ? contractIdsOverride.trim()
-        : ''
-      if (contractIdsParam) vformData.append("ContractIds", contractIdsParam)
-
       // Fetch period data for dropdown
       await fetchPeriodData(
         ledgerIds,
         formatDateForInput(fromDate),
         formatDateForInput(toDate),
-        itemIdsCsv
+        selectedItem
       )
 
       await Fn_GetReport(
@@ -3336,326 +2237,344 @@ const LedgerReport = () => {
     }
   }
 
-  const handleSharePDFClick = async () => {
-    if (!pendingShareFile || !navigator.share) return
-    try {
-      await navigator.share({
-        title: 'Ledger Report',
-        text: 'Please find attached the Ledger Report',
-        files: [pendingShareFile]
-      })
-      toast.success('PDF shared successfully!')
-      setShowSharePDFModal(false)
-      setPendingShareFile(null)
-    } catch (shareError) {
-      if (shareError.name === 'AbortError') {
-        toast.info('Share cancelled.')
-      } else {
-        console.error('Share error:', shareError)
-        toast.error('Share failed. Try again.')
-      }
-      setShowSharePDFModal(false)
-      setPendingShareFile(null)
-    }
-  }
-
-  // PDF Export - Open Remarks Modal
   const exportToPDF = () => {
     if (!state.FillArray || state.FillArray.length === 0) {
       toast.error("No data to export")
       return
     }
 
-    if (selectedRowIds.size === 0) {
-      toast.warning("Please select at least one contract to export")
-      return
-    }
+    // Get grouped data
+    const groupedData = getGroupedData(state.FillArray)
 
-    // Open remarks modal
-    setRemarks('')
-    setShowRemarksModal(true)
-  }
-
-  // Generate PDF with jsPDF + jspdf-autotable, then share
-  const handleGeneratePDF = async () => {
-    if (!state.FillArray || state.FillArray.length === 0) {
-      toast.error("No data to export")
-      return
-    }
-
-    if (selectedRowIds.size === 0) {
-      toast.warning("Please select at least one contract to export")
-      return
-    }
-
-    const rowsForExport = state.FillArray.filter(row =>
-      selectedRowIds.has(getRowIdentifier(row))
-    )
-
-    if (!rowsForExport || rowsForExport.length === 0) {
-      toast.error("Selected contracts are unavailable for export")
-      return
-    }
-
-    const groupedData = getGroupedData(rowsForExport)
-    groupedData.forEach(group => {
-      group.items = getSortedData(group.items)
-    })
-    const ledgerLabel =
+    // Create PDF content
+    const printWindow = window.open("", "_blank")
+    const selectedLedgerNames =
       ledgerDropdown.length > 0
-        ? ledgerDropdown.map(id => state.LedgerArray.find(l => l.Id === id)?.Name || "").filter(Boolean).join(", ")
+        ? ledgerDropdown.map(id => state.LedgerArray.find(l => l.Id === id).Name || "").join(", ")
         : "All Ledgers"
 
-    // Row font colour matching screen UI: S=red, P=green
-    const getRowFill = row => {
-      if (row.Status === 'S') return [255, 0, 0]
-      if (row.Status === 'P') return [0, 128, 0]
-      return [0, 0, 0]
+    // Calculate totals for each group
+    const calculateGroupTotals = items => {
+      const totals = {
+        purQty: 0,
+        selQty: 0,
+        advPayment: 0,
+        avgPurRate: 0,
+        avgSelRate: 0,
+        count: items.length,
+      }
+
+      items.forEach(item => {
+        totals.purQty += parseFloat(item.PurQty || 0)
+        totals.selQty += parseFloat(item.SelQty || 0)
+        totals.advPayment += parseFloat(item.AdvPayment || 0)
+        totals.avgPurRate += parseFloat(item.Rate || 0) // Assuming Rate is purchase rate
+        totals.avgSelRate += parseFloat(item.Rate || 0) // Assuming Rate is sell rate
+      })
+
+      // Calculate averages
+      if (totals.count > 0) {
+        totals.avgPurRate = totals.avgPurRate / totals.count
+        totals.avgSelRate = totals.avgSelRate / totals.count
+      }
+
+      return totals
     }
 
-    const allDerivedRowsPDF = groupedData.flatMap(g => g.items || [])
-    const overall = calculateLedgerGroupTotals(allDerivedRowsPDF)
-    overall.diffAmt = overall.totalSelQty * overall.sellAvgRate - overall.totalPurQty * overall.purchaseAvgRate
+    // Calculate overall totals
+    const overallTotals = calculateGroupTotals(state.FillArray)
 
-    try {
-      // -- Landscape A4 gives ~277 mm usable width --
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-      await registerHindiFont(doc)
-      setHindiFont(doc)
-      const pageW = doc.internal.pageSize.getWidth()  // 297 mm
-      const pageH = doc.internal.pageSize.getHeight() // 210 mm
-      const filename = `Ledger_Report_${new Date().toISOString().split('T')[0]}.pdf`
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Ledger Report</title>
+          <style>
+            @page {
+              size: portrait;
+              margin: 0.5cm;
+            }
+            
+            * {
+              box-sizing: border-box;
+            }
+            
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0;
+              padding: 10px;
+              font-size: 8px; 
+              background-color: white;
+              color: black;
+            }
+            
+            .print-header { 
+              text-align: center; 
+              margin-bottom: 10px;
+              page-break-inside: avoid;
+            }
+            
+            .print-header h1 { 
+              margin: 0 0 5px 0;
+              font-size: 16px;
+              color: #333;
+            }
+            
+            .print-header p { 
+              margin: 2px 0;
+              font-size: 9px;
+              color: #666;
+            }
+            
+            table { 
+              width: 100%; 
+              border-collapse: collapse;
+              font-size: 7px;
+              page-break-inside: auto;
+            }
+            
+            thead {
+              display: table-header-group;
+            }
+            
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            
+            th, td { 
+              border: 1px solid black;
+              padding: 2px 3px;
+              text-align: left;
+              font-size: 7px;
+            }
+            
+            th { 
+              background-color: #0000FF;
+              color: white;
+              font-weight: bold;
+              text-align: center;
+              padding: 3px;
+            }
+            
+            .group-header { 
+              background-color: #D2B48C;
+              font-weight: bold;
+              color: #2c3e50;
+              font-size: 8px;
+              padding: 3px 5px;
+            }
+            
+            .group-totals { 
+              background-color: #f8f9fa;
+              font-weight: bold;
+              font-size: 7px;
+            }
+            
+            .overall-totals { 
+              background-color: #6C244C;
+              color: white;
+              font-weight: bold;
+              font-size: 7px;
+            }
+            
+            .text-end { 
+              text-align: right;
+            }
+            
+            .text-center { 
+              text-align: center;
+            }
+            
+            .status-red { background-color: #f8d7da; }
+            .status-grey { background-color: #b0b0b0; }
+            .status-blue { background-color: #d1ecf1; }
+            
+            /* Print-specific styles */
+            @media print {
+              body {
+                margin: 0;
+                padding: 5px;
+              }
+              
+              table {
+                page-break-inside: auto;
+              }
+              
+              thead {
+                display: table-header-group;
+              }
+              
+              tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+              }
+              
+              th {
+                background-color: #0000FF !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              
+              .group-header {
+                background-color: #D2B48C !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              
+              .overall-totals {
+                background-color: #6C244C !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              
+              .group-totals {
+                background-color: #f8f9fa !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              
+              .status-red {
+                background-color: #f8d7da !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              
+              .status-grey {
+                background-color: #b0b0b0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              
+              .status-blue {
+                background-color: #d1ecf1 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <h1>Ledger Report</h1>
+            <p><strong>Ledger:</strong> ${selectedLedgerNames}</p>
+            <p><strong>Period:</strong> ${fromDate.toLocaleDateString()} to ${toDate.toLocaleDateString()}</p>
+            <p><strong>Generated on:</strong> ${new Date().toLocaleString()}</p>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Contract No</th>
+                <th>Contract Date</th>
+                <th>Party</th>
+                <th>Broker</th>
+                <th>Status</th>
+                <th>Tax</th>
+                <th>Unit</th>
+                <th>Item</th>
+                <th>Pur Qty</th>
+                <th>Sel Qty</th>
+                <th>Vessel</th>
+                <th>Rate</th>
+                <th>Cont Period</th>
+                <th>Delivery Port</th>
+                <th>Adv Payment</th>
+                <th>Adv Date</th>
+                <th>Lifted</th>
+                <th>Contract</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${groupedData
+                .map(group => {
+                  const groupTotals = calculateGroupTotals(group.items)
+                  
+                  return `
+                    <tr class="group-header">
+                      <td colspan="19">
+                        ${group.groupName} (${group.count} ${group.count === 1 ? 'record' : 'records'}) - 
+                        Buy Qty: ${groupTotals.purQty.toLocaleString()} | 
+                        Sell Qty: ${groupTotals.selQty.toLocaleString()} | 
+                        Adv Payment: ${groupTotals.advPayment.toLocaleString()}
+                      </td>
+                    </tr>
+                    ${group.items
+                      .map(row => {
+                        // Match the exact coloring logic from the view
+                        let rowClass = ''
+                        
+                        if (row.Lifted == 0 || row.Lifted == null || row.Lifted == undefined) {
+                          rowClass = 'status-grey' // table-secondary - Not started (light grey)
+                        } else if (row.Lifted == row.PurQty || row.Lifted == row.SelQty) {
+                          rowClass = 'status-blue' // table-info - Fully lifted (light blue)
+                        } else if (row.PurQty > row.Lifted || row.SelQty > row.Lifted) {
+                          rowClass = 'status-red' // table-danger - Partially lifted (light red)
+                        }
+                        
+                        return `
+                          <tr class="${rowClass}">
+                            <td>${row.ContractNo || ""}</td>
+                            <td>${row.ContractDate || ""}</td>
+                            <td>${row.PartyLedger || ""}</td>
+                            <td>${row.BrokerLedger || ""}</td>
+                            <td>${row.Status || ""}</td>
+                            <td>${row.Tax || ""}</td>
+                            <td>${row.Unit || ""}</td>
+                            <td>${row.Item || ""}</td>
+                            <td class="text-end">${row.PurQty ? parseFloat(row.PurQty).toFixed(2) : "0.00"}</td>
+                            <td class="text-end">${row.SelQty ? parseFloat(row.SelQty).toFixed(2) : "0.00"}</td>
+                            <td>${row.Vessel || ""}</td>
+                            <td class="text-end">${row.Rate ? parseFloat(row.Rate).toFixed(2) : "0.00"}</td>
+                            <td class="text-center">${row.ShipmentOrLifted || "-"}</td>
+                            <td>${row.DeliveryPort || ""}</td>
+                            <td class="text-end">${row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00"}</td>
+                            <td>${row.AdvDate || ""}</td>
+                            <td>${row.LiftedDate || ""}</td>
+                            <td>${row.Contract || ""}</td>
+                            <td>${getCombinedNotes(row)}</td>
+                          </tr>
+                        `
+                      })
+                      .join("")}
+                  `
+                })
+                .join("")}
+              
+              <!-- Overall Totals at the end -->
+              <tr class="overall-totals">
+                <td colspan="8"><strong>OVERALL TOTALS:</strong></td>
+                <td class="text-end"><strong>${overallTotals.purQty.toFixed(2)}</strong></td>
+                <td class="text-end"><strong>${overallTotals.selQty.toFixed(2)}</strong></td>
+                <td colspan="4"></td>
+                <td class="text-end"><strong>${overallTotals.advPayment.toFixed(2)}</strong></td>
+                <td colspan="4"></td>
+              </tr>
+              <tr class="overall-totals">
+                <td colspan="8"><strong>OVERALL AVERAGES:</strong></td>
+                <td class="text-end"><strong>${(overallTotals.purQty / overallTotals.count).toFixed(2)}</strong></td>
+                <td class="text-end"><strong>${(overallTotals.selQty / overallTotals.count).toFixed(2)}</strong></td>
+                <td colspan="4"></td>
+                <td class="text-end"><strong>${(overallTotals.advPayment / overallTotals.count).toFixed(2)}</strong></td>
+                <td colspan="4"></td>
+              </tr>
+              <tr class="overall-totals">
+                <td colspan="19" class="text-center">
+                  <strong>Total Records: ${state.FillArray.length} | Total Groups: ${groupedData.length}</strong>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
 
-      // -- Top header banner --
-      doc.setTextColor(0, 0, 180)
-      doc.setFontSize(15)
-      setHindiFont(doc, 'bold')
-      doc.text('Ledger Report', 8, 9)
-      doc.setFontSize(7.5)
-      setHindiFont(doc, 'normal')
-      doc.text(`Ledger: ${ledgerLabel}`, 8, 14)
-      doc.text(
-        `Period: ${fromDate.toLocaleDateString()} � ${toDate.toLocaleDateString()}   |   Generated: ${new Date().toLocaleString()}`,
-        8, 18.5
-      )
-      doc.setTextColor(0, 0, 0)
-
-      // -- Column definitions (total = 283 mm, margin 7 each side) --
-      const cols = [
-        { header: 'Contract No', dataKey: 'ContractNo', width: 19 },
-        { header: 'Date', dataKey: 'ContractDate', width: 18 },
-        { header: 'Seller', dataKey: 'Seller', width: 30 },
-        { header: 'Buyer', dataKey: 'Buyer', width: 30 },
-        { header: 'S/P', dataKey: 'Status', width: 8 },
-        { header: 'Item', dataKey: 'Item', width: 20 },
-        { header: 'Pur Qty', dataKey: 'PurQty', width: 18, type: 'number' },
-        { header: 'Sel Qty', dataKey: 'SelQty', width: 18, type: 'number' },
-        { header: 'Rate', dataKey: 'Rate', width: 18 },
-        { header: 'Period', dataKey: 'ShipmentOrLifted', width: 16 },
-        { header: 'S Adv Pay', dataKey: 'SAdvPayment', width: 18 },
-        { header: 'P Adv Pay', dataKey: 'PAdvPayment', width: 18 },
-        { header: 'Adv Date', dataKey: 'AdvDate', width: 18 }
-      ]
-
-      if (isDetailed) {
-        cols.push({ header: 'Lifting (Date|Lorry|BNo|Qty|Rate)', dataKey: 'DetailedLifting', width: 64 });
-      }
-      
-      const head = [cols.map(c => c.header)]
-      const columnStyles = {}
-      cols.forEach((col, i) => {
-        columnStyles[i] = {
-          cellWidth: col.width,
-          halign: (col.dataKey.includes('Qty') || col.dataKey === 'Rate' || col.dataKey.includes('AdvPayment')) ? 'right' : 'left',
-          overflow: 'linebreak',
-        }
-      })
-
-      // -- Build body rows --
-      // Each group: [header-span-row, ...data-rows, subtotal-span-row]
-      const body = []
-      const rowMeta = [] // parallel array: { type: 'group'|'data'|'subtotal'|'overall', fill? }
-
-      groupedData.forEach(group => {
-        const gt = calculateLedgerGroupTotals(group.items)
-        const gtDiffAmt = gt.totalSelQty * gt.sellAvgRate - gt.totalPurQty * gt.purchaseAvgRate
-
-        // Group header row � party name (colSpan 5) + stats cells matching table's tan header row
-        const grpRemCols = cols.length - 13
-        body.push([
-          { content: `${group.groupName}  (${group.count} rec)`, colSpan: 5, styles: { textColor: [44, 62, 80], fontStyle: 'bold', fontSize: 8, cellPadding: { top: 2, bottom: 2, left: 4, right: 2 } } },
-          { content: '', styles: {} },
-          { content: `Buy Qty\n${gt.totalPurQty.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-          { content: `Sell Qty\n${gt.totalSelQty.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-          { content: `Buy Avg\n${gt.purchaseAvgRate.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-          { content: `Sell Avg\n${gt.sellAvgRate.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-          { content: `Diff Amt\n${gtDiffAmt.toFixed(2)}`, styles: { textColor: gtDiffAmt >= 0 ? [25, 135, 84] : [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-          { content: `S Adv Pay\n${gt.totalSAdvPayment.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-          { content: `P Adv Pay\n${gt.totalPAdvPayment.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-          ...(grpRemCols > 0 ? [{ content: '', colSpan: grpRemCols, styles: {} }] : []),
-        ])
-        rowMeta.push({ type: 'group' })
-
-        // Data rows
-        group.items.forEach(row => {
-          let liftingString = "";
-
-          if (isDetailed && row.LiftingJson) {
-            try {
-              const liftingData = JSON.parse(row.LiftingJson);
-              if (Array.isArray(liftingData) && liftingData.length > 0) {
-                liftingString = liftingData.map(lift => {
-                  const date = lift.LiftDate?.substring(0, 5) || lift.LiftDate || "-";
-                  const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
-                  const lorry = lift.LorryNo || "-";
-                  const bno = lift.BNo || lift.InvoiceNo || "-";
-                  const lRate = lift.Rate != null ? lift.Rate : "-";
-                  return `${date} | ${lorry} | ${bno} | ${qty} | ${lRate}`;
-                }).join('\n');
-              } else { liftingString = "-"; }
-            } catch (e) { liftingString = "Invalid Data"; }
-          } else if (isDetailed) {
-            liftingString = "-";
-          }
-
-          const rowPushData = [
-            row.ContractNo || '',
-            row.ContractDate || '',
-            row.Seller || '',
-            row.Buyer || '',
-            row.Status || '',
-            row.Item || '',
-            row.PurQty != null ? Number(row.PurQty) : 0,
-            row.SelQty != null ? Number(row.SelQty) : 0,
-            row.Rate != null ? parseFloat(row.Rate) : 0,
-            row.ShipmentOrLifted || '-',
-            row.Status === 'S' ? (row.AdvPayment != null ? parseFloat(row.AdvPayment).toFixed(2) : '0.00') : '',
-            row.Status === 'P' ? (row.AdvPayment != null ? parseFloat(row.AdvPayment).toFixed(2) : '0.00') : '',
-            row.AdvDate || '',
-          ]
-
-          if (isDetailed) {
-            rowPushData.push(liftingString);
-          }
-
-          body.push(rowPushData)
-          rowMeta.push({ type: 'data', fill: getRowFill(row) })
-        })
-      })
-
-      // Overall totals row � same structure as group header rows
-      const overallRemCols = cols.length - 13
-      body.push([
-        { content: `OVERALL TOTALS  (${rowsForExport.length} records)`, colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', textColor: [75, 0, 130] } },
-        { content: '', styles: {} },
-        { content: `Buy Qty\n${overall.totalPurQty.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-        { content: `Sell Qty\n${overall.totalSelQty.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-        { content: `Buy Avg\n${overall.purchaseAvgRate.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-        { content: `Sell Avg\n${overall.sellAvgRate.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-        { content: `Diff Amt\n${overall.diffAmt.toFixed(2)}`, styles: { textColor: overall.diffAmt >= 0 ? [25, 135, 84] : [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-        { content: `S Adv Pay\n${overall.totalSAdvPayment.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-        { content: `P Adv Pay\n${overall.totalPAdvPayment.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
-        ...(overallRemCols > 0 ? [{ content: '', colSpan: overallRemCols }] : []),
-      ])
-      rowMeta.push({ type: 'overall' })
-
-      // -- Render autoTable --
-      doc.autoTable({
-        head,
-        body,
-        startY: 23,
-        margin: { left: 7, right: 7 },
-        tableWidth: 'auto',
-        styles: {
-          font: 'NotoSansDevanagari',
-          fontSize: 7.5,
-          fontStyle: 'bold',
-          cellPadding: 1.8,
-          lineColor: [0, 0, 0],
-          lineWidth: 0.4,
-          valign: 'middle',
-          overflow: 'linebreak',
-          textColor: [0, 0, 0],
-        },
-        headStyles: {
-          textColor: [0, 0, 200],
-          fontStyle: 'bold',
-          fontSize: 8,
-          halign: 'center',
-          cellPadding: 2.5,
-          lineColor: [0, 0, 0],
-          lineWidth: 0.5,
-        },
-        bodyStyles: {
-          fontStyle: 'bold',
-          textColor: [0, 0, 0],
-        },
-        columnStyles,
-        willDrawCell: data => {
-          if (data.section !== 'body') return
-          const meta = rowMeta[data.row.index]
-          if (meta && meta.type === 'data' && meta.fill) {
-            data.cell.styles.textColor = meta.fill
-          } else if (meta && meta.type === 'subtotal') {
-            data.cell.styles.textColor = [40, 40, 110]
-            data.cell.styles.fontStyle = 'bold'
-          } else if (meta && meta.type === 'overall') {
-            data.cell.styles.textColor = [75, 0, 130]
-            data.cell.styles.fontStyle = 'bold'
-          }
-        },
-        didDrawPage: pageData => {
-          // Page footer
-          const totalPages = doc.internal.getNumberOfPages()
-          doc.setFontSize(6.5)
-          doc.setTextColor(130, 130, 130)
-          doc.text(
-            `Page ${pageData.pageNumber} of ${totalPages}   |   Ledger Report   |   ${new Date().toLocaleDateString()}`,
-            pageW / 2,
-            pageH - 4,
-            { align: 'center' }
-          )
-          doc.setTextColor(0, 0, 0)
-        },
-      })
-
-      // -- Remarks --
-      if (remarks && remarks.trim()) {
-        let fy = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 30) + 8
-        if (fy > pageH - 30) { doc.addPage(); fy = 20 }
-        doc.setFontSize(9)
-        setHindiFont(doc, 'bold')
-        doc.text('Remarks:', 7, fy)
-        setHindiFont(doc, 'normal')
-        doc.setFontSize(7.5)
-        const lines = doc.splitTextToSize(remarks.trim(), pageW - 14)
-        doc.text(lines, 7, fy + 5)
-      }
-
-      const pdfBlob = doc.output('blob')
-      setShowRemarksModal(false)
-      setRemarks('')
-
-      const file = new File([pdfBlob], filename, { type: 'application/pdf' })
-
-      if (navigator.share) {
-        setPendingShareFile(file)
-        setShowSharePDFModal(true)
-      } else {
-        // Fallback: direct download
-        const url = URL.createObjectURL(pdfBlob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = filename
-        a.click()
-        URL.revokeObjectURL(url)
-        toast.success('PDF downloaded!')
-      }
-    } catch (error) {
-      console.error('PDF generation error:', error)
-      toast.error('Error generating PDF. Please try again.')
-      setShowRemarksModal(false)
-    }
+    printWindow.document.write(htmlContent)
+    printWindow.document.close()
+    printWindow.print()
   }
 
   const exportToExcel = async () => {
@@ -3664,196 +2583,155 @@ const LedgerReport = () => {
       return
     }
 
-    if (selectedRowIds.size === 0) {
-      toast.warning("Please select at least one contract to export")
-      return
-    }
-
-    const rowsForExport = state.FillArray.filter(row =>
-      selectedRowIds.has(getRowIdentifier(row))
-    )
-
-    if (!rowsForExport || rowsForExport.length === 0) {
-      toast.error("Selected contracts are unavailable for export")
-      return
-    }
-
     // Get grouped data
-    const groupedData = getGroupedData(rowsForExport)
-    groupedData.forEach(group => {
-      group.items = getSortedData(group.items)
-    })
+    const groupedData = getGroupedData(state.FillArray)
 
     const selectedLedgerName =
-      state.LedgerArray.find(l => l.Id === parseInt(selectedLedger))?.Name ||
+      state.LedgerArray.find(l => l.Id === parseInt(selectedLedger)).Name ||
       "Unknown"
 
-    // Use same calculation as the table display � calculateLedgerGroupTotals
+    // Calculate totals for each group
+    const calculateGroupTotals = items => {
+      const totals = {
+        purQty: 0,
+        selQty: 0,
+        advPayment: 0,
+        avgPurRate: 0,
+        avgSelRate: 0,
+        count: items.length,
+      }
 
-    // Helper function to get row font color based on lifted status
-    // Row font colour matching screen UI: S=red, P=green
-    const getRowFontColor = row => {
-      if (row.Status === 'S') return "FFFF0000" // Red for Sell
-      if (row.Status === 'P') return "FF008000" // Green for Purchase
-      return "FF000000" // Black - default
+      items.forEach(item => {
+        totals.purQty += parseFloat(item.PurQty || 0)
+        totals.selQty += parseFloat(item.SelQty || 0)
+        totals.advPayment += parseFloat(item.AdvPayment || 0)
+        totals.avgPurRate += parseFloat(item.Rate || 0)
+        totals.avgSelRate += parseFloat(item.Rate || 0)
+      })
+
+      // Calculate averages
+      if (totals.count > 0) {
+        totals.avgPurRate = totals.avgPurRate / totals.count
+        totals.avgSelRate = totals.avgSelRate / totals.count
+      }
+
+      return totals
     }
 
-    // Calculate overall totals � same function as table display
-    const allDerivedRowsExcel = groupedData.flatMap(g => g.items || [])
-    const overallTotals = calculateLedgerGroupTotals(allDerivedRowsExcel)
-    overallTotals.diffAmt = overallTotals.totalSelQty * overallTotals.sellAvgRate - overallTotals.totalPurQty * overallTotals.purchaseAvgRate
+    // Helper function to get row color based on lifted status
+    const getRowColor = row => {
+      if (row.Lifted == 0 || row.Lifted == null || row.Lifted == undefined) {
+        return "FFB0B0B0" // Grey - Not started
+      } else if (row.Lifted == row.PurQty || row.Lifted == row.SelQty) {
+        return "FFD1ECF1" // Blue - Fully lifted
+      } else if (row.PurQty > row.Lifted || row.SelQty > row.Lifted) {
+        return "FFF8D7DA" // Red - Partially lifted
+      }
+      return "FFFFFFFF" // White - default
+    }
+
+    // Calculate overall totals
+    const overallTotals = calculateGroupTotals(state.FillArray)
 
     // Create a new workbook
     const workbook = new ExcelJS.Workbook()
     const worksheet = workbook.addWorksheet("Ledger Report")
 
-    // Determine the last column letter for merging based on isDetailed
-    const lastCol = isDetailed ? "U" : "T"
-
     // Add title and header info
     let currentRow = 1
-    worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
+    worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
     const titleRow = worksheet.getCell(`A${currentRow}`)
     titleRow.value = "Ledger Report"
     titleRow.font = { bold: true, size: 16 }
     titleRow.alignment = { horizontal: "center" }
     currentRow++
 
-    worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
+    worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
     const ledgerRow = worksheet.getCell(`A${currentRow}`)
     ledgerRow.value = `Ledger: ${selectedLedgerName}`
     ledgerRow.font = { bold: true }
     currentRow++
 
-    worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
+    worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
     const periodRow = worksheet.getCell(`A${currentRow}`)
     periodRow.value = `Period: ${fromDate.toLocaleDateString()} to ${toDate.toLocaleDateString()}`
     currentRow++
 
-    worksheet.mergeCells(`A${currentRow}:${lastCol}${currentRow}`)
+    worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
     const dateRow = worksheet.getCell(`A${currentRow}`)
     dateRow.value = `Generated on: ${new Date().toLocaleString()}`
     currentRow++
 
     currentRow++ // Empty row
 
-    // Column headers - exactly matching table columns
+    // Column headers
     const headers = [
       "Contract No",
       "Contract Date",
-      "Seller",
-      "Buyer",
-      "S/P",
+      "Party",
+      "Broker",
+      "Status",
       "Tax",
       "Unit",
       "Item",
-      "Pur Qty",
-      "Sel Qty",
+      "PurQty",
+      "SelQty",
       "Vessel",
       "Rate",
-      "Cont Period",
-      "Delivery Port",
-      "S Adv Pay",
-      "P Adv Pay",
+      "Shipment Date",
+      "Lifted Date",
+      "Delivery Port/ Place",
+      "Adv Payment",
       "Adv Date",
-      "Lifted",
-      "Contract"
+      "Contract",
+      "Note",
     ]
-    if (isDetailed) {
-      headers.push("Lifting");
-      headers.push("Note");
-    } else {
-      headers.push("Note");
-    }
 
     // Add each group with its data
     groupedData.forEach(group => {
-      const groupTotals = calculateLedgerGroupTotals(group.items)
-      const diffAmt = groupTotals.totalSelQty * groupTotals.sellAvgRate - groupTotals.totalPurQty * groupTotals.purchaseAvgRate
+      const groupTotals = calculateGroupTotals(group.items)
+      const avgPurQty =
+        groupTotals.count > 0
+          ? (groupTotals.purQty / groupTotals.count).toFixed(2)
+          : "0.00"
+      const avgSelQty =
+        groupTotals.count > 0
+          ? (groupTotals.selQty / groupTotals.count).toFixed(2)
+          : "0.00"
+      const avgAdvPayment =
+        groupTotals.count > 0
+          ? (groupTotals.advPayment / groupTotals.count).toFixed(2)
+          : "0.00"
+      const differenceAmount = (
+        groupTotals.selQty * groupTotals.avgSelRate -
+        groupTotals.purQty * groupTotals.avgPurRate
+      ).toFixed(2)
 
-      // Group header row � party name (A:H merged) + stats cells matching table's tan header row
-      const grpBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }
-
-      worksheet.mergeCells(`A${currentRow}:H${currentRow}`)
+      // Add group header
+      worksheet.mergeCells(`A${currentRow}:S${currentRow}`)
       const groupHeaderCell = worksheet.getCell(`A${currentRow}`)
-      groupHeaderCell.value = `${group.groupName}  (${group.count} records)`
-      groupHeaderCell.font = { bold: true, size: 10, color: { argb: "FF2C3E50" } }
-      groupHeaderCell.alignment = { vertical: "middle" }
-      groupHeaderCell.border = grpBorder
-
-      // Buy Qty (col I = index 9 in 1-based)
-      const buyQtyCell = worksheet.getCell(`I${currentRow}`)
-      buyQtyCell.value = Number(groupTotals.totalPurQty)
-      buyQtyCell.numFmt = '0.00'
-      buyQtyCell.font = { bold: true, color: { argb: "FF0066CC" } }
-      buyQtyCell.alignment = { horizontal: "center", vertical: "middle" }
-      buyQtyCell.border = grpBorder
-
-      // Sell Qty (col J)
-      const sellQtyCell = worksheet.getCell(`J${currentRow}`)
-      sellQtyCell.value = Number(groupTotals.totalSelQty)
-      sellQtyCell.numFmt = '0.00'
-      sellQtyCell.font = { bold: true, color: { argb: "FFB41E1E" } }
-      sellQtyCell.alignment = { horizontal: "center", vertical: "middle" }
-      sellQtyCell.border = grpBorder
-
-      // Buy Avg (col K)
-      const buyAvgCell = worksheet.getCell(`K${currentRow}`)
-      buyAvgCell.value = parseFloat(groupTotals.purchaseAvgRate.toFixed(2))
-      buyAvgCell.numFmt = '0.00'
-      buyAvgCell.font = { bold: true, color: { argb: "FF0066CC" } }
-      buyAvgCell.alignment = { horizontal: "center", vertical: "middle" }
-      buyAvgCell.border = grpBorder
-
-      // Sell Avg (col L)
-      const sellAvgCell = worksheet.getCell(`L${currentRow}`)
-      sellAvgCell.value = parseFloat(groupTotals.sellAvgRate.toFixed(2))
-      sellAvgCell.numFmt = '0.00'
-      sellAvgCell.font = { bold: true, color: { argb: "FFB41E1E" } }
-      sellAvgCell.alignment = { horizontal: "center", vertical: "middle" }
-      sellAvgCell.border = grpBorder
-
-      // Col M (Cont Period) � empty
-      const mCell = worksheet.getCell(`M${currentRow}`)
-      mCell.border = grpBorder
-
-      // Diff Amt (col N)
-      const diffAmtCell = worksheet.getCell(`N${currentRow}`)
-      diffAmtCell.value = parseFloat(diffAmt.toFixed(2))
-      diffAmtCell.numFmt = '0.00'
-      diffAmtCell.font = { bold: true, color: { argb: diffAmt >= 0 ? "FF198754" : "FFdc3545" } }
-      diffAmtCell.alignment = { horizontal: "center", vertical: "middle" }
-      diffAmtCell.border = grpBorder
-
-      // S Adv Pay (col O)
-      const sAdvCell = worksheet.getCell(`O${currentRow}`)
-      sAdvCell.value = parseFloat(groupTotals.totalSAdvPayment.toFixed(2))
-      sAdvCell.numFmt = '0.00'
-      sAdvCell.font = { bold: true, color: { argb: "FFB41E1E" } }
-      sAdvCell.alignment = { horizontal: "center", vertical: "middle" }
-      sAdvCell.border = grpBorder
-
-      // P Adv Pay (col P)
-      const pAdvCell = worksheet.getCell(`P${currentRow}`)
-      pAdvCell.value = parseFloat(groupTotals.totalPAdvPayment.toFixed(2))
-      pAdvCell.numFmt = '0.00'
-      pAdvCell.font = { bold: true, color: { argb: "FF0066CC" } }
-      pAdvCell.alignment = { horizontal: "center", vertical: "middle" }
-      pAdvCell.border = grpBorder
-
-      // Fill remaining cols with border
-      for (let c = 17; c <= headers.length; c++) {
-        const cell = worksheet.getCell(currentRow, c)
-        cell.border = grpBorder
+      groupHeaderCell.value = `${group.groupName} (${group.count} records)`
+      groupHeaderCell.font = { bold: true, size: 12 }
+      groupHeaderCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFD2B48C" }, // Tan color for group headers
       }
       currentRow++
+
+      currentRow++ // Empty row
 
       // Add column headers for this group
       const headerRow = worksheet.getRow(currentRow)
       headers.forEach((header, index) => {
         const cell = headerRow.getCell(index + 1)
         cell.value = header
-        cell.font = { bold: true, color: { argb: "FF0000C8" } }
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } }
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF0000FF" }, // Blue background for headers
+        }
         cell.alignment = { horizontal: "center", vertical: "middle" }
         cell.border = {
           top: { style: "thin" },
@@ -3864,68 +2742,40 @@ const LedgerReport = () => {
       })
       currentRow++
 
-      // Add data rows for this group with white background and colored text
+      // Add data rows for this group with colors
       group.items.forEach(row => {
         const dataRow = worksheet.getRow(currentRow)
-        const fontColor = getRowFontColor(row)
-
-        let lastColData = "";
-        let liftingString = "";
-
-        if (isDetailed && row.LiftingJson) {
-          try {
-            const liftingData = JSON.parse(row.LiftingJson);
-            if (Array.isArray(liftingData) && liftingData.length > 0) {
-              liftingString = liftingData.map(lift => {
-                const date = lift.LiftDate?.substring(0, 5) || lift.LiftDate || "-";
-                const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
-                const lorry = lift.LorryNo || "-";
-                const bno = lift.BNo || lift.InvoiceNo || "-";
-                const lRate = lift.Rate != null ? lift.Rate : "-";
-                return `${date} | ${lorry} | ${bno} | ${qty} | ${lRate}`;
-              }).join('\n');
-            } else { liftingString = "-"; }
-          } catch (e) { liftingString = "Invalid Data"; }
-        } else if (isDetailed) {
-          liftingString = "-";
-        }
-
-        lastColData = getCombinedNotes(row) || "-";
+        const rowColor = getRowColor(row)
 
         const rowData = [
           row.ContractNo || "",
           row.ContractDate || "",
-          row.Seller || "",
-          row.Buyer || "",
+          row.PartyLedger || "",
+          row.BrokerLedger || "",
           row.Status || "",
           row.Tax || "",
           row.Unit || "",
           row.Item || "",
-          row.PurQty ? Number(row.PurQty) : 0,
-          row.SelQty ? Number(row.SelQty) : 0,
+          row.PurQty || "0.00",
+          row.SelQty || "0.00",
           row.Vessel || "",
-          row.Rate ? parseFloat(row.Rate).toFixed(2) : "0.00",
-          row.ShipmentOrLifted || "-",
+          row.Rate || "0.00",
+          row.ShipmentDate || "",
+          row.LiftedDate || "",
           row.DeliveryPort || "",
-          row.Status === "S" ? (row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00") : "",
-          row.Status === "P" ? (row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00") : "",
+          row.AdvPayment || "0.00",
           row.AdvDate || "",
-          row.Lifted ? parseFloat(row.Lifted).toFixed(2) : "0.00",
           row.Contract || "",
+          getCombinedNotes(row),
         ]
-
-        if (isDetailed) {
-          rowData.push(liftingString);
-          rowData.push(lastColData);
-        } else {
-          rowData.push(lastColData);
-        }
 
         rowData.forEach((value, index) => {
           const cell = dataRow.getCell(index + 1)
           cell.value = value
-          cell.font = {
-            color: { argb: fontColor }, // Colored text based on status
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: rowColor },
           }
           cell.border = {
             top: { style: "thin" },
@@ -3936,118 +2786,278 @@ const LedgerReport = () => {
         })
         currentRow++
       })
+
+      currentRow++ // Empty row
+
+      // Add group totals
+      const totalsRow = worksheet.getRow(currentRow)
+      const totalsData = [
+        "Group Totals",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        groupTotals.purQty.toFixed(2),
+        groupTotals.selQty.toFixed(2),
+        "",
+        "",
+        "",
+        "",
+        "",
+        groupTotals.advPayment.toFixed(2),
+        "",
+        "",
+        "",
+      ]
+      totalsData.forEach((value, index) => {
+        const cell = totalsRow.getCell(index + 1)
+        cell.value = value
+        cell.font = { bold: true }
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF8F9FA" }, // Light grey for totals
+        }
+      })
+      currentRow++
+
+      // Add group averages
+      const averagesRow = worksheet.getRow(currentRow)
+      const averagesData = [
+        "Group Averages",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        avgPurQty,
+        avgSelQty,
+        "",
+        "",
+        "",
+        "",
+        "",
+        avgAdvPayment,
+        "",
+        "",
+        "",
+      ]
+      averagesData.forEach((value, index) => {
+        const cell = averagesRow.getCell(index + 1)
+        cell.value = value
+        cell.font = { bold: true }
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF8F9FA" },
+        }
+      })
+      currentRow++
+
+      // Add difference amount
+      const diffRow = worksheet.getRow(currentRow)
+      const diffData = [
+        "Difference Amount (Sel*AvgSel - Pur*AvgPur)",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        differenceAmount,
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]
+      diffData.forEach((value, index) => {
+        const cell = diffRow.getCell(index + 1)
+        cell.value = value
+        cell.font = { bold: true }
+      })
+      currentRow++
+
+      currentRow += 2 // Two empty rows between groups
     })
 
-    // Add overall totals row � same structure as group header rows (purple background)
-    const overallDiffAmt = overallTotals.diffAmt
-    const overallBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }
+    // Add overall totals
+    const overallTotalsRow = worksheet.getRow(currentRow)
+    const overallTotalsData = [
+      "OVERALL TOTALS",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      overallTotals.purQty.toFixed(2),
+      overallTotals.selQty.toFixed(2),
+      "",
+      "",
+      "",
+      "",
+      "",
+      overallTotals.advPayment.toFixed(2),
+      "",
+      "",
+      "",
+    ]
+    overallTotalsData.forEach((value, index) => {
+      const cell = overallTotalsRow.getCell(index + 1)
+      cell.value = value
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } }
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF6C244C" }, // Dark purple for overall totals
+      }
+    })
+    currentRow++
 
-    worksheet.mergeCells(`A${currentRow}:H${currentRow}`)
-    const overallHeaderCell = worksheet.getCell(`A${currentRow}`)
-    overallHeaderCell.value = `OVERALL TOTALS  (${rowsForExport.length} records)`
-    overallHeaderCell.font = { bold: true, size: 11, color: { argb: "FF4B0082" } }
-    overallHeaderCell.alignment = { vertical: "middle" }
-    overallHeaderCell.border = overallBorder
+    // Add overall averages
+    const overallAvgRow = worksheet.getRow(currentRow)
+    const overallAvgData = [
+      "OVERALL AVERAGES",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      (overallTotals.purQty / overallTotals.count).toFixed(2),
+      (overallTotals.selQty / overallTotals.count).toFixed(2),
+      "",
+      "",
+      "",
+      "",
+      "",
+      (overallTotals.advPayment / overallTotals.count).toFixed(2),
+      "",
+      "",
+      "",
+    ]
+    overallAvgData.forEach((value, index) => {
+      const cell = overallAvgRow.getCell(index + 1)
+      cell.value = value
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } }
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF6C244C" },
+      }
+    })
+    currentRow++
 
-    const setOverallCell = (col, value, colorArgb) => {
-      const cell = worksheet.getCell(`${col}${currentRow}`)
-      cell.value = parseFloat(value.toFixed(2))
-      cell.numFmt = '0.00'
-      cell.font = { bold: true, color: { argb: colorArgb } }
-      cell.alignment = { horizontal: "center", vertical: "middle" }
-      cell.border = overallBorder
-    }
-
-    setOverallCell('I', overallTotals.totalPurQty, "FF0066CC")
-    setOverallCell('J', overallTotals.totalSelQty, "FFB41E1E")
-    setOverallCell('K', overallTotals.purchaseAvgRate, "FF0066CC")
-    setOverallCell('L', overallTotals.sellAvgRate, "FFB41E1E")
-
-    const mOverall = worksheet.getCell(`M${currentRow}`)
-    mOverall.border = overallBorder
-
-    setOverallCell('N', overallDiffAmt, overallDiffAmt >= 0 ? "FF198754" : "FFB41E1E")
-
-    setOverallCell('O', overallTotals.totalSAdvPayment, "FFB41E1E")
-    setOverallCell('P', overallTotals.totalPAdvPayment, "FF0066CC")
-
-    for (let c = 17; c <= headers.length; c++) {
-      const cell = worksheet.getCell(currentRow, c)
-      cell.border = overallBorder
-    }
+    // Add overall difference amount
+    const overallDifferenceAmount = (
+      overallTotals.selQty * overallTotals.avgSelRate -
+      overallTotals.purQty * overallTotals.avgPurRate
+    ).toFixed(2)
+    const overallDiffRow = worksheet.getRow(currentRow)
+    const overallDiffData = [
+      "OVERALL DIFFERENCE AMOUNT",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      overallDifferenceAmount,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+    ]
+    overallDiffData.forEach((value, index) => {
+      const cell = overallDiffRow.getCell(index + 1)
+      cell.value = value
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } }
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF6C244C" },
+      }
+    })
     currentRow++
 
     currentRow++ // Empty row
-    worksheet.getCell(`A${currentRow}`).value = `Total Records: ${rowsForExport.length}`
+    worksheet.getCell(`A${currentRow}`).value = `Total Records: ${state.FillArray.length}`
     worksheet.getCell(`A${currentRow}`).font = { bold: true }
     currentRow++
     worksheet.getCell(`A${currentRow}`).value = `Total Groups: ${groupedData.length}`
     worksheet.getCell(`A${currentRow}`).font = { bold: true }
 
-    // Auto-fit columns based on actual data content - precise calculation
+    // Auto-fit columns based on content
     worksheet.columns.forEach((column, columnIndex) => {
-      let maxDataLength = 0
-      let sampleCount = 0
-      const maxSamples = 100 // Check first 100 rows for performance
-
-      // Check header length first
-      const headerLength = headers[columnIndex] ? headers[columnIndex].length : 0
-      maxDataLength = headerLength
-
-      // Check actual data in cells
-      column.eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-        // Skip header rows and title rows (first 5 rows typically)
-        if (rowNumber <= 5) return
-
-        if (cell.value !== null && cell.value !== undefined && cell.value !== "") {
-          sampleCount++
-          if (sampleCount > maxSamples) return // Stop after checking enough samples
-
-          let cellValue = ""
-
-          // Handle different data types
-          if (typeof cell.value === 'number') {
-            // For numbers, use the formatted string length
-            cellValue = cell.value.toString()
-          } else if (typeof cell.value === 'object' && cell.value instanceof Date) {
-            cellValue = cell.value.toLocaleDateString()
-          } else {
-            cellValue = String(cell.value)
-          }
-
-          // Use actual character length (Excel uses character count, not pixels)
-          const valueLength = cellValue.length
-          maxDataLength = Math.max(maxDataLength, valueLength)
+      let maxLength = 0
+      column.eachCell({ includeEmpty: false }, cell => {
+        if (cell.value) {
+          const cellValue = cell.value.toString()
+          // Account for bold text taking more space
+          const lengthMultiplier = cell.font && cell.font.bold ? 1.1 : 1
+          const valueLength = cellValue.length * lengthMultiplier
+          maxLength = Math.max(maxLength, valueLength)
         }
       })
-
-      // Calculate width: Excel width = character count + small padding
-      // Excel column width is measured in characters (approximately)
-      // Add minimal padding (1-2 characters) for readability
-      const padding = 1.5 // Minimal padding
-      let calculatedWidth = maxDataLength + padding
-
-      // Set reasonable minimums based on column type
-      const columnName = headers[columnIndex] || ""
-      let minWidth = 8 // Default minimum
-
-      if (columnName.includes("Qty") || columnName.includes("Rate") || columnName.includes("Payment") || columnName.includes("Lifted")) {
-        minWidth = 12 // Numeric columns need a bit more
-      } else if (columnName.includes("Date")) {
-        minWidth = 12 // Date columns
-      } else if (columnName.includes("Contract") || columnName.includes("Seller") || columnName.includes("Buyer")) {
-        minWidth = 15 // Name columns
-      } else if (columnName.includes("Note")) {
-        minWidth = 20 // Note column can be wider
-      } else {
-        minWidth = Math.max(headerLength + 1, 8) // At least header length + 1
+      
+      // Set column width with appropriate min/max bounds
+      // Add padding for better readability
+      const calculatedWidth = maxLength + 3
+      
+      // Set minimum width of 8 and maximum of 60
+      column.width = Math.max(8, Math.min(calculatedWidth, 60))
+    })
+    
+    // Set specific widths for certain columns for better formatting
+    const columnWidths = {
+      0: 15,  // Contract No
+      1: 15,  // Contract Date
+      2: 20,  // Party
+      3: 20,  // Broker
+      4: 12,  // Status
+      5: 10,  // Tax
+      6: 10,  // Unit
+      7: 20,  // Item
+      8: 12,  // PurQty
+      9: 12,  // SelQty
+      10: 15, // Vessel
+      11: 12, // Rate
+      12: 15, // Shipment Date
+      13: 15, // Lifted Date
+      14: 25, // Delivery Port/Place
+      15: 15, // Adv Payment
+      16: 15, // Adv Date
+      17: 15, // Contract
+      18: 30, // Note
+    }
+    
+    // Apply specific widths only if current width is smaller
+    Object.keys(columnWidths).forEach(colIndex => {
+      const col = worksheet.getColumn(parseInt(colIndex) + 1)
+      if (col.width < columnWidths[colIndex]) {
+        col.width = columnWidths[colIndex]
       }
-
-      // Set maximum width to prevent extremely wide columns
-      const maxWidth = columnName.includes("Note") ? 50 : 25 // Note can be wider, others limited
-
-      // Final width: ensure it's between min and max
-      column.width = Math.max(minWidth, Math.min(calculatedWidth, maxWidth))
     })
 
     // Generate Excel file
@@ -4055,35 +3065,15 @@ const LedgerReport = () => {
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     })
-    const fileName = `ledger_report_${selectedLedgerName.replace(/[^a-zA-Z0-9]/g, "_")}_${fromDate.toISOString().split("T")[0]
-      }_${toDate.toISOString().split("T")[0]}.xlsx`
-
-    // Share or download
-    const file = new File([blob], fileName, { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
-
-    if (navigator.share) {
-      try {
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: 'Ledger Report',
-            text: 'Please find attached the Ledger Report',
-            files: [file]
-          })
-          toast.success("Excel file shared successfully!")
-          return
-        }
-      } catch (shareError) {
-        if (shareError.name !== 'AbortError') {
-          console.error('Share error:', shareError)
-        }
-      }
-    }
-
-    // Fallback: download
     const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
     link.setAttribute("href", url)
-    link.setAttribute("download", fileName)
+    link.setAttribute(
+      "download",
+      `ledger_report_${selectedLedgerName.replace(/[^a-zA-Z0-9]/g, "_")}_${
+        fromDate.toISOString().split("T")[0]
+      }_${toDate.toISOString().split("T")[0]}.xlsx`
+    )
     link.style.visibility = "hidden"
     document.body.appendChild(link)
     link.click()
@@ -4093,6 +3083,277 @@ const LedgerReport = () => {
     toast.success("Excel exported successfully with colored rows!")
   }
 
+  return (
+    <div
+      className="ledger-report-root"
+      style={{
+        height: "100vh",
+        marginTop: 0,
+        paddingTop: "var(--header-height, 70px)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        paddingBottom: "0",
+      }}
+    >
+      {/* <Breadcrumbs title={breadCrumbTitle} breadcrumbItem={breadcrumbItem} /> */}
+
+      <div className="col-12" style={{ flex: "0 0 auto", marginBottom: "0" }}>
+        <div className="card border-0 shadow-sm" style={{ marginBottom: "0" }}>
+          <div className="card-body" style={{ padding: "0.25rem" }}>
+            <div
+              className="ledger-report-filters-scroll"
+              style={{
+                overflowX: "auto",
+                overflowY: "hidden",
+                WebkitOverflowScrolling: "touch",
+                margin: "0 -2px",
+                padding: "0 2px",
+              }}
+            >
+              <Row
+                className="g-0 align-items-center"
+                style={{
+                  backgroundColor: "#f4e4d4",
+                  padding: "4px",
+                  borderRadius: "4px",
+                  flexWrap: "nowrap",
+                  minWidth: "min-content",
+                  width: "max-content",
+                }}
+              >
+                <Col lg={2} md={2} sm={12}>
+                  <FormGroup className="mb-0">
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <input
+                        type="date"
+                        value={formatDateForInput(fromDate)}
+                        onChange={e => {
+                          if (e.target.value) {
+                            setFromDate(new Date(e.target.value + 'T00:00:00'))
+                          }
+                        }}
+                        className="form-control form-control-sm"
+                        style={{
+                          backgroundColor: "#f8f9fa",
+                          fontSize: "0.65rem",
+                          border: "1px solid #ced4da",
+                          height: "28px",
+                          padding: "2px 2px",
+                          width: "5rem",
+                        }}
+                      />
+                      <span style={{ fontSize: "0.65rem", fontWeight: "500", color: "#495057", margin: "0 2px" }}>To</span>
+                      <input
+                        type="date"
+                        value={formatDateForInput(toDate)}
+                        onChange={e => {
+                          if (e.target.value) {
+                            setToDate(new Date(e.target.value + 'T00:00:00'))
+                          }
+                        }}
+                        className="form-control form-control-sm"
+                        style={{
+                          backgroundColor: "#f8f9fa",
+                          fontSize: "0.65rem",
+                          border: "1px solid #ced4da",
+                          height: "28px",
+                          padding: "2px 2px",
+                          width: "5rem",
+                        }}
+                      />
+                    </div>
+                  </FormGroup>
+                </Col>
+
+                <Col lg={1} md={1} sm={12}>
+                  <FormGroup className="mb-0">
+                    <Button
+                      variant="outline-primary"
+                      className="w-100"
+                      onClick={handleOpenLedgerModal}
+                      style={{
+                        fontSize: "0.6rem",
+                        height: "28px",
+                        padding: "2px 4px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        backgroundColor: "#f8f9fa",
+                        border: "1px solid #ced4da",
+                        color: "#495057",
+                      }}
+                    >
+                    Ledger Selection
+                    <i className="fas fa-chevron-down" style={{ fontSize: "0.55rem" }}></i>
+                    </Button>
+                  </FormGroup>
+                </Col>
+
+                <Col lg={2} md={2} sm={12}>
+                  <div
+                    style={{
+                      border: "1px solid #8B4513",
+                      borderRadius: "4px",
+                      padding: "2px 4px",
+                      backgroundColor: "#f8f9fa",
+                      display: "flex",
+                      alignItems: "center",
+                      flexWrap: "nowrap",
+                      height: "28px",
+                    }}
+                  >
+                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "2px", marginRight: "3px" }}>
+                      <input
+                        id="Pending"
+                        type="checkbox"
+                        className="form-check-input"
+                        style={{ width: "12px", height: "12px", margin: "0" }}
+                        checked={state.Pending}
+                        onClick={e => {
+                          setState(prev => ({
+                            ...prev,
+                            Pending: !prev.Pending,
+                          }))
+                        }}
+                      />
+                      <label
+                        className="form-check-label small mb-0"
+                        htmlFor="Pending"
+                        style={{ fontSize: "0.6rem", color: "#dc3545", fontWeight: "bold" }}
+                      >
+                        <i className="fas fa-hourglass-half" style={{ fontSize: "0.55rem" }}></i>Partially: {state.Pending ? "Y" : "N"}
+                      </label>
+                    </div>
+
+                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "2px", marginRight: "3px" }}>
+                      <input
+                        id="NotStarted"
+                        type="checkbox"
+                        className="form-check-input"
+                        style={{ width: "12px", height: "12px", margin: "0" }}
+                        checked={state.NotStarted}
+                        onClick={e => {
+                          setState(prev => ({
+                            ...prev,
+                            NotStarted: !prev.NotStarted,
+                          }))
+                        }}
+                      />
+                      <label
+                        className="form-check-label small mb-0"
+                        htmlFor="NotStarted"
+                        style={{ fontSize: "0.6rem", color: "#000000", fontWeight: "bold" }}
+                      >
+                        <i className="fas fa-clock" style={{ fontSize: "0.55rem" }}></i>UnLifted: {state.NotStarted ? "Y" : "N"}
+                      </label>
+                    </div>
+
+                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                      <input
+                        id="Completed"
+                        type="checkbox"
+                        className="form-check-input"
+                        style={{ width: "12px", height: "12px", margin: "0" }}
+                        onChange={e => {
+                          setState(prev => ({
+                            ...prev,
+                            Completed: e.target.checked,
+                          }))
+                        }}
+                      />
+                      <label
+                        className="form-check-label small mb-0"
+                        htmlFor="Completed"
+                        style={{ fontSize: "0.6rem", color: "#007bff", fontWeight: "bold" }}
+                      >
+                        <i className="fas fa-check-circle" style={{ fontSize: "0.55rem" }}></i>Fully: {state.Completed ? "Y" : "N"}
+                      </label>
+                    </div>
+                  </div>
+                </Col>
+
+                <Col xs="auto">
+                  <Button
+                    color="info"
+                    style={{
+                      fontSize: "0.6rem",
+                      height: "28px",
+                      padding: "2px 6px",
+                      minWidth: "60px",
+                    }}
+                    onClick={() => openVoucherModal()}
+                  >
+                    <i className="fas fa-receipt"></i>Vch
+                  </Button>
+                </Col>
+
+                <Col xs="auto">
+                  <Button
+                    variant="success"
+                    style={{
+                      fontSize: "0.65rem",
+                      height: "28px",
+                      padding: "2px 6px",
+                      minWidth: "32px",
+                    }}
+                    onClick={() => window.open('/Contract', '_blank')}
+                  >
+                    <i className="fas fa-plus"></i>
+                  </Button>
+                </Col>
+
+                <Col xs="auto">
+                  <div
+                    style={{
+                      border: "1px solid #8B4513",
+                      borderRadius: "4px",
+                      padding: "2px 3px",
+                      backgroundColor: "#f8f9fa",
+                      display: "flex",
+                      alignItems: "center",
+                      flexWrap: "nowrap",
+                      height: "28px",
+                    }}
+                  >
+                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px", marginRight: "2px" }}>
+                      <input
+                        id="LAP"
+                        type="checkbox"
+                        className="form-check-input"
+                        style={{ width: "12px", height: "12px", margin: "0" }}
+                        onClick={e => {
+                          const newLapValue = !state.LAP
+                          setState(prev => ({
+                            ...prev,
+                            LAP: newLapValue,
+                          }))
+                          handleLapLipDateChange(newLapValue, state.LIP)
+                        }}
+                        checked={state.LAP}
+                      />
+                      <label
+                        className="form-check-label small mb-0"
+                        htmlFor="LAP"
+                        style={{ fontSize: "0.6rem", color: "#28a745", fontWeight: "bold" }}
+                      >
+                        <i className="fas fa-check-circle" style={{ fontSize: "0.55rem" }}></i>LAP: {state.LAP ? "Y" : "N"}
+                      </label>
+                    </div>
+
+                    <div className="form-check" style={{ display: "flex", alignItems: "center", gap: "1px" }}>
+                      <input
+                        id="LIP"
+                        type="checkbox"
+                        className="form-check-input"
+                        style={{ width: "12px", height: "12px", margin: "0" }}
+                        onClick={e => {
+                          const newLipValue = !state.LIP
+                          setState(prev => ({
+                            ...prev,
+                            LIP: newLipValue,
+                          }))
+                          handleLapLipDateChange(state.LAP, newLipValue)
   return (
     <div
       className="ledger-report-container"
@@ -4217,7 +3478,7 @@ const LedgerReport = () => {
                               >
                                 <div className="d-flex justify-content-between align-items-center" style={{ width: "100%", pointerEvents: "none" }}>
                                   <div className="d-flex align-items-center gap-1">
-                                    {col.key === 'CheckBox' && (
+                                    {col.key === 'ContractNo' && (
                                       <input
                                         type="checkbox"
                                         ref={selectAllRef}
@@ -4251,12 +3512,8 @@ const LedgerReport = () => {
                               <React.Fragment key={groupIndex}>
                                 {/* Group Header Row with Totals */}
                                 {(() => {
-                                  const selectedGroupItems = group.items.filter(item => {
-                                    const id = getRowIdentifier(item)
-                                    return id && selectedRowIds.has(id)
-                                  })
                                   const ledgerTotals =
-                                    calculateLedgerGroupTotals(selectedGroupItems.length > 0 ? selectedGroupItems : group.items)
+                                    calculateLedgerGroupTotals(group.items)
                                   return (
                                     <tr
                                       style={{
@@ -4265,9 +3522,9 @@ const LedgerReport = () => {
                                         border: "1px solid #d2b48c",
                                       }}
                                     >
-                                      {/* Group Name - Spans columns 1-7 (CheckBox + ContractNo to Status) */}
+                                      {/* Group Name - Spans columns 1-6 (ContractNo to Status) */}
                                       <td
-                                        colSpan="7"
+                                        colSpan="6"
                                         className="fw-bold border-bottom"
                                         style={{
                                           backgroundColor: "#D2B48C",
@@ -4278,7 +3535,7 @@ const LedgerReport = () => {
                                           boxShadow: "none",
                                         }}
                                       >
-                                        <div className="d-flex align-items-center flex-wrap">
+                                        <div className="d-flex align-items-center">
                                           <i className="fas fa-users me-2 text-primary"></i>
                                           <span
                                             className="fw-bold"
@@ -4290,19 +3547,7 @@ const LedgerReport = () => {
                                           >
                                             {group.groupName}
                                           </span>
-                                          {/* Mobile-only: Buy Qty | Sell Qty | Buy Avg | Sell Avg � right after party name */}
-                                          <small className="d-inline d-md-none ms-1" style={{ fontSize: "0.58rem", fontWeight: "bold" }}>
-                                            {" ["}
-                                            <span style={{ color: "#166534", fontWeight: "bold" }}>B:{ledgerTotals.totalPurQty.toLocaleString()}</span>
-                                            <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                            <span style={{ color: "#d62d5d", fontWeight: "bold" }}>S:{ledgerTotals.totalSelQty.toLocaleString()}</span>
-                                            <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                            <span style={{ color: "#166534", fontWeight: "bold" }}>BA:{ledgerTotals.purchaseAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                                            <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                            <span style={{ color: "#d62d5d", fontWeight: "bold" }}>SA:{ledgerTotals.sellAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                                            {"]"}
-                                          </small>
-                                          {/* <small className="text-muted ms-2" style={{ fontSize: "0.65rem" }}>
+                                          <small className="text-muted ms-2" style={{ fontSize: "0.65rem" }}>
                                             ({group.count}{" "}
                                             {group.count === 1 ? "record" : "records"})
                                             {(() => {
@@ -4316,7 +3561,7 @@ const LedgerReport = () => {
                                               }
                                               return null;
                                             })()}
-                                          </small> */}
+                                          </small>
                                         </div>
                                       </td>
                                       {/* Empty - Column 7 (Unit) */}
@@ -4390,7 +3635,7 @@ const LedgerReport = () => {
                                         <div>
                                           <div style={{ fontSize: "0.55rem", color: "#0066cc" }}>Buy Avg</div>
                                           <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            ?{ledgerTotals.purchaseAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                            ₹{ledgerTotals.purchaseAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                           </div>
                                         </div>
                                       </td>
@@ -4411,7 +3656,7 @@ const LedgerReport = () => {
                                         <div>
                                           <div style={{ fontSize: "0.55rem", color: "#dc3545" }}>Sell Avg</div>
                                           <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            ?{ledgerTotals.sellAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                            ₹{ledgerTotals.sellAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                           </div>
                                         </div>
                                       </td>
@@ -4450,58 +3695,16 @@ const LedgerReport = () => {
                                               })()
                                             }}
                                           >
-                                            ?{parseFloat(
+                                            ₹{parseFloat(
                                               ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate -
                                               ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
                                             ).toFixed(2)}
                                           </div>
                                         </div>
                                       </td>
-                                      {/* S Adv Pay */}
+                                      {/* Copy Button - Columns 14-18 (Delivery Port to Note) */}
                                       <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 4px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          fontSize: "0.6rem",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        <div>
-                                          <div style={{ fontSize: "0.55rem", color: "#dc3545" }}>S Adv Pay</div>
-                                          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            {ledgerTotals.totalSAdvPayment.toFixed(2)}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {/* P Adv Pay */}
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 4px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          fontSize: "0.6rem",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        <div>
-                                          <div style={{ fontSize: "0.55rem", color: "#0066cc" }}>P Adv Pay</div>
-                                          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            {ledgerTotals.totalPAdvPayment.toFixed(2)}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {/* Copy Button - remaining columns */}
-                                      <td
-                                        colSpan="4"
+                                        colSpan="5"
                                         className="text-end border-bottom"
                                         style={{
                                           backgroundColor: "#D2B48C",
@@ -4572,7 +3775,7 @@ const LedgerReport = () => {
                                       style={{
                                         height: "25px",
                                         borderBottom: "1px solid #dee2e6",
-                                        color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit",
+                                        color: row.Status === "S" ? "red" : "inherit",
                                         fontWeight: row.Status === "S" ? "bold" : "inherit",
                                       }}
                                       onMouseEnter={e => {
@@ -4630,7 +3833,7 @@ const LedgerReport = () => {
                                           verticalAlign: "middle",
                                           padding: "0",
                                           border: "1.5px solid black",
-                                          color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit",
+                                          color: row.Status === "S" ? "red" : "inherit",
                                           fontWeight: row.Status === "S" ? "bold" : "inherit",
                                         }
                                         const tdNumStyle = {
@@ -4640,21 +3843,17 @@ const LedgerReport = () => {
                                           borderTop: "1.5px solid black !important",
                                           borderRight: "1.5px solid black !important",
                                           borderBottom: "1.5px solid black !important",
-                                          borderLeft: "1.5px solid black !i mportant",
+                                          borderLeft: "1.5px solid black !important",
                                           boxShadow: "none",
                                         }
                                         switch (col.key) {
-                                          case 'CheckBox': return (
-                                            <td key={col.key} className={`text-center align-middle ${rowId && selectedRowIds.has(rowId) ? 'contractno-selected' : 'contractno-unselected'}`} style={{ ...tdStyle, padding: "4px", width: "35px" }}>
-                                              <input type="checkbox" checked={rowId ? selectedRowIds.has(rowId) : false} onClick={e => { e.stopPropagation(); toggleRowSelection(row) }} style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer" }} title="Select contract" />
-                                            </td>
-                                          )
                                           case 'ContractNo': return (
-                                            <td key={col.key} className={`${row.Status === "S" ? "fw-bold" : "fw-semibold"} ${rowId && selectedRowIds.has(rowId) ? 'contractno-selected' : 'contractno-unselected'}`} style={{ ...tdStyle, padding: "6px 12px" }}>
+                                            <td key={col.key} className={row.Status === "S" ? "fw-bold" : "fw-semibold"} style={{ ...tdStyle, padding: "6px 12px" }}>
                                               {row.ContractNo ? (
                                                 <div className="d-flex align-items-center gap-2">
-                                                  <Button variant="link" className={`p-0 text-decoration-none fw-bold ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ cursor: "pointer", transition: "all 0.2s ease", border: "none", background: "none", padding: "6px 10px", borderRadius: "4px", display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", whiteSpace: "nowrap", width: "100%", justifyContent: "flex-start", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd", fontWeight: "bold" }} onMouseEnter={e => { e.target.style.color = row.Status === "S" ? "#b02550" : row.Status === "P" ? "#0d4f27" : "#0056b3"; e.target.style.textDecoration = "underline"; e.target.style.backgroundColor = "#f8f9fa" }} onMouseLeave={e => { e.target.style.color = row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd"; e.target.style.textDecoration = "none"; e.target.style.backgroundColor = "transparent" }} onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button">
-                                                    <i className={`fas fa-edit ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd" }}></i>
+                                                  <input type="checkbox" checked={rowId ? selectedRowIds.has(rowId) : false} onClick={e => { e.stopPropagation(); toggleRowSelection(row) }} style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer" }} title="Select contract" />
+                                                  <Button variant="link" className={`p-0 text-decoration-none fw-bold ${row.Status === "S" ? "text-danger" : "text-primary"}`} style={{ cursor: "pointer", transition: "all 0.2s ease", border: "none", background: "none", padding: "6px 10px", borderRadius: "4px", display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", whiteSpace: "nowrap", width: "100%", justifyContent: "flex-start", color: row.Status === "S" ? "red" : "#0d6efd", fontWeight: "bold" }} onMouseEnter={e => { e.target.style.color = row.Status === "S" ? "#cc0000" : "#0056b3"; e.target.style.textDecoration = "underline"; e.target.style.backgroundColor = "#f8f9fa" }} onMouseLeave={e => { e.target.style.color = row.Status === "S" ? "red" : "#0d6efd"; e.target.style.textDecoration = "none"; e.target.style.backgroundColor = "transparent" }} onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button">
+                                                    <i className={`fas fa-edit ${row.Status === "S" ? "text-danger" : "text-primary"}`} style={{ color: row.Status === "S" ? "red" : "#0d6efd" }}></i>
                                                     <span>{row.ContractNo}</span>
                                                   </Button>
                                                 </div>
@@ -4673,13 +3872,12 @@ const LedgerReport = () => {
                                           case 'Rate': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Rate ? parseFloat(row.Rate).toFixed(2) : "0.00"}</td>
                                           case 'ContPeriod': return <td key={col.key} className={row.Status === "S" ? "text-center fw-bold" : "text-center"} style={tdStyle}>{row.ShipmentOrLifted || "-"}</td>
                                           case 'DeliveryPort': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.DeliveryPort || "-"}</td>
-                                          case 'SAdvPayment': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Status === "S" ? (row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00") : ""}</td>
-                                          case 'PAdvPayment': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Status === "P" ? (row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00") : ""}</td>
+                                          case 'AdvPayment': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00"}</td>
                                           case 'AdvDate': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.AdvDate || "-"}</td>
                                           case 'Lifted': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Lifted ? parseFloat(row.Lifted).toFixed(2) : "0.00"}</td>
                                           case 'Contract': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Contract || "-"}</td>
                                           case 'Lifting': return (
-                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "top", padding: "0", border: "1.5px solid black", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
+                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "top", padding: "0", border: "1.5px solid black", color: row.Status === "S" ? "red" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
                                               {(() => {
                                                 if (!row.LiftingJson) return "-";
                                                 try {
@@ -4700,11 +3898,11 @@ const LedgerReport = () => {
                                                         <tbody>
                                                           {liftingData.map((lift, idx) => (
                                                             <tr key={idx} style={{ borderBottom: "1px dashed #eee" }}>
-                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LiftDate?.substring(0,5) || lift.LiftDate || '-'}</td>
+                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LiftDate.substring(0,5) || lift.LiftDate || '-'}</td>
                                                               <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LorryNo || '-'}</td>
                                                               <td style={{ padding: '2px', textAlign: 'left' }}>{lift.BNo || lift.InvoiceNo || '-'}</td>
                                                               <td style={{ padding: '2px', textAlign: 'left' }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
-                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.Rate != null ? lift.Rate : '-'}</td>
+                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LastRate || '-'}</td>
                                                             </tr>
                                                           ))}
                                                         </tbody>
@@ -4716,7 +3914,7 @@ const LedgerReport = () => {
                                             </td>
                                           )
                                           case 'Note': return (
-                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: "300px", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
+                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: "300px", color: row.Status === "S" ? "red" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
                                               {getCombinedNotes(row)}
                                             </td>
                                           )
@@ -4755,7 +3953,11 @@ const LedgerReport = () => {
                                 border: "1.5px solid black",
                               }}
                             >
-                              {" "}
+                              B: {state.FillArray.reduce(
+                                (sum, row) =>
+                                  sum + (parseFloat(row.PurQty) || 0),
+                                0
+                              ).toFixed(2)}
                             </td>
                             <td
                               className="text-center fw-bold"
@@ -4765,23 +3967,11 @@ const LedgerReport = () => {
                                 border: "1.5px solid black",
                               }}
                             >
-                              B: {flattenedVisibleRows
-                                .filter(r => r.Status === "P")
-                                .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
-                                .toFixed(2)}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              S: {flattenedVisibleRows
-                                .filter(r => r.Status === "S")
-                                .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
-                                .toFixed(2)}
+                              S: {state.FillArray.reduce(
+                                (sum, row) =>
+                                  sum + (parseFloat(row.SelQty) || 0),
+                                0
+                              ).toFixed(2)}
                             </td>
                             <td
                               className="text-start fw-bold"
@@ -4796,15 +3986,16 @@ const LedgerReport = () => {
                                 let totalSelQty = 0
                                 let totalPurchaseAmount = 0
                                 let totalSellAmount = 0
-                                flattenedVisibleRows.forEach(row => {
-                                  const qty = parseFloat(row.Qty) || 0
+                                state.FillArray.forEach(row => {
+                                  const purQty = parseFloat(row.PurQty) || 0
+                                  const selQty = parseFloat(row.SelQty) || 0
                                   const rate = parseFloat(row.Rate) || 0
                                   if (row.Status === "P") {
-                                    totalPurQty += qty
-                                    totalPurchaseAmount += qty * rate
+                                    totalPurQty += purQty
+                                    totalPurchaseAmount += purQty * rate
                                   } else if (row.Status === "S") {
-                                    totalSelQty += qty
-                                    totalSellAmount += qty * rate
+                                    totalSelQty += selQty
+                                    totalSellAmount += selQty * rate
                                   }
                                 })
                                 const purchaseAvgRate = totalPurQty > 0 ? totalPurchaseAmount / totalPurQty : 0
@@ -4903,15 +4094,13 @@ const LedgerReport = () => {
                             </td>
                             <td
                               className="text-end fw-bold"
-                              style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
+                              style={{ verticalAlign: "middle", padding: "0" }}
                             >
-                              {calculateLedgerGroupTotals(flattenedVisibleRows).totalSAdvPayment.toFixed(2)}
-                            </td>
-                            <td
-                              className="text-end fw-bold"
-                              style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                            >
-                              {calculateLedgerGroupTotals(flattenedVisibleRows).totalPAdvPayment.toFixed(2)}
+                              {state.FillArray.reduce(
+                                (sum, row) =>
+                                  sum + (parseFloat(row.AdvPayment) || 0),
+                                0
+                              ).toFixed(2)}
                             </td>
                             <td
                               className="text-center fw-bold"
@@ -4962,10 +4151,9 @@ const LedgerReport = () => {
 
                           {/* Selected Rows Totals */}
                           {selectedRowIds.size > 0 && (() => {
-                            const selectedRows = flattenedVisibleRows.filter(row =>
+                            const selectedRows = state.FillArray.filter(row =>
                               selectedRowIds.has(getRowIdentifier(row))
                             );
-                            const selTotals = calculateLedgerGroupTotals(selectedRows);
                             return (
                               <tr
                                 style={{
@@ -4983,7 +4171,11 @@ const LedgerReport = () => {
                                     border: "1.5px solid black",
                                   }}
                                 >
-                                  {" "}
+                                  B: {selectedRows.reduce(
+                                    (sum, row) =>
+                                      sum + (parseFloat(row.PurQty) || 0),
+                                    0
+                                  ).toFixed(2)}
                                 </td>
                                 <td
                                   className="text-center fw-bold"
@@ -4993,23 +4185,11 @@ const LedgerReport = () => {
                                     border: "1.5px solid black",
                                   }}
                                 >
-                                  B: {selectedRows
-                                    .filter(r => r.Status === "P")
-                                    .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
-                                    .toFixed(2)}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  S: {selectedRows
-                                    .filter(r => r.Status === "S")
-                                    .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
-                                    .toFixed(2)}
+                                  S: {selectedRows.reduce(
+                                    (sum, row) =>
+                                      sum + (parseFloat(row.SelQty) || 0),
+                                    0
+                                  ).toFixed(2)}
                                 </td>
                                 <td
                                   className="text-start fw-bold"
@@ -5025,14 +4205,15 @@ const LedgerReport = () => {
                                     let totalPurchaseAmount = 0
                                     let totalSellAmount = 0
                                     selectedRows.forEach(row => {
-                                      const qty = parseFloat(row.Qty) || 0
+                                      const purQty = parseFloat(row.PurQty) || 0
+                                      const selQty = parseFloat(row.SelQty) || 0
                                       const rate = parseFloat(row.Rate) || 0
                                       if (row.Status === "P") {
-                                        totalPurQty += qty
-                                        totalPurchaseAmount += qty * rate
+                                        totalPurQty += purQty
+                                        totalPurchaseAmount += purQty * rate
                                       } else if (row.Status === "S") {
-                                        totalSelQty += qty
-                                        totalSellAmount += qty * rate
+                                        totalSelQty += selQty
+                                        totalSellAmount += selQty * rate
                                       }
                                     })
                                     const purchaseAvgRate = totalPurQty > 0 ? totalPurchaseAmount / totalPurQty : 0
@@ -5131,15 +4312,13 @@ const LedgerReport = () => {
                                 </td>
                                 <td
                                   className="text-end fw-bold"
-                                  style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
+                                  style={{ verticalAlign: "middle", padding: "0" }}
                                 >
-                                  {selTotals.totalSAdvPayment.toFixed(2)}
-                                </td>
-                                <td
-                                  className="text-end fw-bold"
-                                  style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                                >
-                                  {selTotals.totalPAdvPayment.toFixed(2)}
+                                  {selectedRows.reduce(
+                                    (sum, row) =>
+                                      sum + (parseFloat(row.AdvPayment) || 0),
+                                    0
+                                  ).toFixed(2)}
                                 </td>
                                 <td
                                   className="text-center fw-bold"
@@ -5221,26 +4400,12 @@ const LedgerReport = () => {
                           minWidth: "fit-content"
                         }}
                       >
-                        {/* Left side - Icon: toggles Detailed view */}
+                        {/* Left side - Icon */}
                         <div
                           className="d-flex align-items-center"
                           style={{ flex: "0 0 auto" }}
-                          onClick={() => setIsDetailed(prev => !prev)}
-                          title={isDetailed ? "Detailed ON � click to turn OFF" : "Detailed OFF � click to turn ON"}
                         >
-                          <i
-                            className="fas fa-list-alt me-2"
-                            style={{
-                              fontSize: "1rem",
-                              cursor: "pointer",
-                              color: isDetailed ? "#fff" : "#6c757d",
-                              backgroundColor: isDetailed ? "#198754" : "#e9ecef",
-                              borderRadius: "4px",
-                              padding: "4px 5px",
-                              border: isDetailed ? "1px solid #146c43" : "1px solid #ced4da",
-                              transition: "all 0.2s",
-                            }}
-                          ></i>
+                          <i className="fas fa-chart-line me-2"></i>
                         </div>
 
                         {renderFilterBar(bottomFilterOrder, bottomFilterWidths, bottomGap, setBottomGap, bottomDragStart, bottomDragOver, bottomDrop, bottomDragEnd, bottomTouchDragStart, bottomTouchDragMove, bottomTouchDragEnd, bottomResizeDown, resetBottomLayout, renderBottomFilterContent)}
@@ -5341,7 +4506,7 @@ const LedgerReport = () => {
                                     className="fw-bold"
                                     style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}
                                   >
-                                    ?{hoverTotals.totalAdvPayment.toFixed(2)}
+                                    ₹{hoverTotals.totalAdvPayment.toFixed(2)}
                                   </div>
                                 </div>
                               </div>
@@ -5379,7 +4544,7 @@ const LedgerReport = () => {
                                     className="fw-bold"
                                     style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}
                                   >
-                                    ?{hoverTotals.avgPurchaseRate.toFixed(2)}
+                                    ₹{hoverTotals.avgPurchaseRate.toFixed(2)}
                                   </div>
                                 </div>
                               </div>
@@ -5398,7 +4563,7 @@ const LedgerReport = () => {
                                     className="fw-bold"
                                     style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}
                                   >
-                                    ?{hoverTotals.avgSellRate.toFixed(2)}
+                                    ₹{hoverTotals.avgSellRate.toFixed(2)}
                                   </div>
                                 </div>
                               </div>
@@ -5619,7 +4784,7 @@ const LedgerReport = () => {
             <div>
               <h5 className="mb-0">
                 <i className="fas fa-edit me-2"></i>
-                Edit Contract: {selectedContractData?.ContractNo || "Unknown"}
+                Edit Contract: {selectedContractData.ContractNo || "Unknown"}
                 {modalLoading && (
                   <Spinner
                     animation="border"
@@ -5703,7 +4868,7 @@ const LedgerReport = () => {
                       id: 0,
                       VoucherNo:
                         state.VoucherNoArray && state.VoucherNoArray.length > 0
-                          ? state.VoucherNoArray[0]?.VoucherNoNew || ""
+                          ? state.VoucherNoArray[0].VoucherNoNew || ""
                           : "",
                       VoucherDate: new Date(),
                       F_LedgerMasterDr: "",
@@ -5753,21 +4918,21 @@ const LedgerReport = () => {
                         if (!voucherSearchTerm) return true
                         const searchLower = voucherSearchTerm.toLowerCase()
                         return (
-                          voucher.VoucherNo?.toLowerCase().includes(
+                          voucher.VoucherNo.toLowerCase().includes(
                             searchLower
                           ) ||
-                          voucher.Narration?.toLowerCase().includes(
+                          voucher.Narration.toLowerCase().includes(
                             searchLower
                           ) ||
                           state.LedgerArray.find(
                             l => l.Id === parseInt(voucher.F_LedgerMasterCr)
                           )
-                            ?.Name?.toLowerCase()
+                            .Name.toLowerCase()
                             .includes(searchLower) ||
                           state.LedgerArray.find(
                             l => l.Id === parseInt(voucher.F_LedgerMasterDr)
                           )
-                            ?.Name?.toLowerCase()
+                            .Name.toLowerCase()
                             .includes(searchLower)
                         )
                       }).map((voucher, index) => (
@@ -5788,15 +4953,15 @@ const LedgerReport = () => {
                           <td>
                             {state.LedgerArray.find(
                               l => l.Id === parseInt(voucher.F_LedgerMasterDr)
-                            )?.Name || "-"}
+                            ).Name || "-"}
                           </td>
                           <td>
                             {state.LedgerArray.find(
                               l => l.Id === parseInt(voucher.F_LedgerMasterCr)
-                            )?.Name || "-"}
+                            ).Name || "-"}
                           </td>
                           <td className="fw-bold text-success">
-                            ?{parseFloat(voucher.Amount || 0).toFixed(2)}
+                            ₹{parseFloat(voucher.Amount || 0).toFixed(2)}
                           </td>
                           <td
                             className="text-truncate"
@@ -5929,7 +5094,7 @@ const LedgerReport = () => {
                     <small className="text-muted">
                       Next voucher number:{" "}
                       {state.VoucherNoArray && state.VoucherNoArray.length > 0
-                        ? state.VoucherNoArray[0]?.VoucherNoNew ||
+                        ? state.VoucherNoArray[0].VoucherNoNew ||
                         "Not available"
                         : "Not available"}
                     </small>
@@ -5980,14 +5145,14 @@ const LedgerReport = () => {
                           label: state.LedgerArray.find(
                             l =>
                               l.Id === parseInt(voucherData.F_LedgerMasterDr)
-                          )?.Name,
+                          ).Name,
                         }
                         : null
                     }
                     onChange={option => {
                       setVoucherData({
                         ...voucherData,
-                        F_LedgerMasterDr: option?.value || "",
+                        F_LedgerMasterDr: option.value || "",
                       })
                       // Clear error when user makes selection
                       if (voucherErrors.F_LedgerMasterDr) {
@@ -6032,14 +5197,14 @@ const LedgerReport = () => {
                           label: state.LedgerArray.find(
                             l =>
                               l.Id === parseInt(voucherData.F_LedgerMasterCr)
-                          )?.Name,
+                          ).Name,
                         }
                         : null
                     }
                     onChange={option => {
                       setVoucherData({
                         ...voucherData,
-                        F_LedgerMasterCr: option?.value || "",
+                        F_LedgerMasterCr: option.value || "",
                       })
                       // Clear error when user makes selection
                       if (voucherErrors.F_LedgerMasterCr) {
@@ -6158,7 +5323,7 @@ const LedgerReport = () => {
                       id: 0,
                       VoucherNo:
                         state.VoucherNoArray && state.VoucherNoArray.length > 0
-                          ? state.VoucherNoArray[0]?.VoucherNoNew || ""
+                          ? state.VoucherNoArray[0].VoucherNoNew || ""
                           : "",
                       VoucherDate: new Date(),
                       F_LedgerMasterDr: "",
@@ -6403,88 +5568,7 @@ const LedgerReport = () => {
         </ModalFooter>
       </Modal>
 
-      {/* Vessel Filter Modal */}
-      <Modal
-        show={showVesselModal}
-        onHide={closeVesselModal}
-        size="lg"
-        centered
-        style={{ zIndex: 10000 }}
-      >
-        <ModalHeader className="bg-primary text-white">
-          <div className="d-flex justify-content-between align-items-center w-100">
-            <h5 className="mb-0">
-              <i className="fas fa-ship me-2"></i>
-              Select Vessel
-            </h5>
-            <Button
-              variant="light"
-              onClick={closeVesselModal}
-              className="btn-close btn-close-white"
-              style={{ border: "none", background: "transparent" }}
-            >
-              <i className="fas fa-times"></i>
-            </Button>
-          </div>
-        </ModalHeader>
-        <ModalBody style={{ padding: "1.5rem", maxHeight: "60vh", overflowY: "auto" }}>
-          <Form>
-            <FormGroup>
-              <div className="mb-3">
-                <FormLabel className="fw-semibold mb-0">Vessel</FormLabel>
-              </div>
-              <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px", padding: "10px" }}>
-                {getUniqueVesselsFromData().map((vessel) => (
-                  <div
-                    key={vessel.value}
-                    style={{ padding: "8px", cursor: "pointer", borderRadius: "4px", backgroundColor: tempSelectedVessels.includes(vessel.value) ? "#e7f3ff" : "transparent", marginBottom: "4px" }}
-                    onClick={() => {
-                      if (tempSelectedVessels.includes(vessel.value)) {
-                        setTempSelectedVessels(tempSelectedVessels.filter(v => v !== vessel.value))
-                      } else {
-                        setTempSelectedVessels([...tempSelectedVessels, vessel.value])
-                      }
-                    }}
-                    onMouseEnter={(e) => { if (!tempSelectedVessels.includes(vessel.value)) e.currentTarget.style.backgroundColor = "#f8f9fa" }}
-                    onMouseLeave={(e) => { if (!tempSelectedVessels.includes(vessel.value)) e.currentTarget.style.backgroundColor = "transparent" }}
-                  >
-                    <div className="d-flex align-items-center">
-                      <input
-                        type="checkbox"
-                        checked={tempSelectedVessels.includes(vessel.value)}
-                        onChange={() => {}}
-                        style={{ marginRight: "10px", cursor: "pointer" }}
-                      />
-                      <span>{vessel.label}</span>
-                    </div>
-                  </div>
-                ))}
-                {getUniqueVesselsFromData().length === 0 && (
-                  <div className="text-center text-muted py-3">No vessels available</div>
-                )}
-              </div>
-            </FormGroup>
-          </Form>
-        </ModalBody>
-        <ModalFooter className="d-flex justify-content-end gap-2">
-          <Button variant="outline-secondary" size="sm" onClick={() => setTempSelectedVessels([])}>
-            Clear
-          </Button>
-          <Button variant="outline-primary" size="sm" onClick={() => {
-            const allVessels = getUniqueVesselsFromData().map(v => v.value)
-            setTempSelectedVessels(allVessels)
-          }}>
-            Select All
-          </Button>
-          <Button variant="primary" onClick={handleVesselModalDone}>
-            <i className="fas fa-check me-2"></i>
-            Done
-          </Button>
-        </ModalFooter>
-      </Modal>
-
       {/* Period Filter Modal */}
-      {showPeriodModal && (
       <Modal
         show={showPeriodModal}
         onHide={closePeriodModal}
@@ -6519,29 +5603,29 @@ const LedgerReport = () => {
               <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px", padding: "10px" }}>
                 {state.PeriodDataArray.map((period) => (
                   <div
-                    key={period.Name}
+                    key={period.Id}
                     style={{
                       padding: "8px",
                       cursor: "pointer",
                       borderRadius: "4px",
-                      backgroundColor: tempSelectedPeriod.some(p => p === period.Name) ? "#e7f3ff" : "transparent",
+                      backgroundColor: tempSelectedPeriod.some(p => p === period.Id) ? "#e7f3ff" : "transparent",
                       marginBottom: "4px",
                     }}
                     onClick={() => {
-                      const isSelected = tempSelectedPeriod.some(p => p === period.Name)
+                      const isSelected = tempSelectedPeriod.some(p => p === period.Id)
                       if (isSelected) {
-                        setTempSelectedPeriod(tempSelectedPeriod.filter(p => p !== period.Name))
+                        setTempSelectedPeriod(tempSelectedPeriod.filter(p => p !== period.Id))
                       } else {
-                        setTempSelectedPeriod([...tempSelectedPeriod, period.Name])
+                        setTempSelectedPeriod([...tempSelectedPeriod, period.Id])
                       }
                     }}
                     onMouseEnter={(e) => {
-                      if (!tempSelectedPeriod.some(p => p === period.Name)) {
+                      if (!tempSelectedPeriod.some(p => p === period.Id)) {
                         e.currentTarget.style.backgroundColor = "#f8f9fa"
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (!tempSelectedPeriod.some(p => p === period.Name)) {
+                      if (!tempSelectedPeriod.some(p => p === period.Id)) {
                         e.currentTarget.style.backgroundColor = "transparent"
                       }
                     }}
@@ -6549,7 +5633,7 @@ const LedgerReport = () => {
                     <div className="d-flex align-items-center">
                       <input
                         type="checkbox"
-                        checked={tempSelectedPeriod.some(p => p === period.Name)}
+                        checked={tempSelectedPeriod.some(p => p === period.Id)}
                         onChange={() => { }}
                         style={{ marginRight: "10px", cursor: "pointer" }}
                       />
@@ -6578,7 +5662,7 @@ const LedgerReport = () => {
             variant="outline-primary"
             size="sm"
             onClick={() => {
-              const allPeriods = state.PeriodDataArray.map(p => p.Name)
+              const allPeriods = state.PeriodDataArray.map(p => p.Id)
               setTempSelectedPeriod(allPeriods)
             }}
           >
@@ -6590,7 +5674,6 @@ const LedgerReport = () => {
           </Button>
         </ModalFooter>
       </Modal>
-      )}
 
       {/* Ledger Selection Modal */}
       <Modal
@@ -6863,6 +5946,3 @@ const LedgerReport = () => {
       `}</style>
     </div>
   )
-}
-
-export default LedgerReport

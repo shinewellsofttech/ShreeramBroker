@@ -19,7 +19,7 @@ import { loginUser, socialLogin } from "../../store/actions";
 // import images
 import profile from "assets/images/profile-img.png";
 import logo from "assets/images/logo.svg";
-import shreeRam from "assets/images/contract/ShreeRam.jpeg";
+import shreeRam from "assets/images/contract/ShreeRam.jpg";
 
 const Login = props => {
 
