@@ -7,6 +7,10 @@ import { Fn_FillListData, Fn_AddEditData } from "store/Functions";
 import DalaliPrint from "./DalaliPrint";
 import { Fn_GetReport } from "store/Functions";
 import { useNavigate } from "react-router-dom";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { registerHindiFont, setHindiFont } from "../../helpers/pdfHindiFont";
+import { FileText, Download } from "react-feather";
 
 
 const DalaliModal = ({ 
@@ -32,6 +36,12 @@ const DalaliModal = ({
   const [showDalaliPrintModal, setShowDalaliPrintModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  // PDF / Remarks state
+  const [showRemarksModal, setShowRemarksModal] = useState(false);
+  const [remarks, setRemarks] = useState('');
+  const [pendingShareFile, setPendingShareFile] = useState(null);
+  const [showSharePDFModal, setShowSharePDFModal] = useState(false);
 
   const [state, setState] = useState({
     FillArray: [],
@@ -59,11 +69,13 @@ const DalaliModal = ({
   // Convert dates to proper format (ISO string or specific format)
   const formatDateForAPI = (date) => {
     if (!date) return '';
-    if (typeof date === 'string') return date;
     if (date instanceof Date) {
-      // Convert to ISO string format (YYYY-MM-DDTHH:mm:ss.sssZ)
-      return date.toISOString();
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
     }
+    if (typeof date === 'string') return date.split('T')[0];
     return date.toString();
   };
 
@@ -394,295 +406,227 @@ const DalaliModal = ({
     }
   };
     
+  // Open remarks modal before PDF generation
   const handlePrintDalaliData = () => {
     if (!ledgerId) {
       toast.error("Please select a ledger first to print Dalali Data");
       return;
     }
-
     if (!dalaliData || dalaliData.length === 0) {
       toast.error("Please generate Dalali Data data first");
       return;
     }
-    
-        // Open DalaliPrint in a new window instead of modal
-        const printWindow = window.open(
-          "",
-          "_blank",
-          "width=1000,height=800,scrollbars=yes,resizable=yes"
-        )
-    
-        if (printWindow) {
-          // Get today's date in DD/MM/YYYY format
-          const today = new Date()
-          const todayFormatted = today.toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-    
-          // Initialize form data from dalali data
-                const items = dalaliData.map(item => ({
-            itemName: item.ItemName || "",
-            buyerQty: item.BuyerQty || 0,
-            sellerQty: item.SellerQty || 0,
-            rate: item.DalaliRate || 0,
-            dalali: item.DalaliAmount || 0,
-            LedgerName: item.LedgerName || "",
-            
-          }))
-    
-          // Generate a unique bill number based on current timestamp
-          const billNumber = `DB${Date.now().toString().slice(-6)}`
-    
-          const formData = {
-            partyName: dalaliData.length > 0 ? dalaliData[0].LedgerName || "" : "",
-            fromDate: "01/04/2024",
-            toDate: todayFormatted,
-            contactPerson: "KAILASH CHANDAK",
-            billNo: billNumber,
-            pan: "ACSPC 3779 L",
-            gstin: "ACSPC 3779 L ST 001",
-            items: items,
-          };
-    
-          // Calculate totals
-          const totals = items.reduce(
-            (acc, item) => {
-              acc.totalPurQty += parseFloat(item.buyerQty) || 0;
-              acc.totalSelQty += parseFloat(item.sellerQty) || 0;
-              acc.totalDalali += parseFloat(item.dalali) || 0;
-              return acc;
-            },
-            { totalPurQty: 0, totalSelQty: 0, totalDalali: 0 }
-          );
-    
-          // Number to words function
-          const numberToWords = num => {
-            const ones = [
-              "",
-              "One",
-              "Two",
-              "Three",
-              "Four",
-              "Five",
-              "Six",
-              "Seven",
-              "Eight",
-              "Nine",
-            ]
-            const tens = [
-              "",
-              "",
-              "Twenty",
-              "Thirty",
-              "Forty",
-              "Fifty",
-              "Sixty",
-              "Seventy",
-              "Eighty",
-              "Ninety",
-            ]
-            const teens = [
-              "Ten",
-              "Eleven",
-              "Twelve",
-              "Thirteen",
-              "Fourteen",
-              "Fifteen",
-              "Sixteen",
-              "Seventeen",
-              "Eighteen",
-              "Nineteen",
-            ]
-    
-            if (num === 0) return "Zero"
-            if (num < 10) return ones[num]
-            if (num < 20) return teens[num - 10]
-            if (num < 100)
-              return (
-                tens[Math.floor(num / 10)] +
-                (num % 10 !== 0 ? " " + ones[num % 10] : "")
-              )
-            if (num < 1000)
-              return (
-                ones[Math.floor(num / 100)] +
-                " Hundred" +
-                (num % 100 !== 0 ? " and " + numberToWords(num % 100) : "")
-              )
-            if (num < 100000)
-              return (
-                numberToWords(Math.floor(num / 1000)) +
-                " Thousand" +
-                (num % 1000 !== 0 ? " " + numberToWords(num % 1000) : "")
-              )
-            if (num < 10000000)
-              return (
-                numberToWords(Math.floor(num / 100000)) +
-                " Lakh" +
-                (num % 100000 !== 0 ? " " + numberToWords(num % 100000) : "")
-              )
-            return (
-              numberToWords(Math.floor(num / 10000000)) +
-              " Crore" +
-              (num % 10000000 !== 0 ? " " + numberToWords(num % 10000000) : "")
-            )
+    setRemarks('');
+    setShowRemarksModal(true);
+  };
+
+  const generateDalaliPDF = async () => {
+    setShowRemarksModal(false);
+    try {
+      const today = new Date();
+      const todayFormatted = today.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const items = dalaliData.map(item => ({
+        itemName: item.ItemName || "",
+        buyerQty: item.BuyerQty || 0,
+        sellerQty: item.SellerQty || 0,
+        rate: item.DalaliRate || 0,
+        dalali: item.DalaliAmount || 0,
+        LedgerName: item.LedgerName || "",
+      }));
+      const partyName = dalaliData.length > 0 ? dalaliData[0].LedgerName || "" : "";
+      const totals = items.reduce((acc, item) => {
+        acc.totalPurQty += parseFloat(item.buyerQty) || 0;
+        acc.totalSelQty += parseFloat(item.sellerQty) || 0;
+        acc.totalDalali += parseFloat(item.dalali) || 0;
+        return acc;
+      }, { totalPurQty: 0, totalSelQty: 0, totalDalali: 0 });
+
+      const numberToWords = num => {
+        const ones = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine"];
+        const tens = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+        const teens = ["Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+        if (num === 0) return "Zero";
+        if (num < 10) return ones[num];
+        if (num < 20) return teens[num - 10];
+        if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 !== 0 ? " " + ones[num % 10] : "");
+        if (num < 1000) return ones[Math.floor(num / 100)] + " Hundred" + (num % 100 !== 0 ? " and " + numberToWords(num % 100) : "");
+        if (num < 100000) return numberToWords(Math.floor(num / 1000)) + " Thousand" + (num % 1000 !== 0 ? " " + numberToWords(num % 1000) : "");
+        if (num < 10000000) return numberToWords(Math.floor(num / 100000)) + " Lakh" + (num % 100000 !== 0 ? " " + numberToWords(num % 100000) : "");
+        return numberToWords(Math.floor(num / 10000000)) + " Crore" + (num % 10000000 !== 0 ? " " + numberToWords(num % 10000000) : "");
+      };
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      await registerHindiFont(doc);
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const filename = `Dalali_Bill_${partyName.replace(/\s+/g, '_')}_${today.toISOString().split('T')[0]}.pdf`;
+
+      // Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 150);
+      doc.text(getCompanyName().toUpperCase(), pageW / 2, 12, { align: 'center' });
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text('V-4, MANDORE MANDI, JODHPUR', pageW / 2, 17, { align: 'center' });
+      doc.setDrawColor(0, 0, 150);
+      doc.setLineWidth(0.5);
+      doc.line(14, 20, pageW - 14, 20);
+
+      // Bill details
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.text(`Party Name: ${partyName}`, 14, 27);
+      doc.text(`From Date: 01/04/2024   To Date: ${todayFormatted}`, 14, 32);
+      doc.text('KAILASH CHANDAK', 14, 37);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`PAN: ACSPC 3779 L`, pageW - 14, 27, { align: 'right' });
+      doc.text(`GSTIN: ACSPC 3779 L ST 001`, pageW - 14, 32, { align: 'right' });
+
+      doc.line(14, 40, pageW - 14, 40);
+
+      // Table
+      autoTable(doc, {
+        startY: 43,
+        margin: { left: 14, right: 14 },
+        head: [['Item Name', 'Pur. Qty', 'Sel. Qty', 'Dalali Rate', 'Dalali Amount']],
+        body: items.map(item => [
+          item.itemName,
+          item.buyerQty > 0 ? item.buyerQty.toLocaleString() : '',
+          item.sellerQty > 0 ? item.sellerQty.toLocaleString() : '',
+          item.rate,
+          item.dalali,
+        ]),
+        foot: [['Total', totals.totalPurQty.toLocaleString(), totals.totalSelQty.toLocaleString(), '', totals.totalDalali.toLocaleString()]],
+        styles: { fontSize: 8.5, font: 'helvetica', fontStyle: 'bold', textColor: [0,0,0], lineColor: [0,0,0], lineWidth: 0.4 },
+        headStyles: { fillColor: [40, 167, 69], fontStyle: 'bold', fontSize: 9, halign: 'center' },
+        footStyles: { fillColor: [220, 220, 220], fontStyle: 'bold', textColor: [0,0,0] },
+        columnStyles: { 0: { halign: 'left' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+      });
+
+      let fy = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 43) + 8;
+
+      // Summary
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(`Total Pur. Qty: ${totals.totalPurQty.toLocaleString()}`, 14, fy);
+      doc.text(`Total Sel. Qty: ${totals.totalSelQty.toLocaleString()}`, 14, fy + 6);
+      doc.text(`Total Dalali: Rs.${totals.totalDalali.toLocaleString()}`, pageW - 14, fy, { align: 'right' });
+      doc.text(`Rupees: ${numberToWords(Math.floor(totals.totalDalali))} Only`, pageW - 14, fy + 6, { align: 'right' });
+      fy += 18;
+
+      // Remarks (canvas-based for Hindi support)
+      if (remarks && remarks.trim()) {
+        const scale = 3;
+        const pxPerMm = 3.78 * scale;
+        const availWidthMm = 182;
+        const availWidthPx = Math.round(availWidthMm * pxPerMm);
+        const fontSizePx = 60 * scale;
+        const lineHeightPx = Math.round(fontSizePx * 1.5);
+        const fontFace = `"Noto Sans Devanagari", "Nirmala UI", Arial, sans-serif`;
+
+        const measCanvas = document.createElement('canvas');
+        measCanvas.width = availWidthPx;
+        measCanvas.height = lineHeightPx * 2;
+        const measCtx = measCanvas.getContext('2d');
+        measCtx.font = `${fontSizePx}px ${fontFace}`;
+        const words = remarks.trim().split(' ');
+        const wrappedLines = [];
+        let curLine = '';
+        for (const word of words) {
+          const test = curLine ? curLine + ' ' + word : word;
+          if (measCtx.measureText(test).width > availWidthPx - 10 && curLine) {
+            wrappedLines.push(curLine);
+            curLine = word;
+          } else {
+            curLine = test;
           }
-    
-          // Create the complete HTML content for the new window
-          const htmlContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>Dalali Bill - ${formData.partyName}</title>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-              <style>
-                body { font-family: Arial, sans-serif; }
-                .table th, .table td { padding: 4px 8px; font-size: 11px; }
-                .dalali-bill-container { font-size: 12px; line-height: 1.4; }
-                @media print {
-                  .no-print { display: none !important; }
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container-fluid p-3">
-                <div class="no-print mb-3">
-                  <button onclick="window.print()" class="btn btn-primary">Print</button>
-                  <button onclick="window.close()" class="btn btn-secondary ms-2">Close</button>
-                </div>
-                <div class="dalali-bill-container" style="font-family: Arial, sans-serif;">
-                  <!-- Header -->
-                  <div class="text-center mb-4">
-                    <h3 class="mb-1"><strong>${getCompanyName().toUpperCase()}</strong></h3>
-                    <p class="mb-1">V-4, MANDORE MANDI, JODHPUR</p>
-                  </div>
-    
-                  <!-- Bill Details -->
-                  <div class="row mb-4">
-                    <div class="col-md-6">
-                      <div class="mb-2">
-                        <strong>Party Name:</strong> ${formData.partyName}
-                      </div>
-                      <div class="mb-2">
-                        <strong>Dalali Bill from Date:</strong> ${formData.fromDate}
-                      </div>
-                      <div class="mb-2">
-                        <strong>To Date:</strong> ${formData.toDate}
-                      </div>
-                      <div class="mb-2">
-                        ${formData.contactPerson}
-                      </div>
-                    </div>
-                    <div class="col-md-6 text-end">
-                      <div class="mb-2">
-                        <strong>PAN:</strong> ${formData.pan}
-                      </div>
-                      <div class="mb-2">
-                        <strong>GSTIN:</strong> ${formData.gstin}
-                      </div>
-                    </div>
-                  </div>
-    
-                  <!-- Items Table -->
-                  <table class="table table-bordered mb-4">
-                    <thead>
-                      <tr class="text-center">
-                        <th><strong>Item Name</strong></th>
-                        <th><strong>Pur.Qty</strong></th>
-                        <th><strong>Sel.Qty</strong></th>
-                        <th><strong>Dalali Rate</strong></th>
-                        <th><strong>Dalali Amount</strong></th>
-                     
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${items
-                        .map(
-                          item => `
-                        <tr>
-                          <td>
-                            ${item.itemName}
-                            
-                          </td>
-                          <td class="text-end">${
-                            item.buyerQty > 0 ? item.buyerQty.toLocaleString() : ""
-                          }</td>
-                          <td class="text-end">${
-                            item.sellerQty > 0 ? item.sellerQty.toLocaleString() : ""
-                          }</td>
-                          <td class="text-end">${item.rate}</td>
-                          <td class="text-end">${item.dalali}</td>
-    
-                          
-                        </tr>
-                      `
-                        )
-                        .join("")}
-                    </tbody>
-                    <tfoot>
-                      <tr class="table-active">
-                        <td><strong>Total</strong></td>
-                        <td class="text-end"><strong>${totals.totalPurQty.toLocaleString()}</strong></td>
-                        <td class="text-end"><strong>${totals.totalSelQty.toLocaleString()}</strong></td>
-                        <td></td>
-                      
-                        <td class="text-end"><strong>${totals.totalDalali.toLocaleString()}</strong></td>
-                         
-                      </tr>
-                    </tfoot>
-                  </table>
-    
-                  <!-- Summary -->
-                  <div class="row mb-4">
-                    <div class="col-md-6">
-                      <div class="mb-2">
-                        <strong>Total Pur.Qty:</strong> ${totals.totalPurQty.toLocaleString()}
-                      </div>
-                      <div class="mb-2">
-                        <strong>Total Sel.Qty:</strong> ${totals.totalSelQty.toLocaleString()}
-                      </div>
-                    </div>
-                    <div class="col-md-6">
-                      <div class="mb-2">
-                        <strong>Total Dalali:</strong> ₹${totals.totalDalali.toLocaleString()}
-                      </div>
-                      <div class="mb-2">
-                        <strong>Rupees (In Words):</strong> ${numberToWords(
-                          Math.floor(totals.totalDalali)
-                        )} Only
-                      </div>
-                    </div>
-                  </div>
-    
-                  <!-- Footer -->
-                  <div class="text-center mt-5">
-                    <p>For : ${getCompanyName().toUpperCase()}</p>
-                    <div class="mt-4">
-                      <p>_________________________</p>
-                      <p>Authorized Signatory</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </body>
-            </html>
-          `
-    
-          // Write the content to the new window
-          printWindow.document.write(htmlContent)
-          printWindow.document.close()
-    
-          // Focus on the new window
-          printWindow.focus()
-        } else {
-          // Fallback to modal if popup is blocked
-          setShowDalaliPrintModal(true)
         }
+        if (curLine) wrappedLines.push(curLine);
+
+        const totalLines = 1 + wrappedLines.length;
+        const canvasH = (totalLines + 1) * lineHeightPx;
+        const canvas = document.createElement('canvas');
+        canvas.width = availWidthPx;
+        canvas.height = canvasH;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000000';
+        ctx.font = `bold ${fontSizePx}px ${fontFace}`;
+        ctx.fillText('Remarks:', 0, lineHeightPx);
+        ctx.font = `${fontSizePx}px ${fontFace}`;
+        wrappedLines.forEach((l, i) => { ctx.fillText(l, 0, (i + 2) * lineHeightPx); });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgHMm = canvasH / pxPerMm;
+        if (fy + imgHMm > pageH - 30) { doc.addPage(); fy = 14; }
+        doc.addImage(imgData, 'PNG', 14, fy, availWidthMm, imgHMm);
+        fy += imgHMm + 8;
       }
-    
+
+      // Footer signature
+      if (fy + 25 > pageH - 10) { doc.addPage(); fy = 14; }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`For: ${getCompanyName().toUpperCase()}`, pageW / 2, fy + 10, { align: 'center' });
+      doc.line(pageW / 2 - 30, fy + 22, pageW / 2 + 30, fy + 22);
+      doc.text('Authorized Signatory', pageW / 2, fy + 27, { align: 'center' });
+
+      // Page footer
+      doc.setFontSize(6.5);
+      doc.setTextColor(130, 130, 130);
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.text(`Page ${i} of ${totalPages}   |   Dalali Bill   |   ${today.toLocaleDateString()}`, pageW / 2, pageH - 4, { align: 'center' });
+      }
+
+      const pdfBlob = doc.output('blob');
+      setRemarks('');
+      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+      setPendingShareFile(file);
+      setShowSharePDFModal(true);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Error generating PDF. Please try again.');
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pendingShareFile) return;
+    const url = URL.createObjectURL(pendingShareFile);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = pendingShareFile.name;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('PDF downloaded!');
+    setShowSharePDFModal(false);
+    setPendingShareFile(null);
+  };
+
+  const handleSharePDFClick = async () => {
+    if (!pendingShareFile || !navigator.share) return;
+    try {
+      await navigator.share({ title: 'Dalali Bill', text: 'Please find attached the Dalali Bill', files: [pendingShareFile] });
+      toast.success('PDF shared successfully!');
+      setShowSharePDFModal(false);
+      setPendingShareFile(null);
+    } catch (shareError) {
+      if (shareError.name === 'AbortError') {
+        toast.info('Share cancelled.');
+      } else {
+        console.error('Share error:', shareError);
+        toast.error('Share failed. Try again.');
+      }
+      setShowSharePDFModal(false);
+      setPendingShareFile(null);
+    }
+  };
+
   const handleExitDalaliData = () => {
         closeDalaliDataModal();
         onHideDalaliDataModal();
@@ -693,10 +637,8 @@ const DalaliModal = ({
   };
 
   const handleDalaliPrintData = printData => {
-    // Handle print functionality
     console.log("Printing Dalali Data:", printData);
     toast.success("Dalali Data sent to printer");
-    // You can implement actual print logic here
   };
 
   const handleFinancialYearSelect = event => {
@@ -711,11 +653,6 @@ const DalaliModal = ({
       loadDalaliData(selectedId);
     }
   };
-
-
-
-
-
 
   return (
     <>
@@ -1033,11 +970,11 @@ const DalaliModal = ({
             color="primary"
             onClick={handlePrintDalaliData}
             className="px-4 py-2"
-            title="Print dalali bill"
+            title="Export as PDF"
             disabled={isLoading || !dataLoaded || dalaliData.length === 0}
           >
-            <i className="fas fa-print me-2"></i>
-            Print
+            <i className="fas fa-file-pdf me-2"></i>
+            PDF
           </Button>
           <Button
             color="secondary"
@@ -1068,6 +1005,48 @@ const DalaliModal = ({
           year: "numeric",
         })}
       />
+
+      {/* Remarks Modal */}
+      <Modal show={showRemarksModal} onHide={() => { setShowRemarksModal(false); setRemarks(''); }} centered style={{ zIndex: 10001 }}>
+        <ModalHeader closeButton>
+          <h5 className="mb-0">
+            <FileText className="me-2" size={18} />
+            Add Remarks (Optional)
+          </h5>
+        </ModalHeader>
+        <ModalBody>
+          <textarea
+            className="form-control"
+            rows={4}
+            placeholder="Enter remarks in English or Hindi (हिंदी में लिख सकते हैं)..."
+            value={remarks}
+            onChange={e => setRemarks(e.target.value)}
+            style={{ fontSize: '1rem', fontFamily: '"Noto Sans Devanagari", "Nirmala UI", Arial, sans-serif' }}
+          />
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="secondary" onClick={() => { setShowRemarksModal(false); setRemarks(''); }}>Cancel</Button>
+          <Button variant="primary" onClick={generateDalaliPDF}>Generate PDF</Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Share PDF Modal */}
+      <Modal show={showSharePDFModal} onHide={() => { setShowSharePDFModal(false); setPendingShareFile(null); }} centered style={{ zIndex: 10001 }}>
+        <ModalHeader closeButton>
+          <h5 className="mb-0">
+            <FileText className="me-2" size={18} />
+            PDF Ready
+          </h5>
+        </ModalHeader>
+        <ModalBody>
+          <p className="mb-0">Click Download to save the PDF or Share to send it.</p>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="secondary" onClick={() => { setShowSharePDFModal(false); setPendingShareFile(null); }}>Cancel</Button>
+          <Button variant="success" onClick={handleDownloadPDF}><Download size={14} className="me-1" />Download PDF</Button>
+          <Button variant="primary" onClick={handleSharePDFClick}>Share PDF</Button>
+        </ModalFooter>
+      </Modal>
     </>
   );
 };

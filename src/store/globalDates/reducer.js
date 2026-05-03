@@ -7,13 +7,13 @@ const loadDatesFromLocalStorage = () => {
     const savedToDate = localStorage.getItem('globalToDate');
     
     return {
-      fromDate: savedFromDate ? new Date(savedFromDate) : new Date("2025-01-01T00:00:00"),
+      fromDate: savedFromDate ? new Date(savedFromDate) : new Date("2025-04-01T00:00:00"),
       toDate: savedToDate ? new Date(savedToDate) : new Date(),
     };
   } catch (error) {
     console.error('Error loading dates from localStorage:', error);
     return {
-      fromDate: new Date("2025-01-01T00:00:00"),
+      fromDate: new Date("2025-04-01T00:00:00"),
       toDate: new Date(),
     };
   }

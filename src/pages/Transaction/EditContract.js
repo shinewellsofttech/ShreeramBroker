@@ -3250,7 +3250,7 @@ const EditContract = ({
       </div>
 
       {/* Seller Modal */}
-      <Modal isOpen={sellerModal} toggle={toggleSellerModal} size="md" centered>
+      <Modal isOpen={sellerModal} toggle={toggleSellerModal} size="md" centered zIndex={10500} modalClassName="edit-contract-nested-modal" backdropClassName="edit-contract-nested-backdrop">
         <ModalHeader toggle={toggleSellerModal}>
           <h5 className="modal-title">Add New Seller / Buyer</h5>
         </ModalHeader>
@@ -3324,6 +3324,9 @@ const EditContract = ({
         toggle={toggleContractModal}
         size="md"
         centered
+        zIndex={10500}
+        modalClassName="edit-contract-nested-modal"
+        backdropClassName="edit-contract-nested-backdrop"
       >
         <ModalHeader toggle={toggleContractModal}>
           <h5 className="modal-title">Add Contract Type</h5>
@@ -3384,6 +3387,9 @@ const EditContract = ({
         toggle={toggleCommodityModal}
         size="md"
         centered
+        zIndex={10500}
+        modalClassName="edit-contract-nested-modal"
+        backdropClassName="edit-contract-nested-backdrop"
       >
         <ModalHeader toggle={toggleCommodityModal}>
           <h5 className="modal-title">Add New Commodity</h5>

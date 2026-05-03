@@ -130,20 +130,28 @@ const LinkRegisterShow = () => {
       const contractNo = contract.ContractNo || "-";
       const contractDate = contract.ContractDate || "-";
       const rate = contract.Rate || "-";
+      const qty = contract.Qty || contract.LinkQty || "-";
       const sellerName = contract.SellerName || "-";
       const buyerName = contract.BuyerName || "-";
-      
+
       return (
-        <span key={index}>
-          {contractNo} (
-          <span style={{ color: '#000000', fontWeight: '600' }}>Date: {contractDate}</span>
-          , <span style={{ color: '#000000', fontWeight: '600' }}>Rate: {rate}</span>
-          , <span style={{ color: '#dc3545', fontWeight: '600' }}>{sellerName}</span>
-          {" → "}
-          <span style={{ color: '#28a745', fontWeight: '600' }}>{buyerName}</span>
-          )
-          {index < contracts.length - 1 && " → "}
-        </span>
+        <div key={index} style={{ marginBottom: index < contracts.length - 1 ? '5px' : '0', paddingBottom: index < contracts.length - 1 ? '5px' : '0', borderBottom: index < contracts.length - 1 ? '1px dashed #ddd' : 'none' }}>
+          {/* Line 1: Contract details */}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '2px', fontSize: '11px' }}>
+            <span><span style={{ color: '#888', fontWeight: '600' }}>No: </span><span style={{ color: '#333', fontWeight: '700' }}>{contractNo}</span></span>
+            <span><span style={{ color: '#888', fontWeight: '600' }}>Dt: </span><span style={{ color: '#856404', fontWeight: '700' }}>{contractDate}</span></span>
+            <span><span style={{ color: '#888', fontWeight: '600' }}>Rate: </span><span style={{ color: '#0c5460', fontWeight: '700' }}>₹{rate}</span></span>
+            {qty !== "-" && <span><span style={{ color: '#888', fontWeight: '600' }}>Qty: </span><span style={{ color: '#155724', fontWeight: '700' }}>{qty} MT</span></span>}
+          </div>
+          {/* Line 2: Seller → Buyer */}
+          <div style={{ fontSize: '12px' }}>
+            <span style={{ color: '#888', fontWeight: '600', fontSize: '11px' }}>S: </span>
+            <span style={{ color: '#dc3545', fontWeight: '700' }}>{sellerName}</span>
+            <span style={{ color: '#888', fontWeight: '800', margin: '0 5px' }}>→</span>
+            <span style={{ color: '#888', fontWeight: '600', fontSize: '11px' }}>B: </span>
+            <span style={{ color: '#0066cc', fontWeight: '700' }}>{buyerName}</span>
+          </div>
+        </div>
       );
     });
   };
@@ -393,12 +401,34 @@ const LinkRegisterShow = () => {
                       minute: '2-digit'
                     })
                   : '-';
+                const chainHtml = row.contracts.map((contract, index) => {
+                  const contractNo = contract.ContractNo || '-';
+                  const contractDate = contract.ContractDate || '-';
+                  const rate = contract.Rate || '-';
+                  const qty = contract.Qty || contract.LinkQty || null;
+                  const sellerName = contract.SellerName || '-';
+                  const buyerName = contract.BuyerName || '-';
+                  const border = index < row.contracts.length - 1 ? 'border-bottom:1px dashed #ddd;padding-bottom:4px;margin-bottom:4px;' : '';
+                  return `<div style="${border}">
+                    <div style="font-size:10px;margin-bottom:2px;">
+                      <span style="color:#888;font-weight:600;">No: </span><span style="color:#333;font-weight:700;">${contractNo}</span>
+                      &nbsp;&nbsp;<span style="color:#888;font-weight:600;">Dt: </span><span style="color:#856404;font-weight:700;">${contractDate}</span>
+                      &nbsp;&nbsp;<span style="color:#888;font-weight:600;">Rate: </span><span style="color:#0c5460;font-weight:700;">&#8377;${rate}</span>
+                      ${qty ? `&nbsp;&nbsp;<span style="color:#888;font-weight:600;">Qty: </span><span style="color:#155724;font-weight:700;">${qty} MT</span>` : ''}
+                    </div>
+                    <div style="font-size:11px;">
+                      <span style="color:#888;font-weight:600;font-size:10px;">S: </span><span style="color:#dc3545;font-weight:700;">${sellerName}</span>
+                      <span style="color:#888;font-weight:800;margin:0 5px;">&#8594;</span>
+                      <span style="color:#888;font-weight:600;font-size:10px;">B: </span><span style="color:#0066cc;font-weight:700;">${buyerName}</span>
+                    </div>
+                  </div>`;
+                }).join('');
                 return `
                 <tr>
                   <td class="text-center">${createdOnFormatted}</td>
                   <td class="text-center">${row.period || '-'}</td>
                   <td class="text-end">${row.linkQty ? parseFloat(row.linkQty).toLocaleString() : '0'}</td>
-                  <td>${row.chainString}</td>
+                  <td>${chainHtml}</td>
                 </tr>
               `;
               }).join('')}

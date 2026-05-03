@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Row, Col, Collapse } from "reactstrap";
 import withRouter from "components/Common/withRouter";
 import classname from "classnames";
-import ShreeRamLogo from "../../assets/images/contract/ShreeRam.jpg";
+import ShreeRamImage from '../Common/ShreeRamImage';
 import MobileSidebar from "./MobileSidebar";
 import VoucherAccessModal from "../Common/VoucherAccessModal";
 
@@ -160,18 +160,11 @@ const Navbar = props => {
               </button>
 
               {/* Logo - increased size and spacing on both sides */}
-              <img
-                src={ShreeRamLogo}
+              <ShreeRamImage
                 alt="Shinewell Softtech Logo"
                 onDoubleClick={() => setAccessModal({ open: true, type: 'bro' })}
-                style={{
-                  height: '28px',
-                  width: 'auto',
-                  marginLeft: '20px',
-                  marginRight: '28px',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
+                portraitStyle={{ height: '28px', width: 'auto', marginLeft: '20px', marginRight: '28px', borderRadius: '4px', cursor: 'pointer' }}
+                landscapeStyle={{ height: '28px', width: 'auto', marginLeft: '20px', marginRight: '28px', borderRadius: '4px', cursor: 'pointer' }}
               />
 
               {/* Company Title */}

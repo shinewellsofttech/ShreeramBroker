@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from "react"
+import ShreeRamImage from '../../components/Common/ShreeRamImage'
 import { useLocation, useNavigate } from "react-router-dom"
 import { useDispatch } from "react-redux"
 import { Fn_FillListData } from "store/Functions"
@@ -135,10 +136,10 @@ const ContractPrint2 = () => {
               {/* Middle Section - Logo, Company Name and Details */}
               <div className="header-middle-section">
                 <div className="logo-section">
-                  <img
-                    src={require("../../assets/images/contract/ShreeRam.jpg")}
+                  <ShreeRamImage
                     alt="ShreeRam Logo"
-                    className="company-logo"
+                    portraitStyle={{ width: '70px', height: '70px', objectFit: 'cover' }}
+                    landscapeStyle={{ width: '210px', height: '70px', objectFit: 'contain' }}
                   />
                 </div>
 
@@ -180,7 +181,7 @@ const ContractPrint2 = () => {
               <div className="parties-section">
                 <div className="left-column">
                   <div className="contract-number" style={{ fontSize: "16px", fontWeight: "bold", color: "#000", marginBottom: "2px" }}>
-                    PC.No.: {contract.ContractNo}
+                    P.O No : {contract.ContractNo}
                   </div>
 
                   <div className="seller-info">
@@ -312,10 +313,10 @@ const ContractPrint2 = () => {
                     <div className="table-row">
                       <div className="bottom-table">
                         <div className="bottom-table-header">
-                          <div className="bottom-header-cell">ADV DEPO PMT</div>
+                          <div className="bottom-header-cell">ADV DEPO</div>
                           <div className="bottom-header-cell">DEPO.DATE</div>
                           <div className="bottom-header-cell">NOMI DATE</div>
-                          <div className="bottom-header-cell">INV.RATE</div>
+                          <div className="bottom-header-cell">RATE</div>
                         </div>
                         <div className="bottom-table-row">
                           <div className="bottom-data-cell">{contract.AdvPayment || ""}</div>
@@ -339,7 +340,7 @@ const ContractPrint2 = () => {
                 if (!hasNotes) return null;
 
                 return (
-                  <div className="other-terms" style={{ marginBottom: "15px", display: "flex", alignItems: "flex-start" }}>
+                  <div className="other-terms" style={{ marginBottom: "8px", display: "flex", alignItems: "flex-start" }}>
                     <span style={{ fontSize: "15px", fontWeight: "bold", color: "#000", textDecoration: "underline", marginRight: "5px", whiteSpace: "nowrap" }}>
                       Note:
                     </span>
@@ -394,11 +395,11 @@ const ContractPrint2 = () => {
               })()}
 
               {/* Blue separator between sections */}
-              <div style={{ height: "2px", backgroundColor: "#0000ff", marginBottom: "15px", width: "100%" }}></div>
+              <div style={{ height: "2px", backgroundColor: "#0000ff", marginBottom: "8px", width: "100%" }}></div>
 
               {/* Terms & Conditions */}
-              <div className="terms-conditions" style={{ marginBottom: "20px" }}>
-                <div className="terms-header-section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <div className="terms-conditions" style={{ marginBottom: "8px" }}>
+                <div className="terms-header-section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                   <h4 className="terms-title" style={{ fontSize: "15px", fontWeight: "bold", color: "#000", margin: "0", textDecoration: "underline" }}>
                     TERMS & CONDITIONS
                   </h4>
@@ -407,28 +408,36 @@ const ContractPrint2 = () => {
                   </div>
                 </div>
                 <div className="terms-list">
-                  <div className="term-item" style={{ marginBottom: "10px", lineHeight: "1.3" }}>
-                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "3px" }}>
+                  <div className="term-item" style={{ marginBottom: "6px", lineHeight: "1.3" }}>
+                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "2px" }}>
                       1. SAMPLING AND QUALITY:
                     </span>
                     <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
                       Buyer may appoint their surveyor to draw samples from the tank/s alloted by the seller to lift the material and buyer should start lifting only after satisfaction with quality specifications. The seller will not be responsible for any quality rebate after the tanker leaves from the installation.'/During the loading of tankar, sample draw & seal should be in front of drivers.
                     </span>
                   </div>
-                  <div className="term-item" style={{ marginBottom: "10px", lineHeight: "1.3" }}>
-                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "3px" }}>
+                  <div className="term-item" style={{ marginBottom: "6px", lineHeight: "1.3" }}>
+                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "2px" }}>
                       2. INFORMATION FLOW:
                     </span>
                     <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
                       The Seller shall give all information to us from time to time regarding readiness, deliveries and dispatches of goods under this contract. The Buyer shall also intimate to us from time to time regarding their lifting/deliveries and payments.
                     </span>
                   </div>
-                  <div className="term-item" style={{ marginBottom: "10px", lineHeight: "1.3" }}>
-                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "3px" }}>
+                  <div className="term-item" style={{ marginBottom: "6px", lineHeight: "1.3" }}>
+                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "2px" }}>
                       3. ARBITRATIONS:
                     </span>
                     <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
                       In case any dispute, arbitration will be the last resort if both parties are not able to settle the same mutually.
+                    </span>
+                  </div>
+                  <div className="term-item" style={{ marginBottom: "6px", lineHeight: "1.3" }}>
+                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "2px" }}>
+                      4. BROKERAGE:
+                    </span>
+                    <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
+                      Brokerage : Rs 75 /- MT (PLUS APPLICABLE GST)
                     </span>
                   </div>
                 </div>

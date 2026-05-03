@@ -232,9 +232,6 @@ function ContractRegister() {
   // PDF Remarks Modal state
   const [showRemarksModal, setShowRemarksModal] = useState(false)
   const [remarks, setRemarks] = useState('')
-  // PDF ready – show "Share" button so share runs on user gesture
-  const [pendingShareFile, setPendingShareFile] = useState(null)
-  const [showSharePDFModal, setShowSharePDFModal] = useState(false)
 
   const [state, setState] = useState({
     FillArray: [],
@@ -473,6 +470,14 @@ function ContractRegister() {
       }
       .modal-backdrop-high {
         z-index: 10040 !important;
+      }
+      /* Nested modals inside EditContract (add Seller/Buyer/ContractType/Commodity) must render above EditContract modal */
+      .modal.edit-contract-nested-modal {
+        z-index: 10500 !important;
+      }
+      .modal.edit-contract-nested-modal ~ .modal-backdrop,
+      .modal-backdrop.edit-contract-nested-backdrop {
+        z-index: 10499 !important;
       }
 
       /* On mobile, reset body top offset from Google Translate so fixed layout is not broken */
@@ -726,7 +731,7 @@ function ContractRegister() {
     if (qty > 0 && liftedQty === qty) {
       return '#d1ecf1' // Light blue - fully lifted
     } else if (qty > 0 && liftedQty === 0) {
-      return '#e9ecef' // Light grey - not lifted
+      return '#fafafa' // Off-white - not lifted
     } else if (qty > 0 && liftedQty > 0 && liftedQty < qty) {
       return '#f8d7da' // Light red - partially lifted
     }
@@ -769,16 +774,20 @@ function ContractRegister() {
     }
   }
 
-  // Handle individual row selection
+  // Handle individual row selection (LIFO: deselect only in reverse order)
   const handleRowSelect = (rowId) => {
     setSelectedRows(prev => {
       if (prev.includes(rowId)) {
-        const newSelection = prev.filter(id => id !== rowId)
+        // LIFO: only allow removing the last selected item
+        const lastId = prev[prev.length - 1]
+        if (rowId !== lastId) {
+          alert(`Please deselect in reverse order. Last selected item must be removed first (sequence #${prev.length})`)
+          return prev
+        }
         setSelectAll(false)
-        return newSelection
+        return prev.filter(id => id !== rowId)
       } else {
         const newSelection = [...prev, rowId]
-        // Check if all rows are now selected
         if (newSelection.length === filteredTableData.length) {
           setSelectAll(true)
         }
@@ -787,7 +796,7 @@ function ContractRegister() {
     })
   }
 
-  const handleSelectedItemsChange = newSelectedItems => {
+  const handleSelectedItemsChange = newSelectedItems => {FO
     if (!newSelectedItems || newSelectedItems.length === 0) {
       setSelectedItems([])
       return
@@ -1453,30 +1462,6 @@ function ContractRegister() {
     }
   }
 
-  // Called from Share button click – runs in user gesture so navigator.share() is allowed
-  const handleSharePDFClick = async () => {
-    if (!pendingShareFile || !navigator.share) return
-    try {
-      await navigator.share({
-        title: 'Contract Register Report',
-        text: 'Please find attached the Contract Register Report',
-        files: [pendingShareFile]
-      })
-      toast.success('PDF shared successfully!')
-      setShowSharePDFModal(false)
-      setPendingShareFile(null)
-    } catch (shareError) {
-      if (shareError.name === 'AbortError') {
-        toast.info('Share cancelled.')
-      } else {
-        console.error('Share error:', shareError)
-        toast.error('Share failed. Try again.')
-      }
-      setShowSharePDFModal(false)
-      setPendingShareFile(null)
-    }
-  }
-
   // PDF Export - Open Remarks Modal
   const handlePDFExport = () => {
     if (!filteredTableData || filteredTableData.length === 0) {
@@ -1550,26 +1535,64 @@ function ContractRegister() {
       let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 40
 
       if (remarks && remarks.trim()) {
-        doc.setFontSize(16)
-        doc.text('Remarks', 14, finalY)
-        finalY += 6
-        doc.setFontSize(14)
-        const splitRemarks = doc.splitTextToSize(remarks.trim(), 180)
-        doc.text(splitRemarks, 14, finalY)
+        const scale = 3
+        const pxPerMm = 3.78 * scale
+        const availWidthMm = 182
+        const availWidthPx = Math.round(availWidthMm * pxPerMm)
+        const fontSizePx = 60 * scale
+        const lineHeightPx = Math.round(fontSizePx * 1.5)
+        const fontFace = `"Noto Sans Devanagari", "Nirmala UI", Arial, sans-serif`
+
+        const measCanvas = document.createElement('canvas')
+        measCanvas.width = availWidthPx
+        measCanvas.height = lineHeightPx * 2
+        const measCtx = measCanvas.getContext('2d')
+        measCtx.font = `${fontSizePx}px ${fontFace}`
+        const words = remarks.trim().split(' ')
+        const wrappedLines = []
+        let curLine = ''
+        for (const word of words) {
+          const test = curLine ? curLine + ' ' + word : word
+          if (measCtx.measureText(test).width > availWidthPx - 10 && curLine) {
+            wrappedLines.push(curLine)
+            curLine = word
+          } else {
+            curLine = test
+          }
+        }
+        if (curLine) wrappedLines.push(curLine)
+
+        const totalLines = 1 + wrappedLines.length
+        const canvasH = (totalLines + 1) * lineHeightPx
+        const canvas = document.createElement('canvas')
+        canvas.width = availWidthPx
+        canvas.height = canvasH
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = '#000000'
+        ctx.font = `bold ${fontSizePx}px ${fontFace}`
+        ctx.fillText('Remarks:', 0, lineHeightPx)
+        ctx.font = `${fontSizePx}px ${fontFace}`
+        wrappedLines.forEach((l, i) => { ctx.fillText(l, 0, (i + 2) * lineHeightPx) })
+
+        const imgData = canvas.toDataURL('image/png')
+        const imgHMm = canvasH / pxPerMm
+        if (finalY + imgHMm > (doc.internal.pageSize.getHeight() - 10)) { doc.addPage(); finalY = 14 }
+        doc.addImage(imgData, 'PNG', 14, finalY, availWidthMm, imgHMm)
       }
 
       const pdfBlob = doc.output('blob')
       setShowRemarksModal(false)
       setRemarks('')
 
-      const file = new File([pdfBlob], filename, { type: 'application/pdf' })
-
-      if (navigator.share) {
-        setPendingShareFile(file)
-        setShowSharePDFModal(true)
-      } else {
-        toast.warning('Share not available on this device. Use a mobile device or browser that supports sharing.')
-      }
+      const url = URL.createObjectURL(new Blob([pdfBlob], { type: 'application/pdf' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('PDF downloaded!')
     } catch (error) {
       console.error('PDF generation error:', error)
       toast.error('Error generating PDF. Please try again.')
@@ -1703,10 +1726,15 @@ function ContractRegister() {
     const summarySheet = XLSX.utils.json_to_sheet(summaryData)
     XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
 
-    // Download the file
     const fileName = `Chain_Analysis_${periodName.replace(/\s+/g, '_')}_${new Date().getTime()}.xlsx`
-    XLSX.writeFile(workbook, fileName)
-
+    const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
     toast.success(`Excel file downloaded: ${fileName}`)
   }
 
@@ -2120,7 +2148,7 @@ function ContractRegister() {
                         }}
                       >
                       <Table
-                        className="table mb-0 table-hover resizable-table"
+                        className="table mb-0 resizable-table"
                         style={{
                           fontSize: "0.7rem",
                           borderSpacing: "0",
@@ -2198,7 +2226,17 @@ function ContractRegister() {
                                   switch (col.key) {
                                     case 'Checkbox': return (
                                       <td key={col.key} className="text-center align-middle" style={s}>
-                                        <Form.Check type="checkbox" checked={selectedRows.includes(row.Id)} onChange={() => handleRowSelect(row.Id)} onClick={e => e.stopPropagation()} style={{ margin: 0 }} />
+                                        {selectedRows.includes(row.Id) ? (
+                                          <div
+                                            onClick={(e) => { e.stopPropagation(); handleRowSelect(row.Id) }}
+                                            style={{ width: "24px", height: "24px", borderRadius: "4px", backgroundColor: "#556ee6", color: "white", fontWeight: "bold", fontSize: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", border: "2px solid #556ee6" }}
+                                            title={`Sequence #${selectedRows.indexOf(row.Id) + 1} - Click to deselect`}
+                                          >
+                                            {selectedRows.indexOf(row.Id) + 1}
+                                          </div>
+                                        ) : (
+                                          <Form.Check type="checkbox" checked={false} onChange={() => handleRowSelect(row.Id)} onClick={e => e.stopPropagation()} style={{ margin: 0 }} />
+                                        )}
                                       </td>
                                     )
                                     case 'ContractNo': return (
@@ -2970,33 +3008,6 @@ function ContractRegister() {
         </ModalFooter>
       </Modal>
 
-      {/* Share PDF Modal – Share runs on this button click (user gesture) */}
-      <Modal
-        show={showSharePDFModal}
-        onHide={() => {
-          setShowSharePDFModal(false)
-          setPendingShareFile(null)
-        }}
-        centered
-      >
-        <ModalHeader closeButton>
-          <h5 className="mb-0">
-            <FileText className="me-2" size={18} />
-            PDF Ready
-          </h5>
-        </ModalHeader>
-        <ModalBody>
-          <p className="mb-0">Click Share to open the share dialog and send the PDF.</p>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="secondary" onClick={() => { setShowSharePDFModal(false); setPendingShareFile(null); }}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleSharePDFClick}>
-            Share PDF
-          </Button>
-        </ModalFooter>
-      </Modal>
     </div>
   )
 }

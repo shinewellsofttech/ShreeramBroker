@@ -1145,12 +1145,51 @@ const getDalaliData = async () => {
 
             let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 40;
             if (remarks && remarks.trim()) {
-                doc.setFontSize(14);
-                doc.text('Remarks', marginX, finalY);
-                finalY += 6;
-                doc.setFontSize(13);
-                const splitRemarks = doc.splitTextToSize(remarks.trim(), doc.internal.pageSize.getWidth() - (marginX * 2));
-                doc.text(splitRemarks, marginX, finalY);
+                const scale = 3;
+                const pxPerMm = 3.78 * scale;
+                const availWidthMm = 182;
+                const availWidthPx = Math.round(availWidthMm * pxPerMm);
+                const fontSizePx = 60 * scale;
+                const lineHeightPx = Math.round(fontSizePx * 1.5);
+                const fontFace = `"Noto Sans Devanagari", "Nirmala UI", Arial, sans-serif`;
+
+                const measCanvas = document.createElement('canvas');
+                measCanvas.width = availWidthPx;
+                measCanvas.height = lineHeightPx * 2;
+                const measCtx = measCanvas.getContext('2d');
+                measCtx.font = `${fontSizePx}px ${fontFace}`;
+                const words = remarks.trim().split(' ');
+                const wrappedLines = [];
+                let curLine = '';
+                for (const word of words) {
+                    const test = curLine ? curLine + ' ' + word : word;
+                    if (measCtx.measureText(test).width > availWidthPx - 10 && curLine) {
+                        wrappedLines.push(curLine);
+                        curLine = word;
+                    } else {
+                        curLine = test;
+                    }
+                }
+                if (curLine) wrappedLines.push(curLine);
+
+                const totalLines = 1 + wrappedLines.length;
+                const canvasH = (totalLines + 1) * lineHeightPx;
+                const canvas = document.createElement('canvas');
+                canvas.width = availWidthPx;
+                canvas.height = canvasH;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#000000';
+                ctx.font = `bold ${fontSizePx}px ${fontFace}`;
+                ctx.fillText('Remarks:', 0, lineHeightPx);
+                ctx.font = `${fontSizePx}px ${fontFace}`;
+                wrappedLines.forEach((l, i) => { ctx.fillText(l, 0, (i + 2) * lineHeightPx); });
+
+                const imgData = canvas.toDataURL('image/png');
+                const imgHMm = canvasH / pxPerMm;
+                if (finalY + imgHMm > (doc.internal.pageSize.getHeight() - 10)) { doc.addPage(); finalY = 14; }
+                doc.addImage(imgData, 'PNG', 14, finalY, availWidthMm, imgHMm);
             }
 
             const pdfBlob = doc.output('blob');

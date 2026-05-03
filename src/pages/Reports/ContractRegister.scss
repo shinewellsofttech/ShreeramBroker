@@ -315,13 +315,7 @@
     }
     
     tbody tr {
-      transition: all 0.2s ease;
-      
-      &:hover {
-        opacity: 0.85;
-        filter: brightness(0.95);
-        transform: scale(1.001);
-      }
+      // Hover effect removed as per requirement
     }
   }
   

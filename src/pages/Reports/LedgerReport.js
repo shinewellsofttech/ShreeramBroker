@@ -20,7 +20,7 @@ import { Container } from "reactstrap"
 import { useNavigate, useLocation } from "react-router-dom"
 import Breadcrumbs from "../../components/Common/Breadcrumb"
 import { API_WEB_URLS } from "../../constants/constAPI"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import {
   Fn_FillListData,
   Fn_GetReport,
@@ -36,7 +36,7 @@ import Select from "react-select"
 import EditContract from "../Transaction/EditContract"
 import MultiSelectDropdown from "../../components/Common/MultiSelectDropdown"
 import ExcelJS from "exceljs"
-import { FileText } from "react-feather"
+import { FileText, Download } from "react-feather"
 import jsPDF from "jspdf"
 import { applyPlugin as applyAutoTable } from "jspdf-autotable"
 applyAutoTable(jsPDF)
@@ -505,16 +505,20 @@ const LedgerReport = () => {
         
         /* Note column - single line on mobile, wider column, scroll horizontally if long */
         .ledger-report-container .table-responsive .ledger-note-cell {
-          min-width: 200px !important;
-          max-width: 320px !important;
-          width: auto !important;
-          padding: 6px 8px !important;
+          padding: 2px 4px !important;
           font-size: 0.7rem !important;
           line-height: 1.35 !important;
-          white-space: nowrap !important;
-          overflow-x: auto !important;
-          overflow-y: hidden !important;
-          -webkit-overflow-scrolling: touch !important;
+        }
+        .ledger-note-cell .note-inner {
+          white-space: nowrap;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+        }
+        @media (max-width: 768px) {
+          .ledger-note-cell .note-inner {
+            max-width: 130px;
+          }
         }
         
         .bottom-filters-bar::-webkit-scrollbar {
@@ -1174,8 +1178,9 @@ const LedgerReport = () => {
   const breadCrumbTitle = "Ledger Report"
   const breadcrumbItem = "Reports"
 
+  const globalDates = useSelector(state => state.GlobalDates)
   const [selectedLedger, setSelectedLedger] = useState("")
-  const [fromDate, setFromDate] = useState(new Date("2025-01-01T00:00:00")) // Default from date: 1st January 2025
+  const [fromDate, setFromDate] = useState(globalDates?.fromDate || new Date("2025-01-01T00:00:00")) // Default from date: from global dates
   const [selectedTax, setSelectedTax] = useState("")
   const [selectedParty, setSelectedParty] = useState("")
   const [selectedParties, setSelectedParties] = useState([])
@@ -1190,6 +1195,7 @@ const LedgerReport = () => {
   const [selectedLedgerNames, setSelectedLedgerNames] = useState([]) // Store selected ledger names for grouping
   const [ledgerSearchTerm, setLedgerSearchTerm] = useState("") // Search term for ledger modal
   const [selectedRowIds, setSelectedRowIds] = useState(new Set())
+  const [selectionOrder, setSelectionOrder] = useState([])
   const selectAllRef = useRef(null)
 
   const [selectedPeriod, setSelectedPeriod] = useState([])
@@ -1213,7 +1219,7 @@ const LedgerReport = () => {
   const [tempSelectedPeriod, setTempSelectedPeriod] = useState([])
 
 
-  const [toDate, setToDate] = useState(new Date()) // Default to date: Today's date
+  const [toDate, setToDate] = useState(globalDates?.toDate || new Date()) // Default to date: from global dates
   const [loading, setLoading] = useState(false)
   const [ledgerLoading, setLedgerLoading] = useState(true)
   const [showReport, setShowReport] = useState(false)
@@ -1347,10 +1353,18 @@ const LedgerReport = () => {
 
       setFromDate(financialYearStart)
       setToDate(financialYearEnd)
+      
+      // Auto-select all three color checkboxes (NotStarted/Black, Pending/Red, Completed/Blue)
+      setState(prev => ({
+        ...prev,
+        NotStarted: true,
+        Pending: true,
+        Completed: true,
+      }))
     } else {
-      // If both are unselected, revert to normal dates (1st January 2025 to today)
-      setFromDate(new Date("2025-01-01T00:00:00"))
-      setToDate(new Date())
+      // If both are unselected, revert to global dates
+      setFromDate(globalDates?.fromDate ? new Date(globalDates.fromDate) : new Date("2025-01-01T00:00:00"))
+      setToDate(globalDates?.toDate ? new Date(globalDates.toDate) : new Date())
     }
   }
 
@@ -1363,7 +1377,7 @@ const LedgerReport = () => {
     if (visibleNotes.Note4 && row.Note4) notes.push(`Note4: ${row.Note4}`)
     if (visibleNotes.Note5 && row.Note5) notes.push(`Note5: ${row.Note5}`)
     if (visibleNotes.Note6 && row.Note6) notes.push(`Note6: ${row.Note6}`)
-    return notes.length > 0 ? notes.join("\n") : "-"
+    return notes.length > 0 ? notes.join(" | ") : "-"
   }
 
   // Toggle all notes on/off
@@ -1383,17 +1397,34 @@ const LedgerReport = () => {
     const styleElement = document.createElement("style")
     styleElement.textContent = `
       /* Disable all hover effects on table rows */
-      .table tbody tr:hover,
-      .table-hover tbody tr:hover {
-        background-color: inherit !important;
-      }
-      
-      .table tbody tr:hover td,
-      .table tbody tr:hover th,
-      .table-hover tbody tr:hover td,
-      .table-hover tbody tr:hover th {
-        background-color: inherit !important;
+      .table tbody tr:hover > *,
+      .table-hover tbody tr:hover > *,
+      .table tbody tr.table-secondary:hover > *,
+      .table tbody tr.table-info:hover > *,
+      .table tbody tr.table-danger:hover > *,
+      .table tbody tr.table-warning:hover > *,
+      .table tbody tr.table-success:hover > *,
+      .table tbody tr.table-primary:hover > *,
+      .table-hover tbody tr.table-secondary:hover > *,
+      .table-hover tbody tr.table-info:hover > *,
+      .table-hover tbody tr.table-danger:hover > *,
+      .table-hover tbody tr.table-warning:hover > *,
+      .table-hover tbody tr.table-success:hover > *,
+      .table-hover tbody tr.table-primary:hover > * {
+        --bs-table-color-state: var(--bs-table-color) !important;
+        --bs-table-bg-state: var(--bs-table-bg) !important;
+        background-color: unset !important;
         color: inherit !important;
+      }
+
+      /* Keep ContractNo column yellow highlight on hover */
+      .ledger-report-container .table tbody tr:hover > td.contractno-selected,
+      .ledger-report-container .table-hover tbody tr:hover > td.contractno-selected {
+        background-color: #fffec8 !important;
+      }
+      .ledger-report-container .table tbody tr:hover > td.contractno-unselected,
+      .ledger-report-container .table-hover tbody tr:hover > td.contractno-unselected {
+        background-color: white !important;
       }
       
       /* Custom styles for react-select */
@@ -1998,6 +2029,14 @@ const LedgerReport = () => {
         bottom: 0;
         z-index: 10;
         box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+      }
+
+      /* Nested modals inside EditContract (add Seller/Buyer/ContractType/Commodity) must render above EditContract modal */
+      .modal.edit-contract-nested-modal {
+        z-index: 10500 !important;
+      }
+      .modal-backdrop.edit-contract-nested-backdrop {
+        z-index: 10499 !important;
       }
     `
     document.head.appendChild(styleElement)
@@ -2743,15 +2782,19 @@ const LedgerReport = () => {
   const toggleRowSelection = row => {
     const rowId = getRowIdentifier(row)
     if (!rowId) return
-    setSelectedRowIds(prev => {
-      const updated = new Set(prev)
-      if (updated.has(rowId)) {
-        updated.delete(rowId)
-      } else {
-        updated.add(rowId)
+    if (selectedRowIds.has(rowId)) {
+      // LIFO: only allow removing the last selected item
+      const lastId = selectionOrder[selectionOrder.length - 1]
+      if (rowId !== lastId) {
+        alert(`Please deselect in reverse order. Last selected item must be removed first (sequence #${selectionOrder.length})`)
+        return
       }
-      return updated
-    })
+      setSelectedRowIds(prev => { const updated = new Set(prev); updated.delete(rowId); return updated })
+      setSelectionOrder(prev => prev.slice(0, -1))
+    } else {
+      setSelectedRowIds(prev => { const updated = new Set(prev); updated.add(rowId); return updated })
+      setSelectionOrder(prev => [...prev, rowId])
+    }
   }
 
   // Select all rows by default when FillArray is populated
@@ -2761,6 +2804,7 @@ const LedgerReport = () => {
         .map(row => getRowIdentifier(row))
         .filter(id => Boolean(id))
       setSelectedRowIds(new Set(allRowIds))
+      setSelectionOrder(allRowIds)
     }
   }, [state.FillArray])
 
@@ -3049,8 +3093,11 @@ const LedgerReport = () => {
       const updated = new Set(prev)
       if (allVisibleRowsSelected) {
         visibleRowIds.forEach(id => updated.delete(id))
+        setSelectionOrder(prev => prev.filter(id => !visibleRowIds.includes(id)))
       } else {
+        const newIds = visibleRowIds.filter(id => !updated.has(id))
         visibleRowIds.forEach(id => updated.add(id))
+        setSelectionOrder(prev => [...prev, ...newIds])
       }
       return updated
     })
@@ -3336,6 +3383,19 @@ const LedgerReport = () => {
     }
   }
 
+  const handleDownloadPDF = () => {
+    if (!pendingShareFile) return
+    const url = URL.createObjectURL(pendingShareFile)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = pendingShareFile.name
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('PDF downloaded!')
+    setShowSharePDFModal(false)
+    setPendingShareFile(null)
+  }
+
   const handleSharePDFClick = async () => {
     if (!pendingShareFile || !navigator.share) return
     try {
@@ -3429,13 +3489,13 @@ const LedgerReport = () => {
       // -- Top header banner --
       doc.setTextColor(0, 0, 180)
       doc.setFontSize(15)
-      setHindiFont(doc, 'bold')
+      doc.setFont('helvetica', 'bold')
       doc.text('Ledger Report', 8, 9)
       doc.setFontSize(7.5)
-      setHindiFont(doc, 'normal')
+      doc.setFont('helvetica', 'normal')
       doc.text(`Ledger: ${ledgerLabel}`, 8, 14)
       doc.text(
-        `Period: ${fromDate.toLocaleDateString()} � ${toDate.toLocaleDateString()}   |   Generated: ${new Date().toLocaleString()}`,
+        `Period: ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}   |   Generated: ${new Date().toLocaleString()}`,
         8, 18.5
       )
       doc.setTextColor(0, 0, 0)
@@ -3619,17 +3679,63 @@ const LedgerReport = () => {
         },
       })
 
-      // -- Remarks --
+      // -- Remarks (rendered via canvas for proper Hindi/Devanagari shaping) --
       if (remarks && remarks.trim()) {
         let fy = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 30) + 8
         if (fy > pageH - 30) { doc.addPage(); fy = 20 }
-        doc.setFontSize(9)
-        setHindiFont(doc, 'bold')
-        doc.text('Remarks:', 7, fy)
-        setHindiFont(doc, 'normal')
-        doc.setFontSize(7.5)
-        const lines = doc.splitTextToSize(remarks.trim(), pageW - 14)
-        doc.text(lines, 7, fy + 5)
+
+        const scale = 3
+        const pxPerMm = 3.78 * scale
+        const availWidthMm = pageW - 14
+        const availWidthPx = Math.round(availWidthMm * pxPerMm)
+        const fontSizePx = 60 * scale
+        const lineHeightPx = Math.round(fontSizePx * 1.5)
+        const fontFace = `"Noto Sans Devanagari", "Nirmala UI", Arial, sans-serif`
+
+        // Measure and word-wrap using canvas measureText
+        const measCanvas = document.createElement('canvas')
+        measCanvas.width = availWidthPx
+        measCanvas.height = lineHeightPx * 2
+        const measCtx = measCanvas.getContext('2d')
+        measCtx.font = `${fontSizePx}px ${fontFace}`
+        const words = remarks.trim().split(' ')
+        const wrappedLines = []
+        let curLine = ''
+        for (const word of words) {
+          const test = curLine ? curLine + ' ' + word : word
+          if (measCtx.measureText(test).width > availWidthPx - 10 && curLine) {
+            wrappedLines.push(curLine)
+            curLine = word
+          } else {
+            curLine = test
+          }
+        }
+        if (curLine) wrappedLines.push(curLine)
+
+        const totalLines = 1 + wrappedLines.length // 1 for "Remarks:" label
+        const canvasH = (totalLines + 1) * lineHeightPx
+
+        const canvas = document.createElement('canvas')
+        canvas.width = availWidthPx
+        canvas.height = canvasH
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = '#000000'
+
+        // Draw "Remarks:" label bold
+        ctx.font = `bold ${fontSizePx}px ${fontFace}`
+        ctx.fillText('Remarks:', 0, lineHeightPx)
+
+        // Draw remarks body
+        ctx.font = `${fontSizePx}px ${fontFace}`
+        wrappedLines.forEach((l, i) => {
+          ctx.fillText(l, 0, (i + 2) * lineHeightPx)
+        })
+
+        const imgData = canvas.toDataURL('image/png')
+        const imgHMm = canvasH / pxPerMm
+        doc.addImage(imgData, 'PNG', 7, fy, availWidthMm, imgHMm)
       }
 
       const pdfBlob = doc.output('blob')
@@ -4215,29 +4321,32 @@ const LedgerReport = () => {
                                 }}
                                 onClick={() => col.sortKey && handleSort(col.sortKey)}
                               >
-                                <div className="d-flex justify-content-between align-items-center" style={{ width: "100%", pointerEvents: "none" }}>
-                                  <div className="d-flex align-items-center gap-1">
-                                    {col.key === 'CheckBox' && (
-                                      <input
-                                        type="checkbox"
-                                        ref={selectAllRef}
-                                        checked={allVisibleRowsSelected}
-                                        onClick={e => { e.stopPropagation(); handleSelectAllVisibleRows() }}
-                                        disabled={visibleRowIds.length === 0}
-                                        style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer", pointerEvents: "auto" }}
-                                        title="Select all visible contracts"
-                                      />
-                                    )}
-                                    <span>{col.label}</span>
-                                    <i className="fas fa-grip-vertical" style={{ fontSize: "0.4rem", opacity: 0.5, marginLeft: "2px" }} title="Drag to reorder"></i>
+                                {col.key === 'CheckBox' ? (
+                                  <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", pointerEvents: "none" }}>
+                                    <input
+                                      type="checkbox"
+                                      ref={selectAllRef}
+                                      checked={allVisibleRowsSelected}
+                                      onClick={e => { e.stopPropagation(); handleSelectAllVisibleRows() }}
+                                      disabled={visibleRowIds.length === 0}
+                                      style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer", pointerEvents: "auto" }}
+                                      title="Select all visible contracts"
+                                    />
                                   </div>
-                                  {col.sortKey && (
-                                    <div className="d-flex flex-column">
-                                      <i className={`fas fa-sort-up ${sortConfig.key === col.sortKey && sortConfig.direction === "asc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
-                                      <i className={`fas fa-sort-down ${sortConfig.key === col.sortKey && sortConfig.direction === "desc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
+                                ) : (
+                                  <div className="d-flex justify-content-between align-items-center" style={{ width: "100%", pointerEvents: "none" }}>
+                                    <div className="d-flex align-items-center gap-1">
+                                      <span>{col.label}</span>
+                                      <i className="fas fa-grip-vertical" style={{ fontSize: "0.4rem", opacity: 0.5, marginLeft: "2px" }} title="Drag to reorder"></i>
                                     </div>
-                                  )}
-                                </div>
+                                    {col.sortKey && (
+                                      <div className="d-flex flex-column">
+                                        <i className={`fas fa-sort-up ${sortConfig.key === col.sortKey && sortConfig.direction === "asc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
+                                        <i className={`fas fa-sort-down ${sortConfig.key === col.sortKey && sortConfig.direction === "desc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                                 <div className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeMouseDown(e, col.key) }} onTouchStart={e => { e.stopPropagation(); handleResizeMouseDown(e, col.key) }} style={{ cursor: "col-resize" }} />
                               </th>
                             ))}
@@ -4278,30 +4387,49 @@ const LedgerReport = () => {
                                           boxShadow: "none",
                                         }}
                                       >
-                                        <div className="d-flex align-items-center flex-wrap">
-                                          <i className="fas fa-users me-2 text-primary"></i>
+                                        <div>
+                                          {/* Desktop: Party name only */}
                                           <span
-                                            className="fw-bold"
+                                            className="fw-bold d-none d-md-inline-block"
                                             style={{
                                               color: "red",
                                               fontWeight: "bold",
                                               fontSize: "0.75rem",
+                                              maxWidth: "18ch",
+                                              wordBreak: "break-all",
+                                              overflowWrap: "break-word",
+                                              lineHeight: "1.3",
                                             }}
                                           >
                                             {group.groupName}
                                           </span>
-                                          {/* Mobile-only: Buy Qty | Sell Qty | Buy Avg | Sell Avg � right after party name */}
-                                          <small className="d-inline d-md-none ms-1" style={{ fontSize: "0.58rem", fontWeight: "bold" }}>
-                                            {" ["}
-                                            <span style={{ color: "#166534", fontWeight: "bold" }}>B:{ledgerTotals.totalPurQty.toLocaleString()}</span>
-                                            <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                            <span style={{ color: "#d62d5d", fontWeight: "bold" }}>S:{ledgerTotals.totalSelQty.toLocaleString()}</span>
-                                            <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                            <span style={{ color: "#166534", fontWeight: "bold" }}>BA:{ledgerTotals.purchaseAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                                            <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                            <span style={{ color: "#d62d5d", fontWeight: "bold" }}>SA:{ledgerTotals.sellAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                                            {"]"}
-                                          </small>
+                                          
+                                          {/* Mobile: Party name on first line, totals on second line */}
+                                          <div className="d-md-none">
+                                            <div
+                                              className="fw-bold"
+                                              style={{
+                                                color: "red",
+                                                fontWeight: "bold",
+                                                fontSize: "0.75rem",
+                                                wordBreak: "break-all",
+                                                overflowWrap: "break-word",
+                                                lineHeight: "1.3",
+                                                marginBottom: "2px",
+                                              }}
+                                            >
+                                              {group.groupName}
+                                            </div>
+                                            <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
+                                              <span style={{ color: "#000000", fontWeight: "bold" }}>B:{Number(ledgerTotals.totalPurQty)}</span>
+                                              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
+                                              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>S:{Number(ledgerTotals.totalSelQty)}</span>
+                                              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
+                                              <span style={{ color: "#000000", fontWeight: "bold" }}>BA:{parseFloat(Number(ledgerTotals.purchaseAvgRate).toFixed(2))}</span>
+                                              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
+                                              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>SA:{parseFloat(Number(ledgerTotals.sellAvgRate).toFixed(2))}</span>
+                                            </small>
+                                          </div>
                                           {/* <small className="text-muted ms-2" style={{ fontSize: "0.65rem" }}>
                                             ({group.count}{" "}
                                             {group.count === 1 ? "record" : "records"})
@@ -4646,7 +4774,17 @@ const LedgerReport = () => {
                                         switch (col.key) {
                                           case 'CheckBox': return (
                                             <td key={col.key} className={`text-center align-middle ${rowId && selectedRowIds.has(rowId) ? 'contractno-selected' : 'contractno-unselected'}`} style={{ ...tdStyle, padding: "4px", width: "35px" }}>
-                                              <input type="checkbox" checked={rowId ? selectedRowIds.has(rowId) : false} onClick={e => { e.stopPropagation(); toggleRowSelection(row) }} style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer" }} title="Select contract" />
+                                              {rowId && selectedRowIds.has(rowId) ? (
+                                                <div
+                                                  onClick={e => { e.stopPropagation(); toggleRowSelection(row) }}
+                                                  style={{ width: "24px", height: "24px", borderRadius: "4px", backgroundColor: "#556ee6", color: "white", fontWeight: "bold", fontSize: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", border: "2px solid #556ee6" }}
+                                                  title={`Sequence #${selectionOrder.indexOf(rowId) + 1} - Click to deselect`}
+                                                >
+                                                  {selectionOrder.indexOf(rowId) + 1}
+                                                </div>
+                                              ) : (
+                                                <input type="checkbox" checked={false} onClick={e => { e.stopPropagation(); toggleRowSelection(row) }} style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer" }} title="Select contract" />
+                                              )}
                                             </td>
                                           )
                                           case 'ContractNo': return (
@@ -4716,8 +4854,8 @@ const LedgerReport = () => {
                                             </td>
                                           )
                                           case 'Note': return (
-                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: "300px", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
-                                              {getCombinedNotes(row)}
+                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "middle", border: "1.5px solid black", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
+                                              <div className="note-inner">{getCombinedNotes(row)}</div>
                                             </td>
                                           )
                                           default: return null
@@ -5258,7 +5396,7 @@ const LedgerReport = () => {
                         )
                         return hoverTotals ? (
                           <div
-                            className="position-absolute"
+                            className="position-absolute d-none d-md-block"
                             style={{
                               backgroundColor: "#ff6b35",
                               color: "black",
@@ -6242,16 +6380,7 @@ const LedgerReport = () => {
                         setTempSelectedParties([...tempSelectedParties, party.value])
                       }
                     }}
-                    onMouseEnter={(e) => {
-                      if (!tempSelectedParties.some(p => p === party.value)) {
-                        e.currentTarget.style.backgroundColor = "#f8f9fa"
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!tempSelectedParties.some(p => p === party.value)) {
-                        e.currentTarget.style.backgroundColor = "transparent"
-                      }
-                    }}
+
                   >
                     <div className="d-flex align-items-center">
                       <input
@@ -6351,16 +6480,7 @@ const LedgerReport = () => {
 
                       setTempSelectedItems(normalized)
                     }}
-                    onMouseEnter={(e) => {
-                      if (!tempSelectedItems.some(i => String(i) === String(item.value))) {
-                        e.currentTarget.style.backgroundColor = "#f8f9fa"
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!tempSelectedItems.some(i => String(i) === String(item.value))) {
-                        e.currentTarget.style.backgroundColor = "transparent"
-                      }
-                    }}
+
                   >
                     <div className="d-flex align-items-center">
                       <input
@@ -6445,8 +6565,7 @@ const LedgerReport = () => {
                         setTempSelectedVessels([...tempSelectedVessels, vessel.value])
                       }
                     }}
-                    onMouseEnter={(e) => { if (!tempSelectedVessels.includes(vessel.value)) e.currentTarget.style.backgroundColor = "#f8f9fa" }}
-                    onMouseLeave={(e) => { if (!tempSelectedVessels.includes(vessel.value)) e.currentTarget.style.backgroundColor = "transparent" }}
+
                   >
                     <div className="d-flex align-items-center">
                       <input
@@ -6535,16 +6654,7 @@ const LedgerReport = () => {
                         setTempSelectedPeriod([...tempSelectedPeriod, period.Name])
                       }
                     }}
-                    onMouseEnter={(e) => {
-                      if (!tempSelectedPeriod.some(p => p === period.Name)) {
-                        e.currentTarget.style.backgroundColor = "#f8f9fa"
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!tempSelectedPeriod.some(p => p === period.Name)) {
-                        e.currentTarget.style.backgroundColor = "transparent"
-                      }
-                    }}
+
                   >
                     <div className="d-flex align-items-center">
                       <input
@@ -6650,16 +6760,7 @@ const LedgerReport = () => {
                         transition: "background-color 0.2s ease",
                       }}
                       onClick={() => handleLedgerToggle(ledger.Id)}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = "#f8f9fa"
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = "transparent"
-                        }
-                      }}
+
                     >
                       <span style={{ fontSize: "0.9rem" }}>{ledger.Name}</span>
                       {isSelected && (
@@ -6720,14 +6821,7 @@ const LedgerReport = () => {
             outline: "none",
             WebkitTapHighlightColor: "transparent"
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#0b5ed7"
-            e.currentTarget.style.transform = "scale(1.1)"
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "#0d6efd"
-            e.currentTarget.style.transform = "scale(1)"
-          }}
+
           title="Scroll to top of table"
         >
           <i className="fas fa-arrow-up"></i>
@@ -6803,6 +6897,9 @@ const LedgerReport = () => {
         <ModalFooter>
           <Button variant="secondary" onClick={() => { setShowSharePDFModal(false); setPendingShareFile(null) }}>
             Cancel
+          </Button>
+          <Button variant="success" onClick={handleDownloadPDF}>
+            <Download size={14} className="me-1" />Download PDF
           </Button>
           <Button variant="primary" onClick={handleSharePDFClick}>
             Share PDF

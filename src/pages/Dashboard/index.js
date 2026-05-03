@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import React, { useState, useEffect, useRef } from "react";
+import ShreeRamImage from '../../components/Common/ShreeRamImage';
 import {
   Container, Row, Col, Card, CardBody, Button, Spinner, Badge
 } from "reactstrap";
@@ -16,6 +17,18 @@ import { setGlobalDates } from "store/common-actions";
 import ReminderData from "pages/Reports/ReminderData";
 
  
+// Returns April 1 of the financial year before the current one
+const getFinancialYearMinus1Start = () => {
+  const today = new Date();
+  const month = today.getMonth(); // 0-indexed; April = 3
+  const year = today.getFullYear();
+  const currentFYStartYear = month >= 3 ? year : year - 1;
+  const fy1StartYear = currentFYStartYear - 1;
+  const date = new Date(fy1StartYear, 3, 1); // April 1
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
 const Dashboard = props => {
   document.title = "Dashboard | Welcome";
   const navigate = useNavigate();
@@ -25,7 +38,7 @@ const Dashboard = props => {
   const globalDates = useSelector(state => state.GlobalDates);
   
   // Local state for date inputs
-  const [fromDate, setFromDate] = useState(globalDates.fromDate);
+  const [fromDate, setFromDate] = useState(getFinancialYearMinus1Start);
   const [toDate, setToDate] = useState(() => {
     // Initialize toDate to today's date on component mount
     const today = new Date();
@@ -36,7 +49,7 @@ const Dashboard = props => {
   // Ref to track if component has mounted
   const isInitialMount = useRef(true);
   // Ref to store initial fromDate to avoid dependency issues
-  const initialFromDate = useRef(globalDates.fromDate);
+  const initialFromDate = useRef(getFinancialYearMinus1Start());
 
   // State for total quantity from ReminderData (doesn't depend on selection)
   const [totalQuantity, setTotalQuantity] = useState(0);
@@ -51,10 +64,9 @@ const Dashboard = props => {
     setTotalQuantity(qty);
   };
 
-  // Update Redux with today's date on component mount
+  // Update Redux with FY-1 start as fromDate and today as toDate on component mount
   useEffect(() => {
     if (isInitialMount.current) {
-      // Create today's date and update Redux
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       dispatch(setGlobalDates(initialFromDate.current, today));
@@ -595,16 +607,11 @@ const Dashboard = props => {
                 <Card className="border-0 shadow-sm" style= {{backgroundColor: '#fff9c4'}}>
                   <CardBody className="text-center p-5" style= {{backgroundColor: '#fff9c4'}}>
                     <div className="mb-4">
-                      <img 
-                        src={require("../../assets/images/contract/ShreeRam.jpg")} 
-                        alt="Shri Ram" 
-                        className="img-fluid rounded-circle shadow"
-                        style={{ 
-                          width: '200px', 
-                          height: '200px', 
-                          objectFit: 'cover',
-                          border: '4px solid #f8f9fa'
-                        }}
+                      <ShreeRamImage
+                        alt="Shri Ram"
+                        className="img-fluid shadow"
+                        portraitStyle={{ width: '200px', height: '200px', objectFit: 'cover', borderRadius: '50%', border: '4px solid #f8f9fa' }}
+                        landscapeStyle={{ width: '180px', height: '60px', objectFit: 'contain', borderRadius: '8px', border: '4px solid #f8f9fa' }}
                       />
                     </div>
                     <h2 className="text-primary mb-3 fw-bold">

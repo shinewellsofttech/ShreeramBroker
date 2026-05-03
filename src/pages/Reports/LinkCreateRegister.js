@@ -465,8 +465,21 @@ function LinkCreateRegister() {
     // Proceed with selection/deselection
     setSelectedRows(prev => {
       if (prev.includes(rowId)) {
-        // Allow deselection (unchecking) even without period selection
-        // Remove from selection while maintaining order of remaining items
+        // LIFO: Only allow removing the last selected item
+        const lastSelectedId = prev[prev.length - 1]
+        
+        if (rowId !== lastSelectedId) {
+          // Not the last selected - prevent deselection
+          alert(`Please deselect in reverse order. Last selected item must be removed first (sequence #${prev.length})`)
+          if (event && event.target) {
+            setTimeout(() => {
+              event.target.checked = true
+            }, 0)
+          }
+          return prev
+        }
+        
+        // Allow deselection of the last item
         const newSelection = prev.filter(id => id !== rowId)
         setSelectAll(false)
         return newSelection
@@ -1583,7 +1596,7 @@ function LinkCreateRegister() {
                         }}
                       >
                         <Table
-                          className="table mb-0 table-hover resizable-table"
+                          className="table mb-0 resizable-table"
                           style={{
                             fontSize: "0.7rem",
                             borderSpacing: "0",
@@ -2006,13 +2019,40 @@ function LinkCreateRegister() {
                                       fontSize: "0.7rem",
                                     }}
                                   >
-                                    <Form.Check
-                                      type="checkbox"
-                                      checked={selectedRows.includes(row.Id)}
-                                      onChange={(e) => handleRowSelect(row.Id, e)}
-                                      onClick={e => e.stopPropagation()}
-                                      style={{ margin: 0 }}
-                                    />
+                                    {selectedRows.includes(row.Id) ? (
+                                      <div
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleRowSelect(row.Id, { target: { checked: false } })
+                                        }}
+                                        style={{
+                                          width: "24px",
+                                          height: "24px",
+                                          borderRadius: "4px",
+                                          backgroundColor: "#556ee6",
+                                          color: "white",
+                                          fontWeight: "bold",
+                                          fontSize: "0.75rem",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          cursor: "pointer",
+                                          margin: "0 auto",
+                                          border: "2px solid #556ee6",
+                                        }}
+                                        title={`Sequence #${selectedRows.indexOf(row.Id) + 1} - Click to deselect`}
+                                      >
+                                        {selectedRows.indexOf(row.Id) + 1}
+                                      </div>
+                                    ) : (
+                                      <Form.Check
+                                        type="checkbox"
+                                        checked={false}
+                                        onChange={(e) => handleRowSelect(row.Id, e)}
+                                        onClick={e => e.stopPropagation()}
+                                        style={{ margin: 0 }}
+                                      />
+                                    )}
                                   </td>
                                   <td
                                     className="fw-semibold align-middle"

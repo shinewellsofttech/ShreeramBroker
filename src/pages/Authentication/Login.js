@@ -19,7 +19,7 @@ import { loginUser, socialLogin } from "../../store/actions";
 // import images
 import profile from "assets/images/profile-img.png";
 import logo from "assets/images/logo.svg";
-import shreeRam from "assets/images/contract/ShreeRam.jpg";
+import ShreeRamImage from '../../components/Common/ShreeRamImage';
 
 const Login = props => {
 
@@ -78,15 +78,10 @@ const Login = props => {
                 <div className="mb-5">
                   <div className="bg-white bg-opacity-20 rounded-circle d-inline-flex align-items-center justify-content-center mb-4" 
                        style={{ width: '150px', height: '150px', overflow: 'hidden' }}>
-                    <img 
-                      src={shreeRam} 
-                      alt="Shree Ram" 
-                      style={{ 
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        borderRadius: '50%'
-                      }} 
+                    <ShreeRamImage
+                      alt="Shree Ram"
+                      portraitStyle={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                      landscapeStyle={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     />
                   </div>
                   <h1 className="display-4 fw-bold mb-3 text-white">

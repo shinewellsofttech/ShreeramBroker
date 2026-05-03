@@ -224,7 +224,7 @@
       .parties-section {
         display: flex;
         gap: 40px;
-        margin-bottom: 15px;
+        margin-bottom: 8px;
 
         .left-column {
           flex: 1;
@@ -294,7 +294,7 @@
       // Central Table - Exact structure from image
       .central-table {
         border: 2px solid #000;
-        margin-bottom: 20px;
+        margin-bottom: 8px;
         overflow: hidden;
 
         .table-header {
@@ -483,13 +483,13 @@
 
       // Terms & Conditions - Exact match to image
       .terms-conditions {
-        margin-bottom: 20px;
+        margin-bottom: 8px;
 
         .terms-header-section {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
+          margin-bottom: 6px;
 
           .terms-title {
             font-size: 15px;
@@ -508,7 +508,7 @@
 
         .terms-list {
           .term-item {
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             line-height: 1.3;
 
             .term-number {
