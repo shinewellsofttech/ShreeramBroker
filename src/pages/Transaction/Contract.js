@@ -3535,7 +3535,7 @@ const Contract = () => {
                             : "bg-light"
                             }`}
                         >
-                          {state.totalLiftingQty || "0.00"}
+                          {Number(state.totalLiftingQty || 0).toFixed(2)}
                         </div>
                       </FormGroup>
                     </Col>

@@ -482,6 +482,14 @@ const ContractPrint = () => {
                             : ""}
                         </div>
                       </div>
+                      {(contract.importDuty > 0 || contract.exchangeRate > 0 || contract.tariff > 0 || contract.calPerTonDuty > 0) && (
+                        <div className="table-row" style={{ padding: '2px 6px', fontSize: '0.75em', lineHeight: '1.5', fontWeight: 'bold' }}>
+                          {contract.importDuty > 0 && <span style={{ marginRight: '16px' }}>Imp.Duty: {contract.importDuty}%</span>}
+                          {contract.exchangeRate > 0 && <span style={{ marginRight: '16px' }}>Ex.Rate: {contract.exchangeRate}</span>}
+                          {contract.tariff > 0 && <span style={{ marginRight: '16px' }}>Tariff: {contract.tariff}</span>}
+                          {contract.calPerTonDuty > 0 && <span>Duty/Ton: {contract.calPerTonDuty}</span>}
+                        </div>
+                      )}
                     </div>
                     <div className="right-subtable">
                       <div className="table-row">

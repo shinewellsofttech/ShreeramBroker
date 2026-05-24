@@ -44,7 +44,11 @@ function NewLedgerReport() {
 
   // Lock body scroll and set exact height so only table scrolls
   useEffect(() => {
-    document.body.style.overflow = 'hidden'
+    const isMobile = () => window.innerWidth <= 768
+    if (isMobile()) {
+      document.body.classList.add('no-overscroll')
+      document.documentElement.classList.add('no-overscroll')
+    }
 
     const updateHeight = () => {
       if (!wrapperRef.current) return
@@ -55,13 +59,22 @@ function NewLedgerReport() {
           ? navFooter.getBoundingClientRect().height
           : 0
       wrapperRef.current.style.height = `${window.innerHeight - top - navFooterHeight}px`
+
+      if (isMobile()) {
+        document.body.classList.add('no-overscroll')
+        document.documentElement.classList.add('no-overscroll')
+      } else {
+        document.body.classList.remove('no-overscroll')
+        document.documentElement.classList.remove('no-overscroll')
+      }
     }
 
     updateHeight()
     window.addEventListener('resize', updateHeight)
 
     return () => {
-      document.body.style.overflow = ''
+      document.body.classList.remove('no-overscroll')
+      document.documentElement.classList.remove('no-overscroll')
       window.removeEventListener('resize', updateHeight)
     }
   }, [])

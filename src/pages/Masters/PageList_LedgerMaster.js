@@ -426,31 +426,25 @@ const PageList_LedgerMaster = () => {
                                   color="primary"
                                   size="sm"
                                   onClick={() => btnEditOnClick(item.Id)}
-                                  className="btn px-2 py-1"
+                                  className="btn px-1 py-1"
                                   style={{
                                     borderRadius: '4px',
-                                    fontSize: '10px',
                                     lineHeight: '1.2',
-                                    minWidth: '45px'
                                   }}
                                 >
-                                  <i className="fas fa-edit me-1" style={{ fontSize: '9px' }}></i>
-                                  Edit
+                                  <i className="fas fa-edit" style={{ fontSize: '11px' }}></i>
                                 </Button>
                                 <Button
                                   color="danger"
                                   size="sm"
                                   onClick={() => btnDeleteOnClick(item.Id)}
-                                  className="btn px-2 py-1"
+                                  className="btn px-1 py-1"
                                   style={{
                                     borderRadius: '4px',
-                                    fontSize: '10px',
                                     lineHeight: '1.2',
-                                    minWidth: '45px'
                                   }}
                                 >
-                                  <i className="fas fa-trash me-1" style={{ fontSize: '9px' }}></i>
-                                  Del
+                                  <i className="fas fa-trash" style={{ fontSize: '11px' }}></i>
                                 </Button>
                               </div>
                             </td>

@@ -600,32 +600,9 @@ const Dashboard = props => {
               </Card>
             </Col>
 
-            {/* Right Container - Welcome Section with ShreeRam Image (Desktop) / ReminderData (Mobile) */}
-            <Col lg={8} md={6} style={{ paddingLeft: 0, paddingRight: 0, paddingTop: 0, marginTop: 0 }}>
-              {/* Desktop: Show Welcome Section */}
-              <div className="d-none d-md-block">
-                <Card className="border-0 shadow-sm" style= {{backgroundColor: '#fff9c4'}}>
-                  <CardBody className="text-center p-5" style= {{backgroundColor: '#fff9c4'}}>
-                    <div className="mb-4">
-                      <ShreeRamImage
-                        alt="Shri Ram"
-                        className="img-fluid shadow"
-                        portraitStyle={{ width: '200px', height: '200px', objectFit: 'cover', borderRadius: '50%', border: '4px solid #f8f9fa' }}
-                        landscapeStyle={{ width: '180px', height: '60px', objectFit: 'contain', borderRadius: '8px', border: '4px solid #f8f9fa' }}
-                      />
-                    </div>
-                    <h2 className="text-primary mb-3 fw-bold">
-                      Welcome
-                    </h2>
-                    <p className="text-muted fs-5 mb-0">
-                      Your trusted partner in agricultural brokerage services
-                    </p>
-                  </CardBody>
-                </Card>
-              </div>
-              
-              {/* Mobile: Show ReminderData */}
-              <div className="d-md-none reminder-data-container" style={{ margin: 0, padding: 0, marginTop: 0, paddingTop: 0, width: '100%' }}>
+            {/* Right Container - ReminderData (All Devices) */}
+            <Col lg={10} md={6} style={{ paddingLeft: 0, paddingRight: 0, paddingTop: 0, marginTop: 0 }}>
+              <div className="reminder-data-container" style={{ margin: 0, padding: 0, marginTop: 0, paddingTop: 0, width: '100%' }}>
                 <ReminderData hideDateFilters={true} onTotalChange={handleTotalQuantityChange} />
               </div>
             </Col>

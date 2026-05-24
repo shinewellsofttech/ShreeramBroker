@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from 'prop-types';
 import { connect } from "react-redux";
+import { useNavigationHistory } from "../../helpers/NavigationHistoryContext";
 
 // Redux Store
 import { showRightSidebarAction, toggleLeftmenu } from "../../store/actions";
@@ -9,6 +10,8 @@ import { showRightSidebarAction, toggleLeftmenu } from "../../store/actions";
 import { withTranslation } from "react-i18next";
 
 const Header = props => {
+  const { goBack } = useNavigationHistory();
+
   const handleLogout = () => {
     // Clear localStorage
     localStorage.removeItem("authUser");
@@ -31,6 +34,18 @@ const Header = props => {
               data-target="#topnav-menu-content"
             >
               <i className="fa fa-fw fa-bars" />
+            </button>
+
+            {/* Back Button */}
+            <button
+              type="button"
+              onClick={goBack}
+              className="btn btn-sm px-3 font-size-16 header-item"
+              title="Go Back"
+              style={{ display: "flex", alignItems: "center", gap: "4px" }}
+            >
+              <i className="bx bx-arrow-back font-size-18" />
+              <span className="d-none d-sm-inline-block font-size-13">Back</span>
             </button>
           </div>
 

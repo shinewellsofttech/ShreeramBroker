@@ -178,11 +178,13 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
     if (filterValue === 0) {
       setState(prev => ({ ...prev, FillArray: [] }));
       setShowTable(false);
+      setSelectedRows([]);
       return;
     }
 
     setLoading(true);
     setShowTable(false);
+    setSelectedRows([]);
     
     try {
       const formData = new FormData();
@@ -219,6 +221,49 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
     if (fromDate && toDate) {
       fetchData();
     }
+  }, [fetchData]);
+
+  // Handle mobile-responsive viewport scroll locking to prevent drag-to-refresh
+  useEffect(() => {
+    const isMobile = () => window.innerWidth <= 768;
+    if (isMobile()) {
+      document.body.classList.add('no-overscroll');
+      document.documentElement.classList.add('no-overscroll');
+    }
+
+    const handleResize = () => {
+      if (isMobile()) {
+        document.body.classList.add('no-overscroll');
+        document.documentElement.classList.add('no-overscroll');
+      } else {
+        document.body.classList.remove('no-overscroll');
+        document.documentElement.classList.remove('no-overscroll');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.body.classList.remove('no-overscroll');
+      document.documentElement.classList.remove('no-overscroll');
+    };
+  }, [])
+
+  // Handle global navbar refresh event
+  useEffect(() => {
+    const handleGlobalRefresh = async (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('app-refresh-start'));
+      try {
+        await fetchData();
+      } finally {
+        window.dispatchEvent(new CustomEvent('app-refresh-end'));
+      }
+    };
+    window.addEventListener('app-refresh-data', handleGlobalRefresh);
+    return () => {
+      window.removeEventListener('app-refresh-data', handleGlobalRefresh);
+    };
   }, [fetchData]);
 
   // Auto-cycle through checkboxes every 1 minute: Dep → ShipMon → Lift → ShipPd → Dep (repeat)
@@ -876,7 +921,17 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
                                 switch (col.key) {
                                   case 'Checkbox': return (
                                     <td key={col.key} className="text-center align-middle" style={s}>
-                                      <Form.Check type="checkbox" checked={selectedRows.includes(rowId)} onClick={e => { e.stopPropagation(); handleRowSelect(rowId); }} onChange={() => {}} style={{ margin: 0 }} />
+                                      {selectedRows.includes(rowId) ? (
+                                        <div
+                                          onClick={e => { e.stopPropagation(); handleRowSelect(rowId); }}
+                                          style={{ width: '24px', height: '24px', borderRadius: '4px', backgroundColor: '#556ee6', color: 'white', fontWeight: 'bold', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', margin: '0 auto', border: '2px solid #556ee6' }}
+                                          title={`Sequence #${selectedRows.indexOf(rowId) + 1} - Click to deselect`}
+                                        >
+                                          {selectedRows.indexOf(rowId) + 1}
+                                        </div>
+                                      ) : (
+                                        <Form.Check type="checkbox" checked={false} onChange={() => {}} onClick={e => { e.stopPropagation(); handleRowSelect(rowId); }} style={{ margin: 0 }} />
+                                      )}
                                     </td>
                                   );
                                   case 'ContractNo': return (
@@ -1166,6 +1221,7 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
         show={showSharePDFModal}
         onHide={() => { setShowSharePDFModal(false); setPendingShareFile(null); }}
         centered
+        style={{ zIndex: 10700 }}
       >
         <ModalHeader closeButton>
           <h5 className="mb-0">

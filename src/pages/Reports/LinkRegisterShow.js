@@ -53,6 +53,49 @@ const LinkRegisterShow = () => {
     fetchData();
   }, [dispatch, API_URL]);
 
+  // Handle mobile-responsive viewport scroll locking to prevent drag-to-refresh
+  useEffect(() => {
+    const isMobile = () => window.innerWidth <= 768;
+    if (isMobile()) {
+      document.body.classList.add('no-overscroll');
+      document.documentElement.classList.add('no-overscroll');
+    }
+
+    const handleResize = () => {
+      if (isMobile()) {
+        document.body.classList.add('no-overscroll');
+        document.documentElement.classList.add('no-overscroll');
+      } else {
+        document.body.classList.remove('no-overscroll');
+        document.documentElement.classList.remove('no-overscroll');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.body.classList.remove('no-overscroll');
+      document.documentElement.classList.remove('no-overscroll');
+    };
+  }, [])
+
+  // Handle global navbar refresh event
+  useEffect(() => {
+    const handleGlobalRefresh = async (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('app-refresh-start'));
+      try {
+        await Fn_FillListData(dispatch, setGridData, "gridData", API_URL + "/Id/0");
+      } finally {
+        window.dispatchEvent(new CustomEvent('app-refresh-end'));
+      }
+    };
+    window.addEventListener('app-refresh-data', handleGlobalRefresh);
+    return () => {
+      window.removeEventListener('app-refresh-data', handleGlobalRefresh);
+    };
+  }, [dispatch, API_URL]);
+
   const btnDeleteOnClick = async (Id) => {
     if (window.confirm("Are you sure you want to delete this link register?")) {
       try {

@@ -4,6 +4,19 @@
  * Does NOT affect tablets (768px+) or desktops
  */
 
+/* ============================================
+   GLOBAL: Share/Generate PDF Modal z-index
+   Must appear above EditContract modal (10050) everywhere
+   ============================================ */
+.share-pdf-modal,
+.modal.share-pdf-modal {
+  z-index: 10700 !important;
+}
+.share-pdf-backdrop,
+.modal-backdrop.share-pdf-backdrop {
+  z-index: 10699 !important;
+}
+
 @media (max-width: 767px) {
   
   /* ============================================

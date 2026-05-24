@@ -189,16 +189,26 @@ function LinkCreateRegister() {
   useEffect(() => {
     const isMobile = () => window.innerWidth <= 768
     document.body.classList.add('lcr-mobile')
+    if (isMobile()) {
+      document.body.classList.add('no-overscroll')
+      document.documentElement.classList.add('no-overscroll')
+    }
     const handleResize = () => {
       if (!isMobile()) {
         document.body.classList.remove('lcr-mobile')
+        document.body.classList.remove('no-overscroll')
+        document.documentElement.classList.remove('no-overscroll')
       } else {
         document.body.classList.add('lcr-mobile')
+        document.body.classList.add('no-overscroll')
+        document.documentElement.classList.add('no-overscroll')
       }
     }
     window.addEventListener('resize', handleResize)
     return () => {
       document.body.classList.remove('lcr-mobile')
+      document.body.classList.remove('no-overscroll')
+      document.documentElement.classList.remove('no-overscroll')
       window.removeEventListener('resize', handleResize)
     }
   }, [])

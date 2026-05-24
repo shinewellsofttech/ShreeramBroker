@@ -43,6 +43,8 @@ applyAutoTable(jsPDF)
 import { registerHindiFont, setHindiFont } from "../../helpers/pdfHindiFont"
 import useFilterLayout from "../../helpers/useFilterLayout"
 import "../../helpers/filterLayout.css"
+import useColumnResize from "../../helpers/useColumnResize"
+import "../../helpers/columnResize.css"
 
 const LedgerReport = () => {
   const dispatch = useDispatch()
@@ -76,12 +78,12 @@ const LedgerReport = () => {
         border: 1.5px solid black !important;
       }
       
-      /* Lighter grey for table-secondary rows (not started contracts) */
+      /* Off-white for table-secondary rows (not started contracts) */
       .table-secondary {
-        background-color: #e8e8e8 !important;
+        background-color: #f8f8f6 !important;
       }
       .table-secondary td {
-        background-color: #e8e8e8 !important;
+        background-color: #f8f8f6 !important;
       }
       
       /* Lighter blue for table-info rows (fully lifted contracts) */
@@ -383,6 +385,16 @@ const LedgerReport = () => {
         }
       }
       
+      /* ContractNo column selected/unselected background */
+      .ledger-report-container td.contractno-selected {
+        background-color: #fffec8 !important;
+        box-shadow: none !important;
+      }
+      .ledger-report-container td.contractno-unselected {
+        background-color: white !important;
+        box-shadow: none !important;
+      }
+      
       /* Mobile: fix layout - only table data scrolls; container height excludes fixed nav footer so no overlap */
       @media (max-width: 768px) {
         /* Nav footer space - container shorter; table height thodi aur kam */
@@ -436,16 +448,6 @@ const LedgerReport = () => {
           flex-direction: column !important;
           overflow: hidden !important;
           padding-bottom: 32px !important;
-        }
-        
-        /* ContractNo column selected/unselected background */
-        .ledger-report-container td.contractno-selected {
-          background-color: #fffec8 !important;
-          box-shadow: none !important;
-        }
-        .ledger-report-container td.contractno-unselected {
-          background-color: white !important;
-          box-shadow: none !important;
         }
         
         /* Only this div scrolls - table height thodi kam so no overlap with nav footer */
@@ -547,48 +549,13 @@ const LedgerReport = () => {
           font-size: 0.6rem !important;
         }
       }
-      /* Column resize handle styles */
-      .col-resize-handle {
-        position: absolute;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        width: 6px;
-        cursor: col-resize;
-        background: transparent;
-        z-index: 20;
-        touch-action: none;
-      }
-      .col-resize-handle:hover,
-      .col-resize-handle.active {
-        background: rgba(255, 255, 0, 0.5);
-      }
-      .col-resize-handle::after {
-        content: '';
-        position: absolute;
-        right: 2px;
-        top: 25%;
-        bottom: 25%;
-        width: 2px;
-        background: rgba(255,255,255,0.5);
-        border-radius: 1px;
-      }
       /* Ensure td cells handle overflow for fixed table layout */
       .table td {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      /* Column drag reorder styles */
-      .col-drag-over {
-        outline: 2px solid #FFD700 !important;
-        outline-offset: -2px !important;
-        background-color: rgba(255,215,0,0.25) !important;
-      }
-      .col-dragging {
-        opacity: 0.5 !important;
-      }
-    `
+      `
     document.head.appendChild(style)
     return () => {
       document.head.removeChild(style)
@@ -639,102 +606,10 @@ const LedgerReport = () => {
     Note: 120,
   }
 
-  const LOCALSTORAGE_KEY = 'ledgerReport_columnWidths'
-
-  const getInitialColumnWidths = () => {
-    try {
-      const saved = localStorage.getItem(LOCALSTORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        // Merge with defaults so new columns get a default width
-        return { ...COLUMN_DEFAULT_WIDTHS, ...parsed }
-      }
-    } catch (e) {
-      console.warn('Failed to load column widths from localStorage', e)
-    }
-    return { ...COLUMN_DEFAULT_WIDTHS }
-  }
-
-  const [columnWidths, setColumnWidths] = useState(getInitialColumnWidths)
-  const resizingCol = useRef(null)  // { key, startX, startWidth }
-  const resizeActiveRef = useRef(false)
-  const resizeRafRef = useRef(null)  // requestAnimationFrame id for throttling
-
-  const handleResizeMouseDown = (e, colKey) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const touch = e.touches && e.touches[0]
-    resizingCol.current = {
-      key: colKey,
-      startX: touch ? touch.clientX : e.clientX,
-      startWidth: columnWidths[colKey] || COLUMN_DEFAULT_WIDTHS[colKey] || 80,
-    }
-    resizeActiveRef.current = true
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-  }
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!resizeActiveRef.current || !resizingCol.current) return
-      // Prevent page scroll during touch-resize (must be synchronous)
-      if (e.cancelable) e.preventDefault()
-      const touch = e.touches && e.touches[0]
-      const clientX = touch ? touch.clientX : e.clientX
-      if (clientX == null) return
-      const diff = clientX - resizingCol.current.startX
-      const newWidth = Math.max(30, resizingCol.current.startWidth + diff)
-      const colKey = resizingCol.current.key
-      // Throttle React state updates to one per animation frame (prevents mobile crash)
-      if (resizeRafRef.current) cancelAnimationFrame(resizeRafRef.current)
-      resizeRafRef.current = requestAnimationFrame(() => {
-        resizeRafRef.current = null
-        setColumnWidths(prev => ({
-          ...prev,
-          [colKey]: newWidth,
-        }))
-      })
-    }
-
-    const handleMouseUp = () => {
-      if (!resizeActiveRef.current) return
-      // Cancel any pending frame before final save
-      if (resizeRafRef.current) {
-        cancelAnimationFrame(resizeRafRef.current)
-        resizeRafRef.current = null
-      }
-      resizeActiveRef.current = false
-      resizingCol.current = null
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-      // Save to localStorage
-      setColumnWidths(prev => {
-        try {
-          localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(prev))
-        } catch (e) {
-          console.warn('Failed to save column widths to localStorage', e)
-        }
-        return prev
-      })
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    document.addEventListener('touchmove', handleMouseMove, { passive: false })
-    document.addEventListener('touchend', handleMouseUp)
-    document.addEventListener('touchcancel', handleMouseUp)
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.removeEventListener('touchmove', handleMouseMove)
-      document.removeEventListener('touchend', handleMouseUp)
-      document.removeEventListener('touchcancel', handleMouseUp)
-    }
-  }, [])
+  const { columnWidths, handleResizeMouseDown } = useColumnResize('ledgerReport_columnWidths', COLUMN_DEFAULT_WIDTHS)
   // --- End Column Resize Feature ----------------------------------
 
-  // --- Column Reorder Feature -------------------------------------
+  // --- Column Configuration ---------------------------------------
   const ALL_COLUMNS = [
     { key: 'CheckBox', label: '', sortKey: null },
     { key: 'ContractNo', label: 'Contract No', sortKey: 'ContractNo' },
@@ -758,85 +633,10 @@ const LedgerReport = () => {
     { key: 'Lifting', label: 'Lifting', sortKey: null, detailedOnly: true },
     { key: 'Note', label: 'Note', sortKey: null },
   ]
-  const DEFAULT_COLUMN_ORDER = ALL_COLUMNS.map(c => c.key)
-  const COL_ORDER_LOCALSTORAGE_KEY = 'ledgerReport_columnOrder'
-
-  const getInitialColumnOrder = () => {
-    try {
-      const saved = localStorage.getItem(COL_ORDER_LOCALSTORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        const merged = [
-          ...parsed.filter(k => DEFAULT_COLUMN_ORDER.includes(k)),
-          ...DEFAULT_COLUMN_ORDER.filter(k => !parsed.includes(k)),
-        ]
-        return merged
-      }
-    } catch (e) {
-      console.warn('Failed to load column order', e)
-    }
-    return [...DEFAULT_COLUMN_ORDER]
-  }
-
-  const [columnOrder, setColumnOrder] = useState(getInitialColumnOrder)
-
-  const saveColumnOrder = (order) => {
-    try {
-      localStorage.setItem(COL_ORDER_LOCALSTORAGE_KEY, JSON.stringify(order))
-    } catch (e) {
-      console.warn('Failed to save column order', e)
-    }
-  }
-
-  const colDragSrcRef = useRef(null)
-  const [colDragOverKey, setColDragOverKey] = useState(null)
-
-  const handleColDragStart = (e, colKey) => {
-    if (resizeActiveRef.current) { e.preventDefault(); return }
-    colDragSrcRef.current = colKey
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', colKey)
-  }
-
-  const handleColDragOver = (e, colKey) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    if (colKey !== colDragSrcRef.current) setColDragOverKey(colKey)
-  }
-
-  const handleColDrop = (e, targetKey) => {
-    e.preventDefault()
-    const srcKey = colDragSrcRef.current
-    if (!srcKey || srcKey === targetKey) { setColDragOverKey(null); return }
-    setColumnOrder(prev => {
-      const next = [...prev]
-      const fromIdx = next.indexOf(srcKey)
-      const toIdx = next.indexOf(targetKey)
-      if (fromIdx === -1 || toIdx === -1) return prev
-      next.splice(fromIdx, 1)
-      next.splice(toIdx, 0, srcKey)
-      saveColumnOrder(next)
-      return next
-    })
-    setColDragOverKey(null)
-    colDragSrcRef.current = null
-  }
-
-  const handleColDragEnd = () => {
-    setColDragOverKey(null)
-    colDragSrcRef.current = null
-  }
-
-  const resetColumnOrder = () => {
-    setColumnOrder([...DEFAULT_COLUMN_ORDER])
-    saveColumnOrder([...DEFAULT_COLUMN_ORDER])
-  }
 
   // Get effective visible columns based on isDetailed flag
-  const getVisibleColumns = () => columnOrder
-    .map(key => ALL_COLUMNS.find(c => c.key === key))
-    .filter(c => c && (!c.detailedOnly || isDetailed))
-  // --- End Column Reorder Feature ----------------------------------
+  const getVisibleColumns = () => ALL_COLUMNS.filter(c => !c.detailedOnly || isDetailed)
+  // --- End Column Configuration -----------------------------------
 
   // --- Filter Layout Feature (resizable, reorderable, gap control) ---
   const TOP_FILTER_DEFAULTS = [
@@ -1037,29 +837,10 @@ const LedgerReport = () => {
         );
       case 'contractType':
         return (
-          <Select
-            options={state.TaxAccountArray.map(tax => ({ value: tax.Id, label: tax.Name }))}
-            value={state.TaxAccountArray.find(t => t.Id === parseInt(selectedTax)) ? { value: selectedTax, label: state.TaxAccountArray.find(t => t.Id === parseInt(selectedTax))?.Name } : null}
-            onChange={option => setSelectedTax(option?.value || "")}
-            placeholder="Contract"
-            className="party-dropdown"
-            isSearchable
-            classNamePrefix="react-select"
-            noOptionsMessage={() => "No contract types found"}
-            isClearable
-            menuPosition="fixed"
-            menuPortalTarget={document.body}
-            styles={{
-              control: provided => ({ ...provided, fontSize: "0.65rem", minHeight: "32px", height: "32px", border: "1px solid #2196F3", backgroundColor: "#E3F2FD", boxShadow: "none", display: "flex", alignItems: "center" }),
-              valueContainer: provided => ({ ...provided, display: "flex", alignItems: "center", padding: "0 8px" }),
-              option: provided => ({ ...provided, fontSize: "0.65rem" }),
-              singleValue: provided => ({ ...provided, fontSize: "0.65rem", lineHeight: "1" }),
-              placeholder: provided => ({ ...provided, fontSize: "0.65rem", lineHeight: "1", margin: 0 }),
-              input: provided => ({ ...provided, margin: 0, padding: 0 }),
-              menu: provided => ({ ...provided, zIndex: 10000 }),
-              menuPortal: provided => ({ ...provided, fontSize: "0.65rem", zIndex: 10000 }),
-            }}
-          />
+          <div onClick={openContractTypeModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedContractTypes && selectedContractTypes.length > 0 ? `${selectedContractTypes.length} selected` : "Contract"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
         );
       case 'vessel':
         return (
@@ -1070,7 +851,10 @@ const LedgerReport = () => {
         );
       case 'port':
         return (
-          <Input id="deliveryPort" type="text" value={state.DeliveryPort} onChange={e => setState({ ...state, DeliveryPort: e.target.value })} className="form-control-sm shadow-sm" style={{ backgroundColor: "#E3F2FD", color: "#333", fontSize: "0.65rem", padding: "0 8px", height: "32px", minHeight: "32px", borderRadius: "6px", border: "1px solid #2196F3", width: "100%" }} placeholder="Port" />
+          <div onClick={openPortModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedPorts && selectedPorts.length > 0 ? `${selectedPorts.length} selected` : "Port"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
         );
       default:
         return null;
@@ -1181,7 +965,6 @@ const LedgerReport = () => {
   const globalDates = useSelector(state => state.GlobalDates)
   const [selectedLedger, setSelectedLedger] = useState("")
   const [fromDate, setFromDate] = useState(globalDates?.fromDate || new Date("2025-01-01T00:00:00")) // Default from date: from global dates
-  const [selectedTax, setSelectedTax] = useState("")
   const [selectedParty, setSelectedParty] = useState("")
   const [selectedParties, setSelectedParties] = useState([])
   const [selectedVessels, setSelectedVessels] = useState([])
@@ -1214,9 +997,15 @@ const LedgerReport = () => {
   const [pendingShareFile, setPendingShareFile] = useState(null)
   const [showSharePDFModal, setShowSharePDFModal] = useState(false)
   const [showPeriodModal, setShowPeriodModal] = useState(false)
+  const [showContractTypeModal, setShowContractTypeModal] = useState(false)
   const [tempSelectedParties, setTempSelectedParties] = useState([])
   const [tempSelectedItems, setTempSelectedItems] = useState([])
   const [tempSelectedPeriod, setTempSelectedPeriod] = useState([])
+  const [tempSelectedContractTypes, setTempSelectedContractTypes] = useState([])
+  const [selectedContractTypes, setSelectedContractTypes] = useState([])
+  const [showPortModal, setShowPortModal] = useState(false)
+  const [tempSelectedPorts, setTempSelectedPorts] = useState([])
+  const [selectedPorts, setSelectedPorts] = useState([])
 
 
   const [toDate, setToDate] = useState(globalDates?.toDate || new Date()) // Default to date: from global dates
@@ -1231,12 +1020,7 @@ const LedgerReport = () => {
   // Sorting state
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" })
 
-  // Hover totals state
-  const [hoveredRowIndex, setHoveredRowIndex] = useState(null)
-  const [hoverTotalsPosition, setHoverTotalsPosition] = useState({
-    top: 0,
-    visible: false,
-  })
+
 
   // Grouping state - always grouped, determine field based on navigation ledger
   const getGroupByField = () => {
@@ -1321,7 +1105,7 @@ const LedgerReport = () => {
   const API_URL_Get = `${API_WEB_URLS.GetLedgerReportApp}/0/token`
   const API_URL_PeriodData = `${API_WEB_URLS.PeriodData}/0/token`
   const API_URL_SAVE = `${API_WEB_URLS.VoucherH}/0/token`
-  const API_URL1 = API_WEB_URLS.MASTER + "/0/token/TaxAccount"
+  const API_URL1 = API_WEB_URLS.MASTER + "/0/token/ContractType"
   const API_URL2 = API_WEB_URLS.MASTER + "/0/token/UnitMaster"
   const API_URL3 = API_WEB_URLS.MASTER + "/0/token/ItemMaster"
   const API_URL4 = API_WEB_URLS.MASTER + "/0/token/MonthMaster"
@@ -1396,35 +1180,64 @@ const LedgerReport = () => {
     // Inject custom styles to prevent hover effects
     const styleElement = document.createElement("style")
     styleElement.textContent = `
-      /* Disable all hover effects on table rows */
-      .table tbody tr:hover > *,
-      .table-hover tbody tr:hover > *,
-      .table tbody tr.table-secondary:hover > *,
-      .table tbody tr.table-info:hover > *,
-      .table tbody tr.table-danger:hover > *,
-      .table tbody tr.table-warning:hover > *,
-      .table tbody tr.table-success:hover > *,
-      .table tbody tr.table-primary:hover > *,
-      .table-hover tbody tr.table-secondary:hover > *,
-      .table-hover tbody tr.table-info:hover > *,
-      .table-hover tbody tr.table-danger:hover > *,
-      .table-hover tbody tr.table-warning:hover > *,
-      .table-hover tbody tr.table-success:hover > *,
-      .table-hover tbody tr.table-primary:hover > * {
+      /* Disable all hover effects on table rows - keep original background */
+      .table tbody tr:hover,
+      .table tbody tr:hover > td,
+      .table tbody tr:hover > th,
+      .table-hover tbody tr:hover,
+      .table-hover tbody tr:hover > td,
+      .table-hover tbody tr:hover > th {
         --bs-table-color-state: var(--bs-table-color) !important;
         --bs-table-bg-state: var(--bs-table-bg) !important;
-        background-color: unset !important;
-        color: inherit !important;
-      }
-
-      /* Keep ContractNo column yellow highlight on hover */
-      .ledger-report-container .table tbody tr:hover > td.contractno-selected,
-      .ledger-report-container .table-hover tbody tr:hover > td.contractno-selected {
-        background-color: #fffec8 !important;
-      }
-      .ledger-report-container .table tbody tr:hover > td.contractno-unselected,
-      .ledger-report-container .table-hover tbody tr:hover > td.contractno-unselected {
+        --bs-table-accent-bg: transparent !important;
+        --bs-table-hover-bg: transparent !important;
+        --bs-table-hover-color: inherit !important;
         background-color: white !important;
+        background: white !important;
+        color: inherit !important;
+        transition: none !important;
+      }
+      .table tbody tr.table-secondary:hover,
+      .table tbody tr.table-secondary:hover > td,
+      .table tbody tr.table-secondary:hover > th,
+      .table-hover tbody tr.table-secondary:hover,
+      .table-hover tbody tr.table-secondary:hover > td,
+      .table-hover tbody tr.table-secondary:hover > th {
+        --bs-table-color-state: var(--bs-table-color) !important;
+        --bs-table-bg-state: var(--bs-table-bg) !important;
+        --bs-table-accent-bg: transparent !important;
+        --bs-table-hover-bg: transparent !important;
+        background-color: #f8f8f6 !important;
+        background: #f8f8f6 !important;
+        transition: none !important;
+      }
+      .table tbody tr.table-info:hover,
+      .table tbody tr.table-info:hover > td,
+      .table tbody tr.table-info:hover > th,
+      .table-hover tbody tr.table-info:hover,
+      .table-hover tbody tr.table-info:hover > td,
+      .table-hover tbody tr.table-info:hover > th {
+        --bs-table-color-state: var(--bs-table-color) !important;
+        --bs-table-bg-state: var(--bs-table-bg) !important;
+        --bs-table-accent-bg: transparent !important;
+        --bs-table-hover-bg: transparent !important;
+        background-color: #d6ebff !important;
+        background: #d6ebff !important;
+        transition: none !important;
+      }
+      .table tbody tr.table-danger:hover,
+      .table tbody tr.table-danger:hover > td,
+      .table tbody tr.table-danger:hover > th,
+      .table-hover tbody tr.table-danger:hover,
+      .table-hover tbody tr.table-danger:hover > td,
+      .table-hover tbody tr.table-danger:hover > th {
+        --bs-table-color-state: var(--bs-table-color) !important;
+        --bs-table-bg-state: var(--bs-table-bg) !important;
+        --bs-table-accent-bg: transparent !important;
+        --bs-table-hover-bg: transparent !important;
+        background-color: #fde7e9 !important;
+        background: #fde7e9 !important;
+        transition: none !important;
       }
       
       /* Custom styles for react-select */
@@ -2086,6 +1899,35 @@ const LedgerReport = () => {
     }
   }, [dispatch, API_URL])
 
+  // Handle mobile-responsive viewport scroll locking to prevent drag-to-refresh
+  useEffect(() => {
+    const isMobile = () => window.innerWidth <= 768;
+    if (isMobile()) {
+      document.body.classList.add('no-overscroll');
+      document.documentElement.classList.add('no-overscroll');
+    }
+
+    const handleResize = () => {
+      if (isMobile()) {
+        document.body.classList.add('no-overscroll');
+        document.documentElement.classList.add('no-overscroll');
+      } else {
+        document.body.classList.remove('no-overscroll');
+        document.documentElement.classList.remove('no-overscroll');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(handleResize, 150);
+    });
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.body.classList.remove('no-overscroll');
+      document.documentElement.classList.remove('no-overscroll');
+    };
+  }, [])
+
   // Set first ledger as selected when LedgerArray is loaded and fetch initial data
   useEffect(() => {
     if (state.LedgerArray && state.LedgerArray.length > 0 && !selectedLedger) {
@@ -2108,7 +1950,8 @@ const LedgerReport = () => {
     }
   }, [
     selectedParty,
-    selectedTax,
+    selectedContractTypes,
+    selectedPorts,
     selectedItem,
     fromDate,
     toDate,
@@ -2145,7 +1988,7 @@ const LedgerReport = () => {
 
       return () => clearTimeout(timeoutId)
     }
-  }, [state.DeliveryPort])
+  }, [state.DeliveryPort, selectedPorts])
 
   // Handle navigation state from NewLedgerReport (or contractIds for "sirf payload wale contracts")
   useEffect(() => {
@@ -2659,85 +2502,7 @@ const LedgerReport = () => {
     }
   }
 
-  // Calculate cumulative totals from start to hovered row index
-  const calculateHoverTotals = (data, hoveredIndex) => {
-    if (hoveredIndex === null || !data || data.length === 0) return null
 
-    let allRows = []
-
-    // Flatten all grouped data into individual rows
-    data.forEach(group => {
-      if (group.items && group.items.length > 0) {
-        allRows = allRows.concat(group.items)
-      }
-    })
-
-    if (hoveredIndex >= allRows.length) return null
-
-    // Calculate cumulative totals up to and including hovered row
-    let cumulativeTotals = {
-      totalPurQty: 0,
-      totalSelQty: 0,
-      totalAdvPayment: 0,
-      totalLifted: 0,
-      avgPurchaseRate: 0,
-      avgSellRate: 0,
-      avgOverallRate: 0,
-      purchaseTransactions: 0,
-      sellTransactions: 0,
-      totalTransactions: hoveredIndex + 1,
-    }
-
-    let purchaseSum = 0
-    let sellSum = 0
-
-    for (let i = 0; i <= hoveredIndex; i++) {
-      const row = allRows[i]
-      if (!row) continue
-
-      const purQty = parseFloat(row.PurQty) || 0
-      const selQty = parseFloat(row.SelQty) || 0
-      const advPayment = parseFloat(row.AdvPayment) || 0
-      const lifted = parseFloat(row.Lifted) || 0
-      const rate = parseFloat(row.Rate) || 0
-
-      cumulativeTotals.totalPurQty += purQty
-      cumulativeTotals.totalSelQty += selQty
-      cumulativeTotals.totalAdvPayment += advPayment
-      cumulativeTotals.totalLifted += lifted
-
-      if (purQty > 0) {
-        cumulativeTotals.purchaseTransactions++
-        purchaseSum += rate
-      }
-      if (selQty > 0) {
-        cumulativeTotals.sellTransactions++
-        sellSum += rate
-      }
-    }
-
-    // Calculate averages
-    if (cumulativeTotals.purchaseTransactions > 0) {
-      cumulativeTotals.avgPurchaseRate = parseFloat(
-        (purchaseSum / cumulativeTotals.purchaseTransactions).toFixed(2)
-      )
-    }
-    if (cumulativeTotals.sellTransactions > 0) {
-      cumulativeTotals.avgSellRate = parseFloat(
-        (sellSum / cumulativeTotals.sellTransactions).toFixed(2)
-      )
-    }
-
-    // Calculate overall average rate
-    const allRatesSum = allRows
-      .slice(0, hoveredIndex + 1)
-      .reduce((sum, row) => sum + (parseFloat(row.Rate) || 0), 0)
-    cumulativeTotals.avgOverallRate = parseFloat(
-      (allRatesSum / cumulativeTotals.totalTransactions).toFixed(2)
-    )
-
-    return cumulativeTotals
-  }
 
   // Extract unique parties from Buyer and Seller columns
   const getUniquePartiesFromData = () => {
@@ -2758,6 +2523,25 @@ const LedgerReport = () => {
     return Array.from(partiesSet).sort().map(party => ({
       value: party,
       label: party
+    }))
+  }
+
+  // Extract unique ports from DeliveryPort column
+  const getUniquePortsFromData = () => {
+    if (!state.FillArray || state.FillArray.length === 0) return []
+
+    const portsSet = new Set()
+
+    state.FillArray.forEach(row => {
+      if (row.DeliveryPort && row.DeliveryPort.trim()) {
+        portsSet.add(row.DeliveryPort.trim())
+      }
+    })
+
+    // Convert to array of objects with label and value properties
+    return Array.from(portsSet).sort().map(port => ({
+      value: port,
+      label: port
     }))
   }
 
@@ -2783,14 +2567,8 @@ const LedgerReport = () => {
     const rowId = getRowIdentifier(row)
     if (!rowId) return
     if (selectedRowIds.has(rowId)) {
-      // LIFO: only allow removing the last selected item
-      const lastId = selectionOrder[selectionOrder.length - 1]
-      if (rowId !== lastId) {
-        alert(`Please deselect in reverse order. Last selected item must be removed first (sequence #${selectionOrder.length})`)
-        return
-      }
       setSelectedRowIds(prev => { const updated = new Set(prev); updated.delete(rowId); return updated })
-      setSelectionOrder(prev => prev.slice(0, -1))
+      setSelectionOrder(prev => prev.filter(id => id !== rowId))
     } else {
       setSelectedRowIds(prev => { const updated = new Set(prev); updated.add(rowId); return updated })
       setSelectionOrder(prev => [...prev, rowId])
@@ -2864,9 +2642,9 @@ const LedgerReport = () => {
     const deriveItemFields = (item, ledgerName) => {
       let newStatus = item.Status || "-"
       const compareName = ledgerName || item.Ledger || ""
-      if (compareName && item.Seller && item.Seller.toLowerCase().includes(compareName.toLowerCase())) {
+      if (compareName && item.Seller && item.Seller === compareName) {
         newStatus = "S"
-      } else if (compareName && item.Buyer && item.Buyer.toLowerCase().includes(compareName.toLowerCase())) {
+      } else if (compareName && item.Buyer && item.Buyer === compareName) {
         newStatus = "P"
       }
       const qty = parseFloat(item.Qty) || 0
@@ -2901,12 +2679,8 @@ const LedgerReport = () => {
       // Find items that match this ledger name in either Seller or Buyer
       const matchingItems = filteredData
         .filter(item => {
-          const sellerMatch =
-            item.Seller &&
-            item.Seller.toLowerCase().includes(ledgerName.toLowerCase())
-          const buyerMatch =
-            item.Buyer &&
-            item.Buyer.toLowerCase().includes(ledgerName.toLowerCase())
+          const sellerMatch = item.Seller && item.Seller === ledgerName
+          const buyerMatch = item.Buyer && item.Buyer === ledgerName
           return sellerMatch || buyerMatch
         })
         // Deduplicate within this group only: if same ContractNo appears multiple times, keep only the first one
@@ -2935,8 +2709,8 @@ const LedgerReport = () => {
     const matchedContractNos = new Set()
     ledgerNamesFromNav.forEach(ledgerName => {
       filteredData.forEach(item => {
-        const sellerMatch = item.Seller && item.Seller.toLowerCase().includes(ledgerName.toLowerCase())
-        const buyerMatch = item.Buyer && item.Buyer.toLowerCase().includes(ledgerName.toLowerCase())
+        const sellerMatch = item.Seller && item.Seller === ledgerName
+        const buyerMatch = item.Buyer && item.Buyer === ledgerName
         if (sellerMatch || buyerMatch) {
           const contractNo = item.ContractNo ? String(item.ContractNo).trim() : null
           if (contractNo) matchedContractNos.add(contractNo)
@@ -3270,6 +3044,34 @@ const LedgerReport = () => {
     setShowPeriodModal(false)
   }
 
+  const openContractTypeModal = () => {
+    setTempSelectedContractTypes([...selectedContractTypes])
+    setShowContractTypeModal(true)
+  }
+
+  const closeContractTypeModal = () => {
+    setShowContractTypeModal(false)
+  }
+
+  const handleContractTypeModalDone = () => {
+    setSelectedContractTypes([...tempSelectedContractTypes])
+    setShowContractTypeModal(false)
+  }
+
+  const openPortModal = () => {
+    setTempSelectedPorts([...selectedPorts])
+    setShowPortModal(true)
+  }
+
+  const closePortModal = () => {
+    setShowPortModal(false)
+  }
+
+  const handlePortModalDone = () => {
+    setSelectedPorts([...tempSelectedPorts])
+    setShowPortModal(false)
+  }
+
   const handleTempSelectedItemsChange = newSelectedItems => {
     if (!newSelectedItems || newSelectedItems.length === 0) {
       setTempSelectedItems([])
@@ -3314,7 +3116,8 @@ const LedgerReport = () => {
       let vformData = new FormData()
       vformData.append("LedgerIds", ledgerIds)
       vformData.append("F_PartyLedger", selectedParty || 0)
-      vformData.append("F_ContractLedger", selectedTax || 0)
+      const contractTypeIds = selectedContractTypes && selectedContractTypes.length > 0 ? selectedContractTypes.join(",") : "0"
+      vformData.append("F_ContractLedger", contractTypeIds)
       vformData.append("LiftingAfterPeriod", state.LAP ? true : false)
       vformData.append("LiftingInPeriod", state.LIP ? true : false)
 
@@ -3339,7 +3142,8 @@ const LedgerReport = () => {
 
       vformData.append("Vessel", state.Vessel || "")
 
-      vformData.append("DeliveryPort", state.DeliveryPort || "")
+      const portCsv = selectedPorts && selectedPorts.length > 0 ? selectedPorts.join(",") : ""
+      vformData.append("DeliveryPort", portCsv || state.DeliveryPort || "")
       vformData.append("Completed", state.Completed ? true : false)
       vformData.append("NotStarted", state.NotStarted ? true : false)
       vformData.append("Pending", state.Pending ? true : false)
@@ -3382,6 +3186,28 @@ const LedgerReport = () => {
       setLoading(false)
     }
   }
+
+  // Handle global refresh from Navbar
+  const handleRefreshDataRef = useRef(null);
+  useEffect(() => {
+    handleRefreshDataRef.current = async () => {
+      window.dispatchEvent(new Event('app-refresh-start'));
+      try {
+        await fetchReportData(null, true);
+      } finally {
+        window.dispatchEvent(new Event('app-refresh-end'));
+      }
+    };
+  }, [fetchReportData]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault(); // Tell Navbar we handled it
+      if (handleRefreshDataRef.current) handleRefreshDataRef.current();
+    };
+    window.addEventListener('app-refresh-data', handler);
+    return () => window.removeEventListener('app-refresh-data', handler);
+  }, []);
 
   const handleDownloadPDF = () => {
     if (!pendingShareFile) return
@@ -3565,7 +3391,7 @@ const LedgerReport = () => {
               const liftingData = JSON.parse(row.LiftingJson);
               if (Array.isArray(liftingData) && liftingData.length > 0) {
                 liftingString = liftingData.map(lift => {
-                  const date = lift.LiftDate?.substring(0, 5) || lift.LiftDate || "-";
+                  const date = lift.LiftDate || "-";
                   const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
                   const lorry = lift.LorryNo || "-";
                   const bno = lift.BNo || lift.InvoiceNo || "-";
@@ -3983,7 +3809,7 @@ const LedgerReport = () => {
             const liftingData = JSON.parse(row.LiftingJson);
             if (Array.isArray(liftingData) && liftingData.length > 0) {
               liftingString = liftingData.map(lift => {
-                const date = lift.LiftDate?.substring(0, 5) || lift.LiftDate || "-";
+                const date = lift.LiftDate || "-";
                 const qty = Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '');
                 const lorry = lift.LorryNo || "-";
                 const bno = lift.BNo || lift.InvoiceNo || "-";
@@ -4268,7 +4094,7 @@ const LedgerReport = () => {
                       className="table-responsive position-relative ledger-table-scroll"
                       style={{
                         flex: "1 1 auto",
-                        overflowY: "auto",
+                        overflow: "auto",
                         border: "1px solid #dee2e6",
                         borderRadius: "0",
                         minHeight: "0",
@@ -4276,13 +4102,15 @@ const LedgerReport = () => {
                       }}
                     >
                       <Table
-                        className="table mb-0"
+                        bordered
+                        hover
+                        className="resizable-table"
                         style={{
-                          fontSize: "0.7rem",
-                          borderSpacing: "0",
-                          borderCollapse: "collapse",
-                          border: "1.5px solid black !important",
                           tableLayout: "fixed",
+                          minWidth: "100%",
+                          whiteSpace: "nowrap",
+                          margin: 0,
+                          padding: 0,
                         }}
                       >
                         <thead
@@ -4290,30 +4118,25 @@ const LedgerReport = () => {
                             position: "sticky",
                             top: 0,
                             zIndex: 10,
-                            border: "1.5px solid black !important",
                           }}
                         >
-                          <tr style={{ border: "1.5px solid black !important" }}>
+                          <tr>
                             {getVisibleColumns().map((col) => (
                               <th
                                 key={col.key}
-                                className={`text-center align-middle${colDragOverKey === col.key ? ' col-drag-over' : ''}`}
-                                draggable
-                                onDragStart={e => handleColDragStart(e, col.key)}
-                                onDragOver={e => handleColDragOver(e, col.key)}
-                                onDrop={e => handleColDrop(e, col.key)}
-                                onDragEnd={handleColDragEnd}
+                                className="text-center align-middle"
                                 style={{
                                   backgroundColor: "#0000FF",
                                   color: "white",
                                   height: "25px",
                                   fontSize: "0.7rem",
                                   fontWeight: "600",
-                                  padding: col.key === 'ContractNo' ? "6px 12px" : "0",
+                                  padding: col.key === 'CheckBox' ? '6px 12px' : '0 8px',
                                   width: `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`,
-                                  minWidth: "30px",
-                                  cursor: "grab",
-                                  border: "1.5px solid black !important",
+                                  maxWidth: `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`,
+                                  minWidth: "1px",
+                                  cursor: col.sortKey ? "pointer" : "default",
+                                  border: "1.5px solid black",
                                   boxShadow: "none",
                                   position: "relative",
                                   overflow: "hidden",
@@ -4334,20 +4157,21 @@ const LedgerReport = () => {
                                     />
                                   </div>
                                 ) : (
-                                  <div className="d-flex justify-content-between align-items-center" style={{ width: "100%", pointerEvents: "none" }}>
-                                    <div className="d-flex align-items-center gap-1">
-                                      <span>{col.label}</span>
-                                      <i className="fas fa-grip-vertical" style={{ fontSize: "0.4rem", opacity: 0.5, marginLeft: "2px" }} title="Drag to reorder"></i>
-                                    </div>
+                                  <div style={{ width: "100%", paddingRight: col.sortKey ? "14px" : "0", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0 }}>
                                     {col.sortKey && (
-                                      <div className="d-flex flex-column">
-                                        <i className={`fas fa-sort-up ${sortConfig.key === col.sortKey && sortConfig.direction === "asc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
-                                        <i className={`fas fa-sort-down ${sortConfig.key === col.sortKey && sortConfig.direction === "desc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.5rem", lineHeight: "0.5rem" }}></i>
-                                      </div>
+                                      <span style={{ display: "inline-flex", flexDirection: "column", marginRight: "2px", flexShrink: 0, lineHeight: 0 }}>
+                                        <i className={`fas fa-caret-up ${sortConfig.key === col.sortKey && sortConfig.direction === "asc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.55rem", lineHeight: "0.55rem" }}></i>
+                                        <i className={`fas fa-caret-down ${sortConfig.key === col.sortKey && sortConfig.direction === "desc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.55rem", lineHeight: "0.55rem" }}></i>
+                                      </span>
                                     )}
+                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{col.label}</span>
                                   </div>
                                 )}
-                                <div className="col-resize-handle" onMouseDown={e => { e.stopPropagation(); handleResizeMouseDown(e, col.key) }} onTouchStart={e => { e.stopPropagation(); handleResizeMouseDown(e, col.key) }} style={{ cursor: "col-resize" }} />
+                                <div
+                                  className="col-resize-handle"
+                                  onMouseDown={e => handleResizeMouseDown(e, col.key)}
+                                  onTouchStart={e => handleResizeMouseDown(e, col.key)}
+                                />
                               </th>
                             ))}
                           </tr>
@@ -4421,13 +4245,22 @@ const LedgerReport = () => {
                                               {group.groupName}
                                             </div>
                                             <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
-                                              <span style={{ color: "#000000", fontWeight: "bold" }}>B:{Number(ledgerTotals.totalPurQty)}</span>
+                                              <span style={{ color: "#000000", fontWeight: "bold" }}>B:{Number(ledgerTotals.totalPurQty).toFixed(2)}</span>
                                               <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>S:{Number(ledgerTotals.totalSelQty)}</span>
+                                              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>S:{Number(ledgerTotals.totalSelQty).toFixed(2)}</span>
                                               <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                              <span style={{ color: "#000000", fontWeight: "bold" }}>BA:{parseFloat(Number(ledgerTotals.purchaseAvgRate).toFixed(2))}</span>
+                                              <span style={{ color: "#000000", fontWeight: "bold" }}>BA:{Number(ledgerTotals.purchaseAvgRate).toFixed(2)}</span>
                                               <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>SA:{parseFloat(Number(ledgerTotals.sellAvgRate).toFixed(2))}</span>
+                                              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>SA:{Number(ledgerTotals.sellAvgRate).toFixed(2)}</span>
+                                              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
+                                              {(() => {
+                                                const diff = ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate - ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
+                                                return (
+                                                  <span style={{ color: diff >= 0 ? "#198754" : "#dc3545", fontWeight: "bold" }}>
+                                                    Diff:{Number(diff).toFixed(2)}
+                                                  </span>
+                                                )
+                                              })()}
                                             </small>
                                           </div>
                                           {/* <small className="text-muted ms-2" style={{ fontSize: "0.65rem" }}>
@@ -4670,12 +4503,6 @@ const LedgerReport = () => {
                                 })()}
                                 {/* Group Items */}
                                 {group.items.map((row, rowIndex) => {
-                                  // Calculate global row index across all groups
-                                  let globalRowIndex = 0
-                                  for (let i = 0; i < groupIndex; i++) {
-                                    globalRowIndex += data[i].items.length
-                                  }
-                                  globalRowIndex += rowIndex
                                   const rowId = getRowIdentifier(row)
                                   const isRowSelected = rowId
                                     ? selectedRowIds.has(rowId)
@@ -4703,72 +4530,20 @@ const LedgerReport = () => {
                                         color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit",
                                         fontWeight: row.Status === "S" ? "bold" : "inherit",
                                       }}
-                                      onMouseEnter={e => {
-                                        setHoveredRowIndex(globalRowIndex)
-                                        const rect =
-                                          e.currentTarget.getBoundingClientRect()
-                                        const tableContainer =
-                                          e.currentTarget.closest(
-                                            ".table-responsive"
-                                          )
-                                        const tableRect =
-                                          tableContainer.getBoundingClientRect()
-                                        const viewportHeight =
-                                          window.innerHeight
-                                        const totalsHeight = 70 // Height of totals row
 
-                                        // Calculate relative position within table container
-                                        const relativeTop =
-                                          rect.top - tableRect.top
-                                        const relativeBottom =
-                                          rect.bottom - tableRect.top
-
-                                        // Check if totals would go outside viewport when shown below
-                                        const spaceBelow =
-                                          viewportHeight - rect.bottom
-                                        const spaceAbove = rect.top
-
-                                        let position
-                                        if (
-                                          spaceBelow < totalsHeight &&
-                                          spaceAbove > totalsHeight
-                                        ) {
-                                          // Show above the row
-                                          position = relativeTop - totalsHeight
-                                        } else {
-                                          // Show below the row
-                                          position = relativeBottom
-                                        }
-
-                                        setHoverTotalsPosition({
-                                          top: position,
-                                          visible: true,
-                                        })
-                                      }}
-                                      onMouseLeave={() => {
-                                        setHoveredRowIndex(null)
-                                        setHoverTotalsPosition({
-                                          top: 0,
-                                          visible: false,
-                                        })
-                                      }}
                                     >
                                       {getVisibleColumns().map((col) => {
                                         const tdStyle = {
                                           verticalAlign: "middle",
-                                          padding: "0",
+                                          padding: col.key === 'CheckBox' ? '4px' : '2px 4px',
                                           border: "1.5px solid black",
                                           color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit",
                                           fontWeight: row.Status === "S" ? "bold" : "inherit",
+                                          fontSize: "0.7rem",
                                         }
                                         const tdNumStyle = {
                                           ...tdStyle,
                                           textAlign: "right",
-                                          border: "1.5px solid black !important",
-                                          borderTop: "1.5px solid black !important",
-                                          borderRight: "1.5px solid black !important",
-                                          borderBottom: "1.5px solid black !important",
-                                          borderLeft: "1.5px solid black !i mportant",
                                           boxShadow: "none",
                                         }
                                         switch (col.key) {
@@ -4788,20 +4563,20 @@ const LedgerReport = () => {
                                             </td>
                                           )
                                           case 'ContractNo': return (
-                                            <td key={col.key} className={`${row.Status === "S" ? "fw-bold" : "fw-semibold"} ${rowId && selectedRowIds.has(rowId) ? 'contractno-selected' : 'contractno-unselected'}`} style={{ ...tdStyle, padding: "6px 12px" }}>
+                                            <td key={col.key} className={`${row.Status === "S" ? "fw-bold" : "fw-semibold"} ${rowId && selectedRowIds.has(rowId) ? 'contractno-selected' : 'contractno-unselected'}`} style={{ ...tdStyle, padding: "2px 2px", width: `${columnWidths['ContractNo'] || COLUMN_DEFAULT_WIDTHS['ContractNo'] || 110}px`, maxWidth: `${columnWidths['ContractNo'] || COLUMN_DEFAULT_WIDTHS['ContractNo'] || 110}px`, minWidth: 0, overflow: "hidden", backgroundColor: rowId && selectedRowIds.has(rowId) ? "#fffec8" : undefined }}>
                                               {row.ContractNo ? (
-                                                <div className="d-flex align-items-center gap-2">
-                                                  <Button variant="link" className={`p-0 text-decoration-none fw-bold ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ cursor: "pointer", transition: "all 0.2s ease", border: "none", background: "none", padding: "6px 10px", borderRadius: "4px", display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", whiteSpace: "nowrap", width: "100%", justifyContent: "flex-start", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd", fontWeight: "bold" }} onMouseEnter={e => { e.target.style.color = row.Status === "S" ? "#b02550" : row.Status === "P" ? "#0d4f27" : "#0056b3"; e.target.style.textDecoration = "underline"; e.target.style.backgroundColor = "#f8f9fa" }} onMouseLeave={e => { e.target.style.color = row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd"; e.target.style.textDecoration = "none"; e.target.style.backgroundColor = "transparent" }} onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button">
-                                                    <i className={`fas fa-edit ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd" }}></i>
-                                                    <span>{row.ContractNo}</span>
+                                                <div className="d-flex align-items-center" style={{ overflow: "hidden", minWidth: 0 }}>
+                                                  <Button variant="link" className={`p-0 text-decoration-none fw-bold ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ cursor: "pointer", transition: "all 0.2s ease", border: "none", background: "none", padding: "1px 2px", borderRadius: "4px", display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "0.75rem", whiteSpace: "nowrap", width: "100%", minWidth: 0, overflow: "hidden", justifyContent: "flex-start", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd", fontWeight: "bold" }} onMouseEnter={e => { e.target.style.color = row.Status === "S" ? "#b02550" : row.Status === "P" ? "#0d4f27" : "#0056b3"; e.target.style.textDecoration = "underline"; e.target.style.backgroundColor = "#f8f9fa" }} onMouseLeave={e => { e.target.style.color = row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd"; e.target.style.textDecoration = "none"; e.target.style.backgroundColor = "transparent" }} onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button">
+                                                    <i className={`fas fa-edit ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd", flexShrink: 0 }}></i>
+                                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{row.ContractNo}</span>
                                                   </Button>
                                                 </div>
                                               ) : "-"}
                                             </td>
                                           )
-                                          case 'ContractDate': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center", minWidth: "100px" }}>{row.ContractDate || "-"}</td>
-                                          case 'Seller': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Seller || "-"}</td>
-                                          case 'Buyer': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Buyer || "-"}</td>
+                                          case 'ContractDate': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center", width: `${columnWidths['ContractDate'] || COLUMN_DEFAULT_WIDTHS['ContractDate'] || 90}px`, maxWidth: `${columnWidths['ContractDate'] || COLUMN_DEFAULT_WIDTHS['ContractDate'] || 90}px`, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.ContractDate || "-"}</td>
+                                          case 'Seller': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, width: `${columnWidths['Seller'] || COLUMN_DEFAULT_WIDTHS['Seller'] || 120}px`, maxWidth: `${columnWidths['Seller'] || COLUMN_DEFAULT_WIDTHS['Seller'] || 120}px`, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.Seller || "-"}</td>
+                                          case 'Buyer': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, width: `${columnWidths['Buyer'] || COLUMN_DEFAULT_WIDTHS['Buyer'] || 120}px`, maxWidth: `${columnWidths['Buyer'] || COLUMN_DEFAULT_WIDTHS['Buyer'] || 120}px`, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.Buyer || "-"}</td>
                                           case 'Status': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Status || "-"}</td>
                                           case 'Unit': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Unit || "-"}</td>
                                           case 'Item': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Item || "-"}</td>
@@ -4838,7 +4613,7 @@ const LedgerReport = () => {
                                                         <tbody>
                                                           {liftingData.map((lift, idx) => (
                                                             <tr key={idx} style={{ borderBottom: "1px dashed #eee" }}>
-                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LiftDate?.substring(0,5) || lift.LiftDate || '-'}</td>
+                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LiftDate || '-'}</td>
                                                               <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LorryNo || '-'}</td>
                                                               <td style={{ padding: '2px', textAlign: 'left' }}>{lift.BNo || lift.InvoiceNo || '-'}</td>
                                                               <td style={{ padding: '2px', textAlign: 'left' }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
@@ -4879,9 +4654,9 @@ const LedgerReport = () => {
                           {/* Totals Row */}
                           <tr
                             style={{
-                              backgroundColor: "#4B0082 !important",
-                              color: "white !important",
-                              borderColor: "#000 !important",
+                              backgroundColor: "#4B0082",
+                              color: "white",
+                              borderColor: "#000",
                               height: "25px",
                             }}
                           >
@@ -4891,9 +4666,10 @@ const LedgerReport = () => {
                                 verticalAlign: "middle",
                                 padding: "0",
                                 border: "1.5px solid black",
+                                fontSize: "0.6rem"
                               }}
                             >
-                              {" "}
+                              {flattenedVisibleRows.length}
                             </td>
                             <td
                               className="text-center fw-bold"
@@ -4901,6 +4677,12 @@ const LedgerReport = () => {
                                 verticalAlign: "middle",
                                 padding: "0",
                                 border: "1.5px solid black",
+                                width: `${columnWidths['ContractNo'] || COLUMN_DEFAULT_WIDTHS['ContractNo'] || 110}px`,
+                                maxWidth: `${columnWidths['ContractNo'] || COLUMN_DEFAULT_WIDTHS['ContractNo'] || 110}px`,
+                                minWidth: 0,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap"
                               }}
                             >
                               B: {flattenedVisibleRows
@@ -4914,6 +4696,12 @@ const LedgerReport = () => {
                                 verticalAlign: "middle",
                                 padding: "0",
                                 border: "1.5px solid black",
+                                width: `${columnWidths['ContractDate'] || COLUMN_DEFAULT_WIDTHS['ContractDate'] || 90}px`,
+                                maxWidth: `${columnWidths['ContractDate'] || COLUMN_DEFAULT_WIDTHS['ContractDate'] || 90}px`,
+                                minWidth: 0,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap"
                               }}
                             >
                               S: {flattenedVisibleRows
@@ -4927,6 +4715,12 @@ const LedgerReport = () => {
                                 verticalAlign: "middle",
                                 padding: "0 4px",
                                 border: "1.5px solid black",
+                                width: `${columnWidths['Seller'] || COLUMN_DEFAULT_WIDTHS['Seller'] || 120}px`,
+                                maxWidth: `${columnWidths['Seller'] || COLUMN_DEFAULT_WIDTHS['Seller'] || 120}px`,
+                                minWidth: 0,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap"
                               }}
                             >
                               {(() => {
@@ -4957,6 +4751,12 @@ const LedgerReport = () => {
                                 verticalAlign: "middle",
                                 padding: "0",
                                 border: "1.5px solid black",
+                                width: `${columnWidths['Buyer'] || COLUMN_DEFAULT_WIDTHS['Buyer'] || 120}px`,
+                                maxWidth: `${columnWidths['Buyer'] || COLUMN_DEFAULT_WIDTHS['Buyer'] || 120}px`,
+                                minWidth: 0,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap"
                               }}
                             >
                               {" "}
@@ -5119,9 +4919,10 @@ const LedgerReport = () => {
                                     verticalAlign: "middle",
                                     padding: "0",
                                     border: "1.5px solid black",
+                                    fontSize: "0.6rem"
                                   }}
                                 >
-                                  {" "}
+                                {selectedRows.length}
                                 </td>
                                 <td
                                   className="text-center fw-bold"
@@ -5386,164 +5187,7 @@ const LedgerReport = () => {
                       </div>
                     </div>
 
-                    {/* Hover Totals Row */}
-                    {hoverTotalsPosition.visible &&
-                      hoveredRowIndex !== null &&
-                      (() => {
-                        const hoverTotals = calculateHoverTotals(
-                          tableData,
-                          hoveredRowIndex
-                        )
-                        return hoverTotals ? (
-                          <div
-                            className="position-absolute d-none d-md-block"
-                            style={{
-                              backgroundColor: "#ff6b35",
-                              color: "black",
-                              padding: "4px 6px",
-                              borderRadius: "4px",
-                              fontSize: "0.8rem",
-                              fontWeight: "bold",
-                              zIndex: "1000",
-                              boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-                              border: "2px solid #000",
-                              minWidth: "auto",
-                              maxWidth: "95vw",
-                              left: "2px",
-                              top: `${hoverTotalsPosition.top}px`,
-                              marginTop: "0px",
-                              marginBottom: "0px",
-                              overflowX: "auto",
-                              overflowY: "hidden",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                flexWrap: "nowrap",
-                                gap: "8px",
-                                margin: "0",
-                                minWidth: "fit-content"
-                              }}
-                            >
-                              <div
-                                style={{
-                                  padding: "0 4px",
-                                  minWidth: "70px",
-                                  flex: "0 0 auto"
-                                }}
-                              >
-                                <div className="text-center">
-                                  <div style={{ fontSize: "0.55rem", whiteSpace: "nowrap" }}>
-                                    Pur Qty
-                                  </div>
-                                  <div
-                                    className="fw-bold"
-                                    style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}
-                                  >
-                                    {hoverTotals.totalPurQty.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  padding: "0 4px",
-                                  minWidth: "70px",
-                                  flex: "0 0 auto"
-                                }}
-                              >
-                                <div className="text-center">
-                                  <div style={{ fontSize: "0.55rem", whiteSpace: "nowrap" }}>
-                                    Sel Qty
-                                  </div>
-                                  <div
-                                    className="fw-bold"
-                                    style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}
-                                  >
-                                    {hoverTotals.totalSelQty.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  padding: "0 4px",
-                                  minWidth: "85px",
-                                  flex: "0 0 auto"
-                                }}
-                              >
-                                <div className="text-center">
-                                  <div style={{ fontSize: "0.55rem", whiteSpace: "nowrap" }}>
-                                    Adv Payment
-                                  </div>
-                                  <div
-                                    className="fw-bold"
-                                    style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}
-                                  >
-                                    ?{hoverTotals.totalAdvPayment.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  padding: "0 4px",
-                                  minWidth: "70px",
-                                  flex: "0 0 auto"
-                                }}
-                              >
-                                <div className="text-center">
-                                  <div style={{ fontSize: "0.55rem", whiteSpace: "nowrap" }}>
-                                    Lifted
-                                  </div>
-                                  <div
-                                    className="fw-bold"
-                                    style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}
-                                  >
-                                    {hoverTotals.totalLifted.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  padding: "0 4px",
-                                  minWidth: "90px",
-                                  flex: "0 0 auto"
-                                }}
-                              >
-                                <div className="text-center">
-                                  <div style={{ fontSize: "0.55rem", whiteSpace: "nowrap" }}>
-                                    Avg Pur Rate
-                                  </div>
-                                  <div
-                                    className="fw-bold"
-                                    style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}
-                                  >
-                                    ?{hoverTotals.avgPurchaseRate.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  padding: "0 4px",
-                                  minWidth: "90px",
-                                  flex: "0 0 auto"
-                                }}
-                              >
-                                <div className="text-center">
-                                  <div style={{ fontSize: "0.55rem", whiteSpace: "nowrap" }}>
-                                    Avg Sel Rate
-                                  </div>
-                                  <div
-                                    className="fw-bold"
-                                    style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}
-                                  >
-                                    ?{hoverTotals.avgSellRate.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null
-                      })()}
+
 
                     {/* Pagination Controls */}
                     {false && (
@@ -6884,6 +6528,7 @@ const LedgerReport = () => {
         show={showSharePDFModal}
         onHide={() => { setShowSharePDFModal(false); setPendingShareFile(null) }}
         centered
+        style={{ zIndex: 10700 }}
       >
         <ModalHeader closeButton>
           <h5 className="mb-0">
@@ -6958,6 +6603,192 @@ const LedgerReport = () => {
           }
         }
       `}</style>
+
+      <Modal
+        show={showContractTypeModal}
+        onHide={closeContractTypeModal}
+        size="lg"
+        centered
+        style={{ zIndex: 10000 }}
+      >
+        <ModalHeader className="bg-primary text-white">
+          <div className="d-flex justify-content-between align-items-center w-100">
+            <h5 className="mb-0">
+              <i className="fas fa-file-contract me-2"></i>
+              Select Contract Type
+            </h5>
+            <Button
+              variant="light"
+              onClick={closeContractTypeModal}
+              className="btn-close btn-close-white"
+              style={{ border: "none", background: "transparent" }}
+            >
+              <i className="fas fa-times"></i>
+            </Button>
+          </div>
+        </ModalHeader>
+        <ModalBody style={{ padding: "1.5rem", maxHeight: "60vh", overflowY: "auto" }}>
+          <Form>
+            <FormGroup>
+              <div className="mb-3">
+                <FormLabel className="fw-semibold mb-0">Contract Type</FormLabel>
+              </div>
+              <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px", padding: "10px" }}>
+                {state.TaxAccountArray.map((type) => (
+                  <div
+                    key={type.Id}
+                    style={{
+                      padding: "8px",
+                      cursor: "pointer",
+                      borderRadius: "4px",
+                      backgroundColor: tempSelectedContractTypes.includes(type.Id) ? "#e7f3ff" : "transparent",
+                      marginBottom: "4px",
+                    }}
+                    onClick={() => {
+                      if (tempSelectedContractTypes.includes(type.Id)) {
+                        setTempSelectedContractTypes(tempSelectedContractTypes.filter(id => id !== type.Id))
+                      } else {
+                        setTempSelectedContractTypes([...tempSelectedContractTypes, type.Id])
+                      }
+                    }}
+                  >
+                    <div className="d-flex align-items-center">
+                      <input
+                        type="checkbox"
+                        checked={tempSelectedContractTypes.includes(type.Id)}
+                        onChange={() => { }}
+                        style={{ marginRight: "10px", cursor: "pointer" }}
+                      />
+                      <span>{type.Name}</span>
+                    </div>
+                  </div>
+                ))}
+                {state.TaxAccountArray.length === 0 && (
+                  <div className="text-center text-muted py-3">No contract types available</div>
+                )}
+              </div>
+            </FormGroup>
+          </Form>
+        </ModalBody>
+        <ModalFooter className="d-flex justify-content-end gap-2">
+          <Button variant="outline-secondary" size="sm" onClick={() => setTempSelectedContractTypes([])}>
+            Clear All
+          </Button>
+          <Button variant="outline-primary" size="sm" onClick={() => setTempSelectedContractTypes(state.TaxAccountArray.map(t => t.Id))}>
+            Select All
+          </Button>
+          <Button variant="primary" onClick={handleContractTypeModalDone}>
+            <i className="fas fa-check me-2"></i>
+            Done
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      <Modal
+        show={showPortModal}
+        onHide={closePortModal}
+        size="lg"
+        centered
+        style={{ zIndex: 10000 }}
+      >
+        <ModalHeader className="bg-primary text-white">
+          <div className="d-flex justify-content-between align-items-center w-100">
+            <h5 className="mb-0">
+              <i className="fas fa-map-marker-alt me-2"></i>
+              Select Delivery Port
+            </h5>
+            <Button
+              variant="light"
+              onClick={closePortModal}
+              className="btn-close btn-close-white"
+              style={{ border: "none", background: "transparent" }}
+            >
+              <i className="fas fa-times"></i>
+            </Button>
+          </div>
+        </ModalHeader>
+        <ModalBody style={{ padding: "1.5rem", maxHeight: "60vh", overflowY: "auto" }}>
+          <Form>
+            <FormGroup>
+              <div className="mb-3">
+                <FormLabel className="fw-semibold mb-0">Delivery Port</FormLabel>
+              </div>
+              <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px", padding: "10px" }}>
+                {getUniquePortsFromData().map((port) => (
+                  <div
+                    key={port.value}
+                    style={{
+                      padding: "8px",
+                      cursor: "pointer",
+                      borderRadius: "4px",
+                      backgroundColor: tempSelectedPorts.includes(port.value) ? "#e7f3ff" : "transparent",
+                      marginBottom: "4px",
+                    }}
+                    onClick={() => {
+                      if (tempSelectedPorts.includes(port.value)) {
+                        setTempSelectedPorts(tempSelectedPorts.filter(p => p !== port.value))
+                      } else {
+                        setTempSelectedPorts([...tempSelectedPorts, port.value])
+                      }
+                    }}
+                  >
+                    <div className="d-flex align-items-center">
+                      <input
+                        type="checkbox"
+                        checked={tempSelectedPorts.includes(port.value)}
+                        onChange={() => { }}
+                        style={{ marginRight: "10px", cursor: "pointer" }}
+                      />
+                      <span>{port.label}</span>
+                    </div>
+                  </div>
+                ))}
+                {getUniquePortsFromData().length === 0 && (
+                  <div className="text-center text-muted py-3">No ports available</div>
+                )}
+              </div>
+            </FormGroup>
+          </Form>
+        </ModalBody>
+        <ModalFooter className="d-flex justify-content-end gap-2">
+          <Button variant="outline-secondary" size="sm" onClick={() => setTempSelectedPorts([])}>
+            Clear All
+          </Button>
+          <Button variant="outline-primary" size="sm" onClick={() => setTempSelectedPorts(getUniquePortsFromData().map(p => p.value))}>
+            Select All
+          </Button>
+          <Button variant="primary" onClick={handlePortModalDone}>
+            <i className="fas fa-check me-2"></i>
+            Done
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <Button
+          onClick={scrollToTop}
+          style={{
+            position: "fixed",
+            bottom: "75px",
+            right: "20px",
+            zIndex: 9999,
+            borderRadius: "50%",
+            width: "40px",
+            height: "40px",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+            backgroundColor: "#0000FF",
+            borderColor: "#0000FF"
+          }}
+          title="Scroll to top"
+        >
+          <i className="fas fa-chevron-up"></i>
+        </Button>
+      )}
     </div>
   )
 }

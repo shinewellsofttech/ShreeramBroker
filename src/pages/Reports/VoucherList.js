@@ -95,6 +95,23 @@ function VoucherList() {
     }
 
     useEffect(() => {
+        const isMobile = () => window.innerWidth <= 768;
+        if (isMobile()) {
+            document.body.classList.add('no-overscroll');
+            document.documentElement.classList.add('no-overscroll');
+        }
+
+        const handleResize = () => {
+            if (isMobile()) {
+                document.body.classList.add('no-overscroll');
+                document.documentElement.classList.add('no-overscroll');
+            } else {
+                document.body.classList.remove('no-overscroll');
+                document.documentElement.classList.remove('no-overscroll');
+            }
+        };
+        window.addEventListener('resize', handleResize);
+
         const timer = setTimeout(() => {
             const tableContainer = tableContainerRef.current;
             if (tableContainer) {
@@ -104,6 +121,9 @@ function VoucherList() {
         }, 100);
         return () => {
             clearTimeout(timer);
+            window.removeEventListener('resize', handleResize);
+            document.body.classList.remove('no-overscroll');
+            document.documentElement.classList.remove('no-overscroll');
             const tableContainer = tableContainerRef.current;
             if (tableContainer) {
                 tableContainer.removeEventListener("scroll", handleTableScroll);
@@ -198,6 +218,22 @@ function VoucherList() {
     useEffect(() => {
         GetVoucherData();
     }, [dispatch, state.FromDate, state.ToDate, refreshKey]);
+
+    useEffect(() => {
+        const handleGlobalRefresh = async (e) => {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('app-refresh-start'));
+            try {
+                await GetVoucherData();
+            } finally {
+                window.dispatchEvent(new CustomEvent('app-refresh-end'));
+            }
+        };
+        window.addEventListener('app-refresh-data', handleGlobalRefresh);
+        return () => {
+            window.removeEventListener('app-refresh-data', handleGlobalRefresh);
+        };
+    }, [dispatch, state.FromDate, state.ToDate]);
 
     // ── PDF Generation (generates file, stores as pendingShareFile) ────────
     const handlePDFExport = async () => {

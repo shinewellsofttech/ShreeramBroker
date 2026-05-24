@@ -89,3 +89,26 @@ File: Main Css File
 
 // Mobile Responsive (Mobile devices only - max-width: 767px)
 @import "custom/mobile-responsive";
+html, body {
+  overscroll-behavior-y: none !important;
+  overscroll-behavior: none !important;
+}
+
+html.no-overscroll,
+body.no-overscroll {
+  overflow: hidden !important;
+  height: 100% !important;
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
+}
+
+@media (max-width: 768px) {
+  html.no-overscroll .page-content,
+  html.no-overscroll .main-content,
+  body.no-overscroll .page-content,
+  body.no-overscroll .main-content {
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+}
+

@@ -45,6 +45,61 @@ function DalaliReport() {
       API_URL + "/Id/0"
     )
   }, [])
+
+  // Handle mobile-responsive viewport scroll locking to prevent drag-to-refresh
+  useEffect(() => {
+    const isMobile = () => window.innerWidth <= 768;
+    if (isMobile()) {
+      document.body.classList.add('no-overscroll');
+      document.documentElement.classList.add('no-overscroll');
+    }
+
+    const handleResize = () => {
+      if (isMobile()) {
+        document.body.classList.add('no-overscroll');
+        document.documentElement.classList.add('no-overscroll');
+      } else {
+        document.body.classList.remove('no-overscroll');
+        document.documentElement.classList.remove('no-overscroll');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.body.classList.remove('no-overscroll');
+      document.documentElement.classList.remove('no-overscroll');
+    };
+  }, [])
+
+  // Handle global navbar refresh event
+  useEffect(() => {
+    const handleGlobalRefresh = async (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('app-refresh-start'));
+      try {
+        if (fromDate && toDate) {
+          let vformData = new FormData()
+          vformData.append("FromDate", fromDate.toISOString().split("T")[0] || "")
+          vformData.append("ToDate", toDate.toISOString().split("T")[0] || "")
+          await Fn_GetReport(
+            dispatch,
+            setState,
+            "FillArray",
+            API_URL_Get,
+            { arguList: { id: 0, formData: vformData } },
+            true
+          );
+        }
+      } finally {
+        window.dispatchEvent(new CustomEvent('app-refresh-end'));
+      }
+    };
+    window.addEventListener('app-refresh-data', handleGlobalRefresh);
+    return () => {
+      window.removeEventListener('app-refresh-data', handleGlobalRefresh);
+    };
+  }, [fromDate, toDate, dispatch]);
    
   // handlers
   const handleShow = () => setShowTable(true);

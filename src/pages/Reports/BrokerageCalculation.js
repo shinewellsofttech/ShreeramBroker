@@ -248,8 +248,25 @@ const getDalaliData = async () => {
         }
     }
 
-    // Scroll to top button visibility handler for table container
+    // Scroll to top button visibility handler for table container & mobile responsive overscroll lock
     useEffect(() => {
+        const isMobile = () => window.innerWidth <= 768;
+        if (isMobile()) {
+            document.body.classList.add('no-overscroll');
+            document.documentElement.classList.add('no-overscroll');
+        }
+
+        const handleResize = () => {
+            if (isMobile()) {
+                document.body.classList.add('no-overscroll');
+                document.documentElement.classList.add('no-overscroll');
+            } else {
+                document.body.classList.remove('no-overscroll');
+                document.documentElement.classList.remove('no-overscroll');
+            }
+        };
+        window.addEventListener('resize', handleResize);
+
         const timer = setTimeout(() => {
             const tableContainer = tableContainerRef.current;
             if (tableContainer) {
@@ -260,6 +277,9 @@ const getDalaliData = async () => {
 
         return () => {
             clearTimeout(timer);
+            window.removeEventListener('resize', handleResize);
+            document.body.classList.remove('no-overscroll');
+            document.documentElement.classList.remove('no-overscroll');
             const tableContainer = tableContainerRef.current;
             if (tableContainer) {
                 tableContainer.removeEventListener("scroll", handleTableScroll);
@@ -706,6 +726,25 @@ const getDalaliData = async () => {
             getDalaliData();
         }
     }, [isDetailed, state.FromDate, state.ToDate, state.FillArray, selectedLedgerIds])
+
+    useEffect(() => {
+        const handleGlobalRefresh = async (e) => {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('app-refresh-start'));
+            try {
+                await getBrokerageCalculation();
+                if (isDetailed && state.FillArray && state.FillArray.length > 0) {
+                    await getDalaliData();
+                }
+            } finally {
+                window.dispatchEvent(new CustomEvent('app-refresh-end'));
+            }
+        };
+        window.addEventListener('app-refresh-data', handleGlobalRefresh);
+        return () => {
+            window.removeEventListener('app-refresh-data', handleGlobalRefresh);
+        };
+    }, [dispatch, state.FromDate, state.ToDate, isDetailed, state.FillArray, selectedLedgerIds]);
 
     // Excel Export Function
     const handleExcelExport = async () => {

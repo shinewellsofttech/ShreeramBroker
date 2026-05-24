@@ -6,6 +6,7 @@ import classname from "classnames";
 import ShreeRamImage from '../Common/ShreeRamImage';
 import MobileSidebar from "./MobileSidebar";
 import VoucherAccessModal from "../Common/VoucherAccessModal";
+import { useNavigationHistory } from "../../helpers/NavigationHistoryContext";
 
 //i18n
 import { withTranslation } from "react-i18next";
@@ -13,6 +14,7 @@ import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import { toggleLeftmenu } from "store/actions";
 import { getCompanyName } from "constants/constAPI";
+import { RefreshCw } from "react-feather";
 
 const Navbar = props => {
 
@@ -23,6 +25,7 @@ const Navbar = props => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogout, setShowLogout] = useState(window.innerWidth >= 992);
   const [accessModal, setAccessModal] = useState({ open: false, type: 'bro' });
+  const { goBack } = useNavigationHistory();
 
   const navRef = useRef(null);
 
@@ -119,6 +122,29 @@ const Navbar = props => {
     };
   }, []);
 
+  // Global Refresh State & Logic
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  useEffect(() => {
+    const handleStart = () => setIsRefreshing(true);
+    const handleEnd = () => setIsRefreshing(false);
+    window.addEventListener('app-refresh-start', handleStart);
+    window.addEventListener('app-refresh-end', handleEnd);
+    return () => {
+      window.removeEventListener('app-refresh-start', handleStart);
+      window.removeEventListener('app-refresh-end', handleEnd);
+    };
+  }, []);
+
+  const handleGlobalRefresh = () => {
+    if (isRefreshing) return;
+    const event = new CustomEvent('app-refresh-data', { cancelable: true });
+    const canceled = !window.dispatchEvent(event);
+    if (!canceled) {
+      // If no page handles it (or doesn't call preventDefault), we just spin shortly
+      setIsRefreshing(true);
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   return (
     <React.Fragment>
@@ -135,7 +161,7 @@ const Navbar = props => {
             ref={navRef}
             className="navbar navbar-light navbar-expand-lg topnav-menu"
             id="navigation"
-            style={{ padding: '0', minHeight: '32px', height: '32px' }}
+            style={{ padding: '0', minHeight: '32px', height: '32px', position: 'relative' }}
           >
             {/* Mobile: Toggle Button + Logo + Title on same line */}
             <div className="d-flex align-items-center w-100 w-lg-auto" style={{ padding: '0', height: '28px', marginRight: '24px' }}>
@@ -159,12 +185,33 @@ const Navbar = props => {
                 <i className="fa fa-fw fa-bars" style={{ fontSize: '14px' }} />
               </button>
 
-              {/* Logo - increased size and spacing on both sides */}
+              {/* Global Refresh Button */}
+              <button
+                type="button"
+                onClick={handleGlobalRefresh}
+                title="Refresh Data"
+                className="d-lg-none"
+                style={{
+                  padding: '4px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: isRefreshing ? 0.6 : 1,
+                }}
+              >
+                <RefreshCw size={20} strokeWidth={3} style={isRefreshing ? { animation: 'spin 1s linear infinite' } : {}} />
+              </button>
+
+              {/* Logo - adjusted margin for refresh button */}
               <ShreeRamImage
                 alt="Shinewell Softtech Logo"
                 onDoubleClick={() => setAccessModal({ open: true, type: 'bro' })}
-                portraitStyle={{ height: '28px', width: 'auto', marginLeft: '20px', marginRight: '28px', borderRadius: '4px', cursor: 'pointer' }}
-                landscapeStyle={{ height: '28px', width: 'auto', marginLeft: '20px', marginRight: '28px', borderRadius: '4px', cursor: 'pointer' }}
+                portraitStyle={{ height: '28px', width: 'auto', marginLeft: '10px', marginRight: '20px', borderRadius: '4px', cursor: 'pointer' }}
+                landscapeStyle={{ height: '28px', width: 'auto', marginLeft: '10px', marginRight: '20px', borderRadius: '4px', cursor: 'pointer' }}
               />
 
               {/* Company Title */}
@@ -175,7 +222,7 @@ const Navbar = props => {
                   fontSize: '12px',
                   fontWeight: 'bold',
                   color: '#495057',
-                  marginRight: '200px',
+                  marginRight: '8px',
                   marginLeft: '4px',
                   whiteSpace: 'nowrap',
                   lineHeight: '1.2',
@@ -184,6 +231,29 @@ const Navbar = props => {
               >
                 {getCompanyName()}
               </span>
+
+              {/* Back Button - mobile only, arrow icon only, right after company name */}
+              <button
+                type="button"
+                onClick={goBack}
+                title="Go Back"
+                className="d-lg-none"
+                style={{
+                  padding: '4px',
+                  fontSize: '22px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  marginLeft: '4px'
+                }}
+              >
+                <i className="bx bx-undo" style={{ fontWeight: '900' }} />
+              </button>
             </div>
 
 
@@ -316,6 +386,57 @@ const Navbar = props => {
                 </li>
               </ul>
             </div>
+
+            {/* Back & Refresh Button - desktop only, centered in navbar */}
+            {showLogout && (
+            <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={goBack}
+                title="Go Back"
+                style={{
+                  padding: '2px 12px',
+                  fontSize: '10px',
+                  height: '22px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'transparent',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '50px',
+                  cursor: 'pointer',
+                  color: '#ffffff',
+                  fontWeight: 'bold'
+                }}
+              >
+                <i className="bx bx-undo" style={{ fontSize: '13px' }} />
+                <span>Back</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGlobalRefresh}
+                disabled={isRefreshing}
+                title="Refresh data"
+                style={{
+                  width: '22px',
+                  height: '22px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '50%',
+                  cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                  color: '#ffffff',
+                  padding: 0,
+                  opacity: isRefreshing ? 0.6 : 1,
+                }}
+              >
+                <RefreshCw size={12} style={isRefreshing ? { animation: 'spin 1s linear infinite' } : {}} />
+              </button>
+            </div>
+            )}
 
             {/* Logout Button - Hide when toggle button is visible (mobile), show when toggle hidden (desktop) */}
             {showLogout && (

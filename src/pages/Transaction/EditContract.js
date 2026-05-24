@@ -1159,15 +1159,15 @@ const EditContract = ({
         text: 'Please find attached the Contract Report',
         files: [pendingShareFile]
       })
-      toastr.success('PDF shared successfully!')
+      toast.success('PDF shared successfully!')
       setShowSharePDFModal(false)
       setPendingShareFile(null)
     } catch (shareError) {
       if (shareError.name === 'AbortError') {
-        toastr.info('Share cancelled.')
+        toast.info('Share cancelled.')
       } else {
         console.error('Share error:', shareError)
-        toastr.error('Share failed. Try again.')
+        toast.error('Share failed. Try again.')
       }
       setShowSharePDFModal(false)
       setPendingShareFile(null)
@@ -1182,7 +1182,7 @@ const EditContract = ({
 
       try {
         // Show loading message
-        toastr.info('Generating PDF... Please wait.')
+        toast.info('Generating PDF... Please wait.')
 
         // Generate PDF blob
         const pdfBlob = await generateContractPDF(contractId, contractNo)
@@ -1203,14 +1203,14 @@ const EditContract = ({
           link.click()
           document.body.removeChild(link)
           window.URL.revokeObjectURL(url)
-          toastr.warning('Share not available on this device. File downloaded instead.')
+          toast.warning('Share not available on this device. File downloaded instead.')
         }
       } catch (error) {
         console.error('Error generating PDF:', error)
-        toastr.error('Error generating PDF. Please try again or use Print button.')
+        toast.error('Error generating PDF. Please try again or use Print button.')
       }
     } else {
-      toastr.warning("Please select a contract first")
+      toast.warning("Please select a contract first")
     }
   }
 
@@ -2960,7 +2960,7 @@ const EditContract = ({
                             : "bg-light"
                             }`}
                         >
-                          {state.totalLiftingQty || "0.00"}
+                          {Number(state.totalLiftingQty || 0).toFixed(2)}
                         </div>
                       </FormGroup>
                     </Col>
@@ -3422,7 +3422,7 @@ const EditContract = ({
       </Modal>
 
       {/* Share PDF Modal */}
-      <Modal isOpen={showSharePDFModal} toggle={() => setShowSharePDFModal(false)} className="modal-sm" centered>
+      <Modal isOpen={showSharePDFModal} toggle={() => setShowSharePDFModal(false)} className="modal-sm share-pdf-modal" modalClassName="share-pdf-modal" backdropClassName="share-pdf-backdrop" centered zIndex={10700}>
         <ModalHeader toggle={() => setShowSharePDFModal(false)} className="bg-primary text-white pb-2 pt-2 border-bottom-0">
           <h5 className="modal-title text-white">Share PDF</h5>
         </ModalHeader>

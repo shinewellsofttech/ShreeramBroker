@@ -165,7 +165,7 @@ const PageList_PartyAccount = () => {
           
           .party-table th,
           .party-table td {
-            font-size: 9px !important;
+            font-size: 13px !important;
             padding: 4px 2px !important;
           }
           
@@ -179,7 +179,7 @@ const PageList_PartyAccount = () => {
         @media (max-width: 576px) {
           .party-table th,
           .party-table td {
-            font-size: 8px !important;
+            font-size: 12px !important;
             padding: 3px 1px !important;
           }
         }
@@ -202,6 +202,11 @@ const PageList_PartyAccount = () => {
         
         .party-table-container::-webkit-scrollbar-thumb:hover {
           background: #555;
+        }
+        
+        /* Row font size */
+        .party-table tbody td {
+          font-size: 15px !important;
         }
         
         /* Sticky header */
@@ -258,7 +263,7 @@ const PageList_PartyAccount = () => {
         <Row>
           <Col lg="12">
             <Card className="shadow-sm border-0" style={{ minHeight: 'calc(100vh - 100px)' }}>
-              <CardHeader className="bg-primary text-white py-3">
+              <CardHeader className="bg-primary text-white py-3 d-none d-md-block">
                 <h5 className="mb-0 fw-semibold" style={{ fontSize: '14px' }}>
                   <i className="fas fa-list me-2" style={{ fontSize: '12px' }}></i>
                   Party Account List ({sortedData.length})
@@ -621,33 +626,31 @@ const PageList_PartyAccount = () => {
                                     color="primary"
                                     size="sm"
                                     onClick={() => btnEditOnClick(item.Id)}
-                                    className="btn px-2 py-1"
+                                    className="btn px-1 py-1"
                                     style={{
                                       borderRadius: '4px',
-                                      fontSize: '9px',
+                                      fontSize: '10px',
                                       lineHeight: '1.2',
                                       whiteSpace: 'nowrap',
                                       flexShrink: 0
                                     }}
                                   >
-                                    <i className="fas fa-edit me-1" style={{ fontSize: '8px' }}></i>
-                                    Edit
+                                    <i className="fas fa-edit" style={{ fontSize: '16px' }}></i>
                                   </Button>
                                   <Button
                                     color="danger"
                                     size="sm"
                                     onClick={() => btnDeleteOnClick(item.Id)}
-                                    className="btn px-2 py-1"
+                                    className="btn px-1 py-1"
                                     style={{
                                       borderRadius: '4px',
-                                      fontSize: '9px',
+                                      fontSize: '10px',
                                       lineHeight: '1.2',
                                       whiteSpace: 'nowrap',
                                       flexShrink: 0
                                     }}
                                   >
-                                    <i className="fas fa-trash me-1" style={{ fontSize: '8px' }}></i>
-                                    Del
+                                    <i className="fas fa-trash" style={{ fontSize: '16px' }}></i>
                                   </Button>
                                 </div>
                               </td>

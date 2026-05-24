@@ -402,7 +402,7 @@ const LiftingModal = ({
                     Total Lifting
                   </Label>
                   <div className={`summary-input ${state.totalLiftingQty > state.contractQty ? 'bg-warning' : 'bg-light'}`}>
-                    {state.totalLiftingQty || "0.00"}
+                    {Number(state.totalLiftingQty || 0).toFixed(2)}
                   </div>
                 </FormGroup>
               </Col>

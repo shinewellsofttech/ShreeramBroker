@@ -5,6 +5,7 @@ import { connect } from "react-redux"
 import { Row, Col } from "reactstrap"
 import { Link } from "react-router-dom"
 import VoucherAccessModal from "../Common/VoucherAccessModal"
+import { useNavigationHistory } from "../../helpers/NavigationHistoryContext"
 
 // Reactstrap
 import { Dropdown, DropdownToggle, DropdownMenu } from "reactstrap"
@@ -42,6 +43,7 @@ const Header = props => {
   const [megaMenu, setmegaMenu] = useState(false)
   const [socialDrp, setsocialDrp] = useState(false)
   const [accessModal, setAccessModal] = useState({ open: false, type: 'bro' })
+  const { goBack } = useNavigationHistory()
 
   function toggleFullscreen() {
     if (
@@ -109,6 +111,18 @@ const Header = props => {
               id="vertical-menu-btn"
             >
               <i className="fa fa-fw fa-bars" />
+            </button>
+
+            {/* Back Button */}
+            <button
+              type="button"
+              onClick={goBack}
+              className="btn btn-sm px-3 font-size-16 header-item"
+              title="Go Back"
+              style={{ display: "flex", alignItems: "center", gap: "4px" }}
+            >
+              <i className="bx bx-arrow-back font-size-18" />
+              <span className="d-none d-sm-inline-block font-size-13">Back</span>
             </button>
 
             <span

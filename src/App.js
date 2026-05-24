@@ -14,6 +14,7 @@ import Authmiddleware from "./routes/route";
 import VerticalLayout from "./components/VerticalLayout/";
 import HorizontalLayout from "./components/HorizontalLayout/";
 import NonAuthLayout from "./components/NonAuthLayout";
+import { NavigationHistoryProvider } from "./helpers/NavigationHistoryContext";
 
 // Import scss
 import "./assets/scss/theme.scss";
@@ -74,34 +75,36 @@ const App = () => {
   const Layout = getLayout(layoutType);
 
   return (
-    <React.Fragment>
-      <Routes>
-        {publicRoutes.map((route, idx) => (
-          <Route
-            path={route.path}
-            element={
-              <NonAuthLayout>
-                {route.component}
-              </NonAuthLayout>
-            }
-            key={idx}
-            exact={true}
-          />
-        ))}
+    <NavigationHistoryProvider>
+      <React.Fragment>
+        <Routes>
+          {publicRoutes.map((route, idx) => (
+            <Route
+              path={route.path}
+              element={
+                <NonAuthLayout>
+                  {route.component}
+                </NonAuthLayout>
+              }
+              key={idx}
+              exact={true}
+            />
+          ))}
 
-        {authProtectedRoutes.map((route, idx) => (
-          <Route
-            path={route.path}
-            element={
-              <Authmiddleware>
-                <Layout>{route.component}</Layout>
-              </Authmiddleware>}
-            key={idx}
-            exact={true}
-          />
-        ))}
-      </Routes>
-    </React.Fragment>
+          {authProtectedRoutes.map((route, idx) => (
+            <Route
+              path={route.path}
+              element={
+                <Authmiddleware>
+                  <Layout>{route.component}</Layout>
+                </Authmiddleware>}
+              key={idx}
+              exact={true}
+            />
+          ))}
+        </Routes>
+      </React.Fragment>
+    </NavigationHistoryProvider>
   );
 };
 

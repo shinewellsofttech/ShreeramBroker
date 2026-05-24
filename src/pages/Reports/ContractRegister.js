@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react"
+import { createPortal } from "react-dom"
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
 import {
@@ -20,7 +21,7 @@ import { API_WEB_URLS } from "constants/constAPI"
 import { Fn_GetReport, Fn_DisplayData, Fn_FillListData } from "store/Functions"
 import { useDispatch, useSelector } from "react-redux"
 import { toast } from "react-toastify"
-import { Search, Printer, X, LogOut, Calendar, Filter, Download, FileText, Clock } from "react-feather"
+import { Search, Printer, X, LogOut, Calendar, Filter, Download, FileText, Clock, RefreshCw } from "react-feather"
 import EditContract from "../Transaction/EditContract"
 import "./ContractRegister.scss"
 import * as XLSX from 'xlsx'
@@ -59,6 +60,7 @@ function ContractRegister() {
     AdvPayment: 80,
     AdvDate: 80,
     Vessel: 80,
+    DeliveryPort: 100,
   })
 
 
@@ -76,7 +78,8 @@ function ContractRegister() {
     { key: 'LiftedQty', label: 'Lifted Qty', sortKey: null },
     { key: 'AdvPayment', label: 'Adv Payment', sortKey: null },
     { key: 'AdvDate', label: 'Adv Date', sortKey: null },
-    { key: 'Vessel', label: 'Vessel', sortKey: null },
+    { key: 'Vessel', label: 'Vessel', sortKey: 'Vessel' },
+    { key: 'DeliveryPort', label: 'Delivery Port', sortKey: 'DeliveryPort' },
   ]
   const CR_DEFAULT_ORDER = CR_ALL_COLUMNS.map(c => c.key)
   const CR_ORDER_KEY = 'contractRegister_columnOrder'
@@ -148,7 +151,8 @@ function ContractRegister() {
     { id: 'period', defaultWidth: 130 },
     { id: 'ledger', defaultWidth: 130 },
     { id: 'commodity', defaultWidth: 130 },
-    { id: 'vessel', defaultWidth: 130 },
+    { id: 'vessel', defaultWidth: 110 },
+    { id: 'port', defaultWidth: 110 },
     { id: 'print', defaultWidth: 80 },
     { id: 'pdf', defaultWidth: 80 },
   ];
@@ -207,12 +211,60 @@ function ContractRegister() {
   const [showVesselModal, setShowVesselModal] = useState(false)
   const [tempSelectedVessels, setTempSelectedVessels] = useState([])
   const [selectedVessels, setSelectedVessels] = useState([])
+  const [showPortModal, setShowPortModal] = useState(false)
+  const [tempSelectedPorts, setTempSelectedPorts] = useState([])
+  const [selectedPorts, setSelectedPorts] = useState([])
 
   const [showTable, setShowTable] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showReport, setShowReport] = useState(false)
 
   const [error, setError] = useState("")
+
+  // Track desktop vs mobile for layout
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth > 768)
+
+  // Dynamic mobile container height using window.innerHeight
+  // This gives the actual visible viewport regardless of PWA vs regular Chrome
+  const getMobileContainerHeight = () => {
+    if (window.innerWidth > 768) return null; // desktop uses CSS
+    // Subtract footer nav height (~56px) and safe area
+    return window.innerHeight - 56;
+  };
+  const [mobileContainerHeight, setMobileContainerHeight] = useState(getMobileContainerHeight);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const isMob = window.innerWidth <= 768;
+      setIsDesktop(!isMob);
+      setMobileContainerHeight(getMobileContainerHeight());
+      if (isMob) {
+        document.body.classList.add('no-overscroll');
+        document.documentElement.classList.add('no-overscroll');
+      } else {
+        document.body.classList.remove('no-overscroll');
+        document.documentElement.classList.remove('no-overscroll');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', () => {
+      // Delay to let browser settle after orientation change
+      setTimeout(handleResize, 150);
+    });
+
+    // Lock body scroll on mobile so only table scrolls
+    const isMobile = () => window.innerWidth <= 768;
+    if (isMobile()) {
+      document.body.classList.add('no-overscroll');
+      document.documentElement.classList.add('no-overscroll');
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.body.classList.remove('no-overscroll');
+      document.documentElement.classList.remove('no-overscroll');
+    };
+  }, [])
 
   // Checkbox selection state for multi-print
   const [selectedRows, setSelectedRows] = useState([])
@@ -351,23 +403,26 @@ function ContractRegister() {
         padding: 0 !important;
         overflow-x: hidden !important;
       }
-      
+
       /* Mobile: lock body scroll */
       @media (max-width: 768px) {
-        body.contract-register-mobile {
+        body.contract-register-mobile,
+        body.contract-register-mobile .page-content,
+        body.contract-register-mobile .main-content {
           overflow: hidden !important;
           height: 100% !important;
         }
-        
+
         .contract-register-container {
-          height: calc(100vh - 110px - env(safe-area-inset-bottom, 0px)) !important;
-          height: calc(100dvh - 110px - env(safe-area-inset-bottom, 0px)) !important;
-          max-height: calc(100vh - 110px - env(safe-area-inset-bottom, 0px)) !important;
+          height: calc(100vh - 130px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+          height: calc(100dvh - 130px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+          max-height: calc(100vh - 130px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+          max-height: calc(100dvh - 130px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
           overflow: hidden !important;
           display: flex !important;
           flex-direction: column !important;
         }
-        
+
         .contract-register-table-section {
           flex: 1 1 auto !important;
           min-height: 0 !important;
@@ -375,7 +430,7 @@ function ContractRegister() {
           display: flex !important;
           flex-direction: column !important;
         }
-        
+
         .contract-register-table-scroll {
           flex: 1 1 auto !important;
           min-height: 0 !important;
@@ -383,14 +438,14 @@ function ContractRegister() {
           overflow-x: auto !important;
           -webkit-overflow-scrolling: touch !important;
         }
-        
+
         .contract-register-container .table-responsive thead th {
           position: sticky !important;
           top: 0 !important;
           z-index: 12 !important;
           background-color: #0000FF !important;
         }
-        
+
         .bottom-filters-bar {
           flex-shrink: 0 !important;
           border-top: 2px solid #5a2d5a !important;
@@ -478,6 +533,13 @@ function ContractRegister() {
       .modal.edit-contract-nested-modal ~ .modal-backdrop,
       .modal-backdrop.edit-contract-nested-backdrop {
         z-index: 10499 !important;
+      }
+      /* Share/Generate PDF modal inside EditContract must render above everything */
+      .modal.share-pdf-modal {
+        z-index: 10700 !important;
+      }
+      .modal-backdrop.share-pdf-backdrop {
+        z-index: 10699 !important;
       }
 
       /* On mobile, reset body top offset from Google Translate so fixed layout is not broken */
@@ -609,6 +671,9 @@ function ContractRegister() {
 
       vformData.append("ItemIds", itemIdsCsv)
 
+      const portCsv = selectedPorts && selectedPorts.length > 0 ? selectedPorts.join(",") : ""
+      vformData.append("DeliveryPort", portCsv)
+
 
 
       const result = await Fn_GetReport(
@@ -644,7 +709,7 @@ function ContractRegister() {
 
     fetchData(true)
 
-  }, [fromDate, toDate, selectedLedgerIds, selectedPeriods, notLifted, partialLift, fullLift])
+  }, [fromDate, toDate, selectedLedgerIds, selectedPeriods, notLifted, partialLift, fullLift, selectedPorts])
 
   // Fetch data when item selection changes without refreshing item options
   useEffect(() => {
@@ -693,6 +758,11 @@ function ContractRegister() {
     if (selectedVessels.length > 0) {
       const vesselSet = selectedVessels.map(v => v.toLowerCase())
       filtered = filtered.filter(row => row.Vessel && vesselSet.includes(row.Vessel.trim().toLowerCase()))
+    }
+
+    if (selectedPorts.length > 0) {
+      const portSet = selectedPorts.map(p => p.toLowerCase())
+      filtered = filtered.filter(row => row.DeliveryPort && portSet.includes(row.DeliveryPort.trim().toLowerCase()))
     }
 
     // Apply sorting
@@ -774,16 +844,10 @@ function ContractRegister() {
     }
   }
 
-  // Handle individual row selection (LIFO: deselect only in reverse order)
+  // Handle individual row selection
   const handleRowSelect = (rowId) => {
     setSelectedRows(prev => {
       if (prev.includes(rowId)) {
-        // LIFO: only allow removing the last selected item
-        const lastId = prev[prev.length - 1]
-        if (rowId !== lastId) {
-          alert(`Please deselect in reverse order. Last selected item must be removed first (sequence #${prev.length})`)
-          return prev
-        }
         setSelectAll(false)
         return prev.filter(id => id !== rowId)
       } else {
@@ -796,7 +860,7 @@ function ContractRegister() {
     })
   }
 
-  const handleSelectedItemsChange = newSelectedItems => {FO
+  const handleSelectedItemsChange = newSelectedItems => {
     if (!newSelectedItems || newSelectedItems.length === 0) {
       setSelectedItems([])
       return
@@ -865,6 +929,21 @@ function ContractRegister() {
     setShowPeriodModal(false)
   }
 
+  // Modal functions for Port
+  const openPortModal = () => {
+    setTempSelectedPorts([...selectedPorts])
+    setShowPortModal(true)
+  }
+  const closePortModal = () => setShowPortModal(false)
+  const handlePortModalDone = () => {
+    setSelectedPorts([...tempSelectedPorts])
+    setShowPortModal(false)
+  }
+  const getUniquePortsFromData = () =>
+    Array.from(new Set((state.FillArray || []).map(r => r.DeliveryPort).filter(Boolean)))
+      .sort()
+      .map(p => ({ value: p, label: p }))
+
   // Modal functions for Ledger
   const openLedgerModal = () => {
     setTempSelectedLedgerIds(selectedLedgerIds)
@@ -889,6 +968,7 @@ function ContractRegister() {
     setPartialLift(false)
     setFullLift(false)
     setSelectedPeriods([])
+    setSelectedPorts([])
     setSelectedRows([])
     setSelectAll(false)
 
@@ -904,6 +984,32 @@ function ContractRegister() {
   const handleExit = () => {
     window.close() // Or navigate to another page
   }
+
+  // Refresh data only (no page reload) - prevents mobile layout issues
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefreshDataRef = useRef(null);
+  
+  useEffect(() => {
+    handleRefreshDataRef.current = async () => {
+      setRefreshing(true);
+      window.dispatchEvent(new Event('app-refresh-start'));
+      try {
+        await fetchData(true);
+      } finally {
+        setRefreshing(false);
+        window.dispatchEvent(new Event('app-refresh-end'));
+      }
+    };
+  }, [fetchData]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault(); // Tell the Navbar we handled it
+      if (handleRefreshDataRef.current) handleRefreshDataRef.current();
+    };
+    window.addEventListener('app-refresh-data', handler);
+    return () => window.removeEventListener('app-refresh-data', handler);
+  }, []);
 
   // Modal functions for EditContract
   const openEditContractModal = contractData => {
@@ -1249,7 +1355,8 @@ function ContractRegister() {
         { header: 'Lifted Qty', key: 'liftedQty', width: 12 },
         { header: 'Adv Payment', key: 'advPayment', width: 15 },
         { header: 'Adv Date', key: 'advDate', width: 12 },
-        { header: 'Vessel', key: 'vessel', width: 15 }
+        { header: 'Vessel', key: 'vessel', width: 15 },
+        { header: 'Delivery Port', key: 'deliveryPort', width: 20 }
       ]
 
       // Style header row
@@ -1277,7 +1384,8 @@ function ContractRegister() {
           liftedQty: parseFloat(row.LiftedQuantity) || 0,
           advPayment: parseFloat(row.AdvPayment) || 0,
           advDate: row.AdvDate ? new Date(row.AdvDate).toLocaleDateString('en-GB') : '-',
-          vessel: row.Vessel || '-'
+          vessel: row.Vessel || '-',
+          deliveryPort: row.DeliveryPort || '-'
         })
 
         // Apply row styling based on lifted quantity (same colors as table)
@@ -1331,7 +1439,8 @@ function ContractRegister() {
         liftedQty: selectedData.reduce((sum, row) => sum + (parseFloat(row.LiftedQuantity) || 0), 0),
         advPayment: selectedData.reduce((sum, row) => sum + (parseFloat(row.AdvPayment) || 0), 0),
         advDate: '',
-        vessel: ''
+        vessel: '',
+        deliveryPort: ''
       })
 
       // Style totals row
@@ -1379,7 +1488,8 @@ function ContractRegister() {
         liftedQty: '',
         advPayment: '',
         advDate: '',
-        vessel: ''
+        vessel: '',
+        deliveryPort: ''
       })
 
       summaryRow.font = { bold: true }
@@ -1409,7 +1519,8 @@ function ContractRegister() {
           liftedQty: '',
           advPayment: '',
           advDate: '',
-          vessel: ''
+          vessel: '',
+          deliveryPort: ''
         })
 
         detailRow.getCell('contractNo').font = { bold: true }
@@ -1494,18 +1605,60 @@ function ContractRegister() {
     const selectedData = filteredTableData.filter(row => selectedRows.includes(row.Id))
 
     try {
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      // -- Landscape A4 gives ~277 mm usable width --
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
       await registerHindiFont(doc)
       setHindiFont(doc)
+      const pageW = doc.internal.pageSize.getWidth()
+      const pageH = doc.internal.pageSize.getHeight()
       const filename = `Contract_Register_${new Date().toISOString().split('T')[0]}.pdf`
 
-      doc.setFontSize(22)
-      doc.text('Contract Register Report', 14, 15)
-      doc.setFontSize(14)
-      doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB')}`, 14, 22)
-      doc.text(`Total Records: ${selectedData.length}`, 14, 27)
+      // -- Top header banner --
+      doc.setTextColor(0, 0, 180)
+      doc.setFontSize(15)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Contract Register Report', 8, 9)
+      
+      doc.setFontSize(7.5)
+      doc.setFont('helvetica', 'normal')
+      
+      const ledgerNames = selectedLedgerIds.length > 0 
+        ? state.LedgerArray.filter(l => selectedLedgerIds.includes(l.Id)).map(l => l.Name).join(", ")
+        : "All Ledgers"
+      
+      doc.text(`Ledger: ${ledgerNames}`, 8, 14)
+      doc.text(
+        `Period: ${fromDate.toLocaleDateString('en-GB')} - ${toDate.toLocaleDateString('en-GB')}   |   Generated: ${new Date().toLocaleString('en-GB')}`,
+        8, 18.5
+      )
+      doc.setTextColor(0, 0, 0)
 
-      const head = [['Contract No', 'Date', 'Seller', 'Buyer', 'Item', 'Period', 'Qty', 'Rate', 'Lifted Qty', 'Adv Payment', 'Adv Date', 'Vessel']]
+      const cols = [
+        { header: 'Contract No', key: 'ContractNo', width: 22 },
+        { header: 'Date', key: 'Date', width: 20 },
+        { header: 'Seller', key: 'Seller', width: 35 },
+        { header: 'Buyer', key: 'Buyer', width: 35 },
+        { header: 'Item', key: 'Item', width: 25 },
+        { header: 'Period', key: 'Period', width: 25 },
+        { header: 'Qty', key: 'Qty', width: 20, type: 'number' },
+        { header: 'Rate', key: 'Rate', width: 20, type: 'number' },
+        { header: 'Lifted Qty', key: 'LiftedQty', width: 20, type: 'number' },
+        { header: 'Adv Payment', key: 'AdvPayment', width: 20, type: 'number' },
+        { header: 'Adv Date', key: 'AdvDate', width: 20 },
+        { header: 'Vessel', key: 'Vessel', width: 20 },
+        { header: 'Delivery Port', key: 'DeliveryPort', width: 25 }
+      ]
+
+      const head = [cols.map(c => c.header)]
+      const columnStyles = {}
+      cols.forEach((col, i) => {
+        columnStyles[i] = {
+          cellWidth: col.width,
+          halign: col.type === 'number' ? 'right' : 'left',
+          overflow: 'linebreak',
+        }
+      })
+
       const body = selectedData.map(row => [
         row.ContractNo || '-',
         row.Date ? new Date(row.Date).toLocaleDateString('en-GB') : '-',
@@ -1513,23 +1666,81 @@ function ContractRegister() {
         row.BuyerLedger || '-',
         row.ItemTypeName || '-',
         getPeriodValue(row),
-        String(parseFloat(row.Qty) || 0),
-        String(parseFloat(row.Rate) || 0),
-        String(parseFloat(row.LiftedQuantity) || 0),
-        String(parseFloat(row.AdvPayment) || 0),
+        parseFloat(row.Qty) || 0,
+        parseFloat(row.Rate) || 0,
+        parseFloat(row.LiftedQuantity) || 0,
+        parseFloat(row.AdvPayment) || 0,
         row.AdvDate ? new Date(row.AdvDate).toLocaleDateString('en-GB') : '-',
-        row.Vessel || '-'
+        row.Vessel || '-',
+        row.DeliveryPort || '-'
       ])
+
+      // Function to determine row text color for PDF matching screen UI
+      const getRowTextColor = row => {
+        const qty = parseFloat(row.Qty) || 0
+        const liftedQty = parseFloat(row.LiftedQuantity) || 0
+
+        if (qty > 0 && liftedQty === qty) {
+          return [13, 110, 253] // Blue - fully lifted
+        } else if (qty > 0 && liftedQty === 0) {
+          return [0, 0, 0] // Black - not lifted
+        } else if (qty > 0 && liftedQty > 0 && liftedQty < qty) {
+          return [220, 53, 69] // Red - partially lifted
+        }
+        return [0, 0, 0]
+      }
 
       doc.autoTable({
         head,
         body,
-        startY: 32,
-        margin: { left: 14 },
-        styles: { font: 'NotoSansDevanagari', fontSize: 12, fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.4, textColor: [0, 0, 0] },
-        headStyles: { fillColor: [40, 167, 69], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.5, fontSize: 13 },
-        bodyStyles: { fontStyle: 'bold', textColor: [0, 0, 0] },
-        alternateRowStyles: { fillColor: [245, 245, 245] }
+        startY: 23,
+        margin: { left: 7, right: 7 },
+        tableWidth: 'auto',
+        styles: {
+          font: 'NotoSansDevanagari',
+          fontSize: 7.5,
+          fontStyle: 'bold',
+          cellPadding: 1.8,
+          lineColor: [0, 0, 0],
+          lineWidth: 0.4,
+          valign: 'middle',
+          overflow: 'linebreak',
+          textColor: [0, 0, 0],
+        },
+        headStyles: {
+          textColor: [0, 0, 200],
+          fontStyle: 'bold',
+          fontSize: 8,
+          halign: 'center',
+          cellPadding: 2.5,
+          lineColor: [0, 0, 0],
+          lineWidth: 0.5,
+        },
+        bodyStyles: {
+          fontStyle: 'bold',
+          textColor: [0, 0, 0],
+        },
+        columnStyles,
+        willDrawCell: data => {
+          if (data.section !== 'body') return
+          const row = selectedData[data.row.index]
+          if (row) {
+            data.cell.styles.textColor = getRowTextColor(row)
+          }
+        },
+        didDrawPage: pageData => {
+          // Page footer
+          const totalPages = doc.internal.getNumberOfPages()
+          doc.setFontSize(6.5)
+          doc.setTextColor(130, 130, 130)
+          doc.text(
+            `Page ${pageData.pageNumber} of ${totalPages}   |   Contract Register   |   ${new Date().toLocaleDateString('en-GB')}`,
+            pageW / 2,
+            pageH - 4,
+            { align: 'center' }
+          )
+          doc.setTextColor(0, 0, 0)
+        },
       })
 
       let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 40
@@ -1817,6 +2028,7 @@ function ContractRegister() {
                 <th>Adv Payment</th>
                 <th>Adv Date</th>
                 <th>Vessel</th>
+                <th>Delivery Port</th>
               </tr>
             </thead>
             <tbody>
@@ -1861,6 +2073,7 @@ function ContractRegister() {
                   <td class="text-end fw-semibold">${row.AdvPayment ? row.AdvPayment.toLocaleString() : '0'}</td>
                   <td>${row.AdvDate ? new Date(row.AdvDate).toLocaleDateString('en-GB') : '-'}</td>
                   <td>${row.Vessel || '-'}</td>
+                  <td>${row.DeliveryPort || '-'}</td>
                 </tr>
               `}).join('')}
             </tbody>
@@ -2008,6 +2221,13 @@ function ContractRegister() {
             <i className="fas fa-chevron-down ms-2"></i>
           </div>
         );
+      case 'port':
+        return (
+          <div onClick={openPortModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <span>{selectedPorts.length > 0 ? `${selectedPorts.length} selected` : "Port"}</span>
+            <i className="fas fa-chevron-down ms-2"></i>
+          </div>
+        );
       case 'print':
         return (
           <Button variant="outline-primary" size="sm" onClick={handleMultiPrint} disabled={selectedRows.length === 0} className="d-flex align-items-center shadow-sm" style={{ fontSize: "0.65rem", height: "32px", padding: "0 10px", width: "100%", justifyContent: "center" }}>
@@ -2068,8 +2288,13 @@ function ContractRegister() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 70px)',
-        paddingTop: window.innerWidth > 768 ? '46px' : 0,
+        height: !isDesktop && mobileContainerHeight
+          ? `${mobileContainerHeight}px`
+          : 'calc(100dvh - 70px)',
+        maxHeight: !isDesktop && mobileContainerHeight
+          ? `${mobileContainerHeight}px`
+          : undefined,
+        paddingTop: isDesktop ? '46px' : 0,
         paddingLeft: 0,
         paddingRight: 0,
         paddingBottom: 0,
@@ -2182,7 +2407,7 @@ function ContractRegister() {
                                   fontWeight: "600",
                                   padding: col.key === 'Checkbox' ? "6px 12px" : "0 8px",
                                   width: `${columnWidths[col.key] || 80}px`,
-                                  minWidth: "30px",
+                                  minWidth: "1px",
                                   cursor: col.key === 'Checkbox' ? 'default' : 'grab',
                                   border: "1.5px solid black !important",
                                   position: "relative",
@@ -2260,6 +2485,7 @@ function ContractRegister() {
                                     case 'AdvPayment': return <td key={col.key} className="text-end fw-semibold align-middle" style={s}>{row.AdvPayment ? row.AdvPayment.toLocaleString() : '0'}</td>
                                     case 'AdvDate': return <td key={col.key} className="text-center align-middle" style={s}>{row.AdvDate ? new Date(row.AdvDate).toLocaleDateString('en-GB') : '-'}</td>
                                     case 'Vessel': return <td key={col.key} className="align-middle" style={s}>{row.Vessel || '-'}</td>
+                                    case 'DeliveryPort': return <td key={col.key} className="align-middle" style={s}>{row.DeliveryPort || '-'}</td>
                                     default: return null
                                   }
                                 })}
@@ -2284,6 +2510,7 @@ function ContractRegister() {
                                         case 'AdvPayment': return <td key={col.key} className="text-end fw-semibold align-middle" style={hStyle}>{h.AdvPayment ? parseFloat(h.AdvPayment).toLocaleString() : '0'}</td>
                                         case 'AdvDate': return <td key={col.key} className="text-center align-middle" style={hStyle}>{h.AdvDate ? new Date(h.AdvDate).toLocaleDateString('en-GB') : '-'}</td>
                                         case 'Vessel': return <td key={col.key} className="align-middle" style={hStyle}>{h.Vessel || '-'}</td>
+                                        case 'DeliveryPort': return <td key={col.key} className="align-middle" style={hStyle}>{h.DeliveryPort || '-'}</td>
                                         default: return null
                                       }
                                     })}
@@ -2955,6 +3182,95 @@ function ContractRegister() {
           }
         }
       `}</style>
+
+      {/* Port Filter Modal */}
+      <Modal
+        show={showPortModal}
+        onHide={closePortModal}
+        size="lg"
+        centered
+        style={{ zIndex: 10050 }}
+        backdropClassName="modal-backdrop-high"
+      >
+        <ModalHeader className="bg-primary text-white">
+          <div className="d-flex justify-content-between align-items-center w-100">
+            <h5 className="mb-0">
+              <i className="fas fa-anchor me-2"></i>
+              Select Port
+            </h5>
+            <Button
+              variant="light"
+              onClick={closePortModal}
+              className="btn-close btn-close-white"
+              style={{ border: "none", background: "transparent" }}
+            >
+              <i className="fas fa-times"></i>
+            </Button>
+          </div>
+        </ModalHeader>
+        <ModalBody style={{ padding: "1.5rem", maxHeight: "60vh", overflowY: "auto" }}>
+          <Form>
+            <div className="mb-3">
+              <Form.Label className="fw-semibold mb-0">Delivery Port</Form.Label>
+            </div>
+            <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px", padding: "10px" }}>
+              {getUniquePortsFromData().map((port) => (
+                <div
+                  key={port.value}
+                  style={{
+                    padding: "8px",
+                    cursor: "pointer",
+                    borderRadius: "4px",
+                    backgroundColor: tempSelectedPorts.includes(port.value) ? "#e7f3ff" : "transparent",
+                    marginBottom: "4px",
+                  }}
+                  onClick={() => {
+                    if (tempSelectedPorts.includes(port.value)) {
+                      setTempSelectedPorts(tempSelectedPorts.filter(p => p !== port.value))
+                    } else {
+                      setTempSelectedPorts([...tempSelectedPorts, port.value])
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!tempSelectedPorts.includes(port.value)) e.currentTarget.style.backgroundColor = "#f8f9fa"
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!tempSelectedPorts.includes(port.value)) e.currentTarget.style.backgroundColor = "transparent"
+                  }}
+                >
+                  <div className="d-flex align-items-center">
+                    <input
+                      type="checkbox"
+                      checked={tempSelectedPorts.includes(port.value)}
+                      onChange={() => {}}
+                      style={{ marginRight: "10px", cursor: "pointer" }}
+                    />
+                    <span>{port.label}</span>
+                  </div>
+                </div>
+              ))}
+              {getUniquePortsFromData().length === 0 && (
+                <div className="text-center text-muted py-3">No ports available</div>
+              )}
+            </div>
+          </Form>
+        </ModalBody>
+        <ModalFooter className="d-flex justify-content-end gap-2">
+          <Button variant="outline-secondary" size="sm" onClick={() => setTempSelectedPorts([])}>
+            Clear
+          </Button>
+          <Button variant="outline-primary" size="sm" onClick={() => {
+            const allPorts = getUniquePortsFromData().map(p => p.value)
+            setTempSelectedPorts(allPorts)
+          }}>
+            Select All
+          </Button>
+          <Button variant="primary" onClick={handlePortModalDone}>
+            <i className="fas fa-check me-2"></i>
+            Done
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Remarks Modal for PDF Export */}
       <Modal

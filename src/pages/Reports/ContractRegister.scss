@@ -1,5 +1,11 @@
 // ContractRegister Custom Styles
 
+// Spin animation for refresh button
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 // Fix DatePicker z-index to appear above table headers
 .react-datepicker-popper {
   z-index: 9999 !important;
@@ -96,22 +102,44 @@
 }
 
 // Mobile: bottom bar (Period, Commodity, PDF) above app footer – same as LedgerReport
+// Height is now set dynamically via JS (window.innerHeight) to ensure consistent behavior
+// across PWA (installed Chrome) and regular Chrome on mobile.
 @media (max-width: 768px) {
   .contract-register-container {
-    height: calc(100vh - 115px - env(safe-area-inset-bottom, 0px)) !important;
-    height: calc(100dvh - 115px - env(safe-area-inset-bottom, 0px)) !important;
-    max-height: calc(100vh - 115px - env(safe-area-inset-bottom, 0px)) !important;
-    max-height: calc(100dvh - 115px - env(safe-area-inset-bottom, 0px)) !important;
+    // Height & maxHeight are set via JS inline style for consistency
     overflow: hidden !important;
+    padding-top: 0 !important;
     padding-bottom: 0 !important;
     box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    touch-action: none !important;
+  }
+
+  .contract-register-container .contract-register-table-section {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .contract-register-container .contract-register-table-section .card-body {
-    padding-bottom: 32px !important;
+    min-height: 0 !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
   }
 
   .contract-register-container .contract-register-table-scroll {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    overscroll-behavior-y: none !important;
     -webkit-overflow-scrolling: touch !important;
     margin-bottom: 0 !important;
     padding-bottom: 0 !important;
@@ -121,10 +149,15 @@
     flex-shrink: 0 !important;
     margin-top: 0 !important;
     margin-bottom: 0 !important;
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
     border-top: 2px solid #5a2d5a !important;
-    min-height: 40px !important;
+    min-height: 36px !important;
+  }
+
+  // Mobile-only checkbox strip should also not grow
+  .contract-register-container .d-md-none {
+    flex-shrink: 0 !important;
   }
 
   .contract-register-container .bottom-filters-bar::-webkit-scrollbar {

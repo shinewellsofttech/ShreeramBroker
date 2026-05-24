@@ -80,9 +80,8 @@ export default function useColumnResize(storageKey, defaultWidths) {
       }
 
       const diff = clientX - resizingCol.current.startX;
-      const newWidth = Math.max(30, resizingCol.current.startWidth + diff);
+      const newWidth = Math.max(1, resizingCol.current.startWidth + diff);
       const colKey = resizingCol.current.key;
-
       // Throttle updates using requestAnimationFrame to prevent rapid re-renders (mobile crash fix)
       pendingWidth.current = { key: colKey, width: newWidth };
       if (!rafId.current) {
