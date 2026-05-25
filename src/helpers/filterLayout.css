@@ -6,7 +6,11 @@
     box-sizing: border-box;
     transition: transform 0.15s ease, opacity 0.15s ease;
     cursor: grab;
-    touch-action: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .filter-item:active {

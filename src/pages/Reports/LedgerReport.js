@@ -674,6 +674,8 @@ const LedgerReport = () => {
     handleTouchDragEnd: topTouchDragEnd,
     handleFilterResizeMouseDown: topResizeDown,
     resetLayout: resetTopLayout,
+    handleFilterStart: topFilterStart,
+    activeReorderId: topActiveReorderId,
   } = useFilterLayout('ledgerReport_topFilters', TOP_FILTER_DEFAULTS);
 
   const {
@@ -690,6 +692,8 @@ const LedgerReport = () => {
     handleTouchDragEnd: bottomTouchDragEnd,
     handleFilterResizeMouseDown: bottomResizeDown,
     resetLayout: resetBottomLayout,
+    handleFilterStart: bottomFilterStart,
+    activeReorderId: bottomActiveReorderId,
   } = useFilterLayout('ledgerReport_bottomFilters', BOTTOM_FILTER_DEFAULTS);
 
   // --- Filter Content Renderers ---------------------------------
@@ -862,29 +866,41 @@ const LedgerReport = () => {
   };
 
   // Helper to render a filter bar with drag/resize/gap support
-  const renderFilterBar = (filterOrder, filterWidths, gap, setGap, dragStart, dragOver, drop, dragEnd, touchDragStart, touchDragMove, touchDragEnd, resizeDown, resetLayout, renderContent) => {
+  const renderFilterBar = (filterOrder, filterWidths, gap, setGap, dragStart, dragOver, drop, dragEnd, touchDragStart, touchDragMove, touchDragEnd, resizeDown, resetLayout, renderContent, filterStart, activeReorderId) => {
     return (
       <>
-        {filterOrder.map(filterId => (
-          <div
-            key={filterId}
-            data-filter-id={filterId}
-            style={{
-              width: `${filterWidths[filterId] || 100}px`,
-              flexShrink: 0,
-              position: "relative",
-              cursor: "default",
-              touchAction: "auto",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                {renderContent(filterId)}
+        {filterOrder.map(filterId => {
+          const isDragging = activeReorderId === filterId;
+          return (
+            <div
+              key={filterId}
+              data-filter-id={filterId}
+              className={`filter-item ${isDragging ? 'dragging' : ''}`}
+              onMouseDown={e => filterStart(e, filterId, false)}
+              onTouchStart={e => filterStart(e, filterId, true)}
+              onClickCapture={e => {
+                if (activeReorderId) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              style={{
+                width: `${filterWidths[filterId] || 100}px`,
+                flexShrink: 0,
+                position: "relative",
+                cursor: activeReorderId ? (isDragging ? "grabbing" : "default") : "grab",
+                touchAction: activeReorderId ? "none" : "pan-x",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                <div style={{ flex: 1, overflow: "hidden" }}>
+                  {renderContent(filterId)}
+                </div>
               </div>
+              <div className="filter-resize-handle" onMouseDown={e => resizeDown(e, filterId)} onTouchStart={e => resizeDown(e, filterId)} />
             </div>
-            <div className="filter-resize-handle" onMouseDown={e => resizeDown(e, filterId)} onTouchStart={e => resizeDown(e, filterId)} />
-          </div>
-        ))}
+          );
+        })}
         {/* Gap & Reset controls */}
         <div className="filter-gap-control" style={{ marginLeft: "4px" }}>
           <button onClick={() => setGap(gap - 2)} title="Decrease gap">-</button>
@@ -4045,7 +4061,7 @@ const LedgerReport = () => {
           <div className="card-body" style={{ padding: "0.25rem" }}>
             <div style={{ overflowX: "auto", overflowY: "hidden" }}>
               <div className="d-flex align-items-center filter-theme-light" style={{ backgroundColor: "#E3F2FD", padding: "4px", borderRadius: "4px", flexWrap: "nowrap", minWidth: "fit-content", border: "1px solid #2196F3", gap: `${topGap}px` }}>
-                {renderFilterBar(topFilterOrder, topFilterWidths, topGap, setTopGap, topDragStart, topDragOver, topDrop, topDragEnd, topTouchDragStart, topTouchDragMove, topTouchDragEnd, topResizeDown, resetTopLayout, renderTopFilterContent)}
+                {renderFilterBar(topFilterOrder, topFilterWidths, topGap, setTopGap, topDragStart, topDragOver, topDrop, topDragEnd, topTouchDragStart, topTouchDragMove, topTouchDragEnd, topResizeDown, resetTopLayout, renderTopFilterContent, topFilterStart, topActiveReorderId)}
               </div>
             </div>
           </div>
@@ -5182,7 +5198,7 @@ const LedgerReport = () => {
                           ></i>
                         </div>
 
-                        {renderFilterBar(bottomFilterOrder, bottomFilterWidths, bottomGap, setBottomGap, bottomDragStart, bottomDragOver, bottomDrop, bottomDragEnd, bottomTouchDragStart, bottomTouchDragMove, bottomTouchDragEnd, bottomResizeDown, resetBottomLayout, renderBottomFilterContent)}
+                        {renderFilterBar(bottomFilterOrder, bottomFilterWidths, bottomGap, setBottomGap, bottomDragStart, bottomDragOver, bottomDrop, bottomDragEnd, bottomTouchDragStart, bottomTouchDragMove, bottomTouchDragEnd, bottomResizeDown, resetBottomLayout, renderBottomFilterContent, bottomFilterStart, bottomActiveReorderId)}
 
                       </div>
                     </div>

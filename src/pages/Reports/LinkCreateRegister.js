@@ -118,6 +118,8 @@ function LinkCreateRegister() {
     handleTouchDragEnd: lcrTopTouchDragEnd,
     handleFilterResizeMouseDown: lcrTopResizeDown,
     resetLayout: resetLcrTopLayout,
+    handleFilterStart: lcrTopFilterStart,
+    activeReorderId: lcrTopActiveReorderId,
   } = useFilterLayout('linkCreateRegister_topFilters', LCR_TOP_FILTER_DEFAULTS);
 
   const {
@@ -134,6 +136,8 @@ function LinkCreateRegister() {
     handleTouchDragEnd: lcrBottomTouchDragEnd,
     handleFilterResizeMouseDown: lcrBottomResizeDown,
     resetLayout: resetLcrBottomLayout,
+    handleFilterStart: lcrBottomFilterStart,
+    activeReorderId: lcrBottomActiveReorderId,
   } = useFilterLayout('linkCreateRegister_bottomFilters', LCR_BOTTOM_FILTER_DEFAULTS);
   // ─── End Filter Layout Setup ──────────────────────────────────────
 
@@ -1352,19 +1356,41 @@ function LinkCreateRegister() {
   };
 
   // ─── Render filter bar (shared helper) ───────────────────────────
-  const renderLcrFilterBar = (filterOrder, filterWidths, gap, setGap, dragStart, dragOver, drop, dragEnd, touchDragStart, touchDragMove, touchDragEnd, resizeDown, resetLayout, renderContent) => {
+  const renderLcrFilterBar = (filterOrder, filterWidths, gap, setGap, dragStart, dragOver, drop, dragEnd, touchDragStart, touchDragMove, touchDragEnd, resizeDown, resetLayout, renderContent, filterStart, activeReorderId) => {
     return (
       <>
-        {filterOrder.map(filterId => (
-          <div key={filterId} data-filter-id={filterId} style={{ width: `${filterWidths[filterId] || 100}px`, flexShrink: 0, position: "relative", cursor: "default", touchAction: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                {renderContent(filterId)}
+        {filterOrder.map(filterId => {
+          const isDragging = activeReorderId === filterId;
+          return (
+            <div
+              key={filterId}
+              data-filter-id={filterId}
+              className={`filter-item ${isDragging ? 'dragging' : ''}`}
+              onMouseDown={e => filterStart(e, filterId, false)}
+              onTouchStart={e => filterStart(e, filterId, true)}
+              onClickCapture={e => {
+                if (activeReorderId) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              style={{
+                width: `${filterWidths[filterId] || 100}px`,
+                flexShrink: 0,
+                position: "relative",
+                cursor: activeReorderId ? (isDragging ? "grabbing" : "default") : "grab",
+                touchAction: activeReorderId ? "none" : "pan-x",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                <div style={{ flex: 1, overflow: "hidden" }}>
+                  {renderContent(filterId)}
+                </div>
               </div>
+              <div className="filter-resize-handle" onMouseDown={e => resizeDown(e, filterId)} onTouchStart={e => resizeDown(e, filterId)} />
             </div>
-            <div className="filter-resize-handle" onMouseDown={e => resizeDown(e, filterId)} onTouchStart={e => resizeDown(e, filterId)} />
-          </div>
-        ))}
+          );
+        })}
         <div className="filter-gap-control" style={{ marginLeft: "4px" }}>
           <button onClick={() => setGap(gap - 2)} title="Decrease gap">−</button>
           <span>{gap}</span>
@@ -1546,7 +1572,7 @@ function LinkCreateRegister() {
             <div className="card-body" style={{ padding: "0.25rem" }}>
               <div style={{ overflowX: "auto", overflowY: "hidden" }}>
                 <div className="d-flex align-items-center filter-theme-light" style={{ backgroundColor: "#E3F2FD", padding: "4px", borderRadius: "4px", flexWrap: "nowrap", minWidth: "fit-content", border: "1px solid #2196F3", gap: `${lcrTopGap}px` }}>
-                  {renderLcrFilterBar(lcrTopFilterOrder, lcrTopFilterWidths, lcrTopGap, setLcrTopGap, lcrTopDragStart, lcrTopDragOver, lcrTopDrop, lcrTopDragEnd, lcrTopTouchDragStart, lcrTopTouchDragMove, lcrTopTouchDragEnd, lcrTopResizeDown, resetLcrTopLayout, renderLcrTopFilterContent)}
+                  {renderLcrFilterBar(lcrTopFilterOrder, lcrTopFilterWidths, lcrTopGap, setLcrTopGap, lcrTopDragStart, lcrTopDragOver, lcrTopDrop, lcrTopDragEnd, lcrTopTouchDragStart, lcrTopTouchDragMove, lcrTopTouchDragEnd, lcrTopResizeDown, resetLcrTopLayout, renderLcrTopFilterContent, lcrTopFilterStart, lcrTopActiveReorderId)}
                 </div>
               </div>
             </div>
@@ -2258,7 +2284,7 @@ function LinkCreateRegister() {
                           className="d-flex align-items-center"
                           style={{ padding: "6px 12px", gap: `${lcrBottomGap}px`, flexWrap: "nowrap", minWidth: "fit-content" }}
                         >
-                          {renderLcrFilterBar(lcrBottomFilterOrder, lcrBottomFilterWidths, lcrBottomGap, setLcrBottomGap, lcrBottomDragStart, lcrBottomDragOver, lcrBottomDrop, lcrBottomDragEnd, lcrBottomTouchDragStart, lcrBottomTouchDragMove, lcrBottomTouchDragEnd, lcrBottomResizeDown, resetLcrBottomLayout, renderLcrBottomFilterContent)}
+                          {renderLcrFilterBar(lcrBottomFilterOrder, lcrBottomFilterWidths, lcrBottomGap, setLcrBottomGap, lcrBottomDragStart, lcrBottomDragOver, lcrBottomDrop, lcrBottomDragEnd, lcrBottomTouchDragStart, lcrBottomTouchDragMove, lcrBottomTouchDragEnd, lcrBottomResizeDown, resetLcrBottomLayout, renderLcrBottomFilterContent, lcrBottomFilterStart, lcrBottomActiveReorderId)}
                         </div>
                       </div>
                     </>

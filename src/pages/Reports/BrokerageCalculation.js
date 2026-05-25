@@ -79,6 +79,8 @@ function BrokerageCalculation() {
         setGap: setFilterGap,
         handleFilterResizeMouseDown,
         resetLayout,
+        handleFilterStart,
+        activeReorderId,
     } = useFilterLayout('brokerageCalculation_filters', FILTER_DEFAULTS);
     // ─── End Filter Layout ──────────────────────────────────────────────────────
 
@@ -1315,20 +1317,38 @@ const getDalaliData = async () => {
 
     const renderFilterBar = () => (
         <>
-            {filterOrder.map(filterId => (
-                <div
-                    key={filterId}
-                    data-filter-id={filterId}
-                    style={{ width: `${filterWidths[filterId] || 100}px`, flexShrink: 0, position: "relative" }}
-                >
-                    <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-                        <div style={{ flex: 1, overflow: "hidden" }}>
-                            {renderFilterContent(filterId)}
-                        </div>
-                    </div>
-                    <div className="filter-resize-handle" onMouseDown={e => handleFilterResizeMouseDown(e, filterId)} onTouchStart={e => handleFilterResizeMouseDown(e, filterId)} />
-                </div>
-            ))}
+             {filterOrder.map(filterId => {
+                 const isDragging = activeReorderId === filterId;
+                 return (
+                     <div
+                         key={filterId}
+                         data-filter-id={filterId}
+                         className={`filter-item ${isDragging ? 'dragging' : ''}`}
+                         onMouseDown={e => handleFilterStart(e, filterId, false)}
+                         onTouchStart={e => handleFilterStart(e, filterId, true)}
+                         onClickCapture={e => {
+                             if (activeReorderId) {
+                                 e.preventDefault();
+                                 e.stopPropagation();
+                             }
+                         }}
+                         style={{
+                             width: `${filterWidths[filterId] || 100}px`,
+                             flexShrink: 0,
+                             position: "relative",
+                             cursor: activeReorderId ? (isDragging ? "grabbing" : "default") : "grab",
+                             touchAction: activeReorderId ? "none" : "pan-x",
+                         }}
+                     >
+                         <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                             <div style={{ flex: 1, overflow: "hidden" }}>
+                                 {renderFilterContent(filterId)}
+                             </div>
+                         </div>
+                         <div className="filter-resize-handle" onMouseDown={e => handleFilterResizeMouseDown(e, filterId)} onTouchStart={e => handleFilterResizeMouseDown(e, filterId)} />
+                     </div>
+                 );
+             })}
             <div className="filter-gap-control" style={{ marginLeft: "4px" }}>
                 <button onClick={() => setFilterGap(filterGap - 2)} title="Decrease gap">−</button>
                 <span>{filterGap}</span>

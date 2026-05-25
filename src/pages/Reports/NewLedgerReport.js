@@ -34,6 +34,8 @@ import LedgerReport from "./LedgerReport"
 import { toast } from "react-toastify"
 import useColumnResize from '../../helpers/useColumnResize'
 import '../../helpers/columnResize.css'
+import useFilterLayout from '../../helpers/useFilterLayout'
+import '../../helpers/filterLayout.css'
 
 function NewLedgerReport() {
   const dispatch = useDispatch()
@@ -117,6 +119,25 @@ function NewLedgerReport() {
   const [error, setError] = useState("")
   const [showItemModal, setShowItemModal] = useState(false)
   const [tempSelectedItemIds, setTempSelectedItemIds] = useState([])
+
+  const FILTER_DEFAULTS = [
+    { id: 'zeroFilter', defaultWidth: 130 },
+    { id: 'dateFilter', defaultWidth: 205 },
+    { id: 'itemFilter', defaultWidth: 125 },
+    { id: 'searchFilter', defaultWidth: 130 },
+    { id: 'totalsFilter', defaultWidth: 200 }
+  ];
+
+  const {
+    filterOrder,
+    filterWidths,
+    gap: filterGap,
+    setGap: setFilterGap,
+    handleFilterResizeMouseDown,
+    resetLayout,
+    handleFilterStart,
+    activeReorderId,
+  } = useFilterLayout('newLedgerReport_filters', FILTER_DEFAULTS);
 
 
   const [state, setState] = useState({
@@ -621,184 +642,229 @@ function NewLedgerReport() {
           }}
         >
           <Form>
-            <div style={{ overflowX: "auto", overflowY: "hidden" }}>
-              <Row className="g-2 align-items-center" style={{ flexWrap: "nowrap", minWidth: "fit-content" }}>
-                {showTable && state.FillArray.length > 0 && (
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <div style={{ border: '1px solid #000000', borderRadius: '4px', padding: '0.25rem 0.5rem', backgroundColor: '#f8f9fa', width: 'fit-content', whiteSpace: 'nowrap', height: '28px', display: 'flex', alignItems: 'center' }}>
-                      <div className="d-flex gap-2 align-items-center">
-                        <span style={{ fontSize: '0.65rem', fontWeight: '600', color: '#333', marginRight: '2px', whiteSpace: 'nowrap' }}>Filter:</span>
-                        <div className="form-check mb-0">
-                          <input
-                            type="checkbox"
-                            id="total-greater-than-zero"
-                            className="form-check-input"
-                            checked={totalFilter.has(">0")}
-                            onClick={e => {
-                              e.stopPropagation()
-                              setTotalFilter(prev => {
-                                const newFilter = new Set(prev)
-                                if (newFilter.has(">0")) {
-                                  newFilter.delete(">0")
-                                } else {
-                                  newFilter.add(">0")
-                                }
-                                return newFilter
-                              })
-                            }}
-                            style={{ marginTop: '0' }}
-                          />
-                          <label htmlFor="total-greater-than-zero" className="form-check-label small" style={{ fontSize: '0.7rem', marginLeft: '4px' }}>
-                            {">0"}
-                          </label>
+            <div style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: "4px" }}>
+              <div className="d-flex align-items-center filter-theme-light" style={{ backgroundColor: "#E3F2FD", padding: "4px", borderRadius: "4px", flexWrap: "nowrap", minWidth: "fit-content", border: "1px solid #2196F3", gap: `${filterGap}px` }}>
+                {filterOrder.map(filterId => {
+                  let content = null;
+                  switch (filterId) {
+                    case 'zeroFilter':
+                      if (showTable && state.FillArray.length > 0) {
+                        content = (
+                          <div style={{ border: '1px solid #000000', borderRadius: '4px', padding: '0.25rem 0.5rem', backgroundColor: '#f8f9fa', width: 'fit-content', whiteSpace: 'nowrap', height: '28px', display: 'flex', alignItems: 'center' }}>
+                            <div className="d-flex gap-2 align-items-center">
+                              <span style={{ fontSize: '0.65rem', fontWeight: '600', color: '#333', marginRight: '2px', whiteSpace: 'nowrap' }}>Filter:</span>
+                              <div className="form-check mb-0">
+                                <input
+                                  type="checkbox"
+                                  id="total-greater-than-zero"
+                                  className="form-check-input"
+                                  checked={totalFilter.has(">0")}
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    setTotalFilter(prev => {
+                                      const newFilter = new Set(prev)
+                                      if (newFilter.has(">0")) newFilter.delete(">0")
+                                      else newFilter.add(">0")
+                                      return newFilter
+                                    })
+                                  }}
+                                  style={{ marginTop: '0' }}
+                                />
+                                <label htmlFor="total-greater-than-zero" className="form-check-label small" style={{ fontSize: '0.7rem', marginLeft: '4px' }}>
+                                  {">0"}
+                                </label>
+                              </div>
+                              <div className="form-check mb-0">
+                                <input
+                                  type="checkbox"
+                                  id="total-equals-zero"
+                                  className="form-check-input"
+                                  checked={totalFilter.has("=0")}
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    setTotalFilter(prev => {
+                                      const newFilter = new Set(prev)
+                                      if (newFilter.has("=0")) newFilter.delete("=0")
+                                      else newFilter.add("=0")
+                                      return newFilter
+                                    })
+                                  }}
+                                  style={{ marginTop: '0' }}
+                                />
+                                <label htmlFor="total-equals-zero" className="form-check-label small" style={{ fontSize: '0.7rem', marginLeft: '4px' }}>
+                                  {"=0"}
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      break;
+                    case 'dateFilter':
+                      content = (
+                        <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
+                          <div style={{ width: '95px', height: '28px' }}>
+                            <DatePicker
+                              selected={fromDate ? new Date(fromDate) : null}
+                              onChange={date => setFromDate(date)}
+                              className="form-control form-control-sm custom-datepicker"
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="From Date"
+                              portalId="root-portal"
+                              popperPlacement="bottom-start"
+                              openToDate={new Date()}
+                            />
+                          </div>
+                          <span style={{ fontSize: "0.6rem", fontWeight: "500", color: "#1976D2", margin: "0 2px" }}>To</span>
+                          <div style={{ width: '95px', height: '28px' }}>
+                            <DatePicker
+                              selected={toDate ? new Date(toDate) : null}
+                              onChange={date => setToDate(date)}
+                              className="form-control form-control-sm custom-datepicker"
+                              dateFormat="dd/MM/yyyy"
+                              placeholderText="To Date"
+                              portalId="root-portal"
+                              popperPlacement="bottom-start"
+                              openToDate={new Date()}
+                            />
+                          </div>
                         </div>
-                        <div className="form-check mb-0">
-                          <input
-                            type="checkbox"
-                            id="total-equals-zero"
-                            className="form-check-input"
-                            checked={totalFilter.has("=0")}
-                            onClick={e => {
-                              e.stopPropagation()
-                              setTotalFilter(prev => {
-                                const newFilter = new Set(prev)
-                                if (newFilter.has("=0")) {
-                                  newFilter.delete("=0")
-                                } else {
-                                  newFilter.add("=0")
-                                }
-                                return newFilter
-                              })
-                            }}
-                            style={{ marginTop: '0' }}
-                          />
-                          <label htmlFor="total-equals-zero" className="form-check-label small" style={{ fontSize: '0.7rem', marginLeft: '4px' }}>
-                            {"=0"}
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                )}
-
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-                    <div style={{ width: '95px', height: '28px' }}>
-                      <DatePicker
-                        selected={fromDate ? new Date(fromDate) : null}
-                        onChange={date => setFromDate(date)}
-                        className="form-control form-control-sm custom-datepicker"
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="From Date"
-                        portalId="root-portal"
-                        popperPlacement="bottom-start"
-                        openToDate={new Date()}
-                      />
-                    </div>
-                    <span style={{ fontSize: "0.6rem", fontWeight: "500", color: "#1976D2", margin: "0 2px" }}>To</span>
-                    <div style={{ width: '95px', height: '28px' }}>
-                      <DatePicker
-                        selected={toDate ? new Date(toDate) : null}
-                        onChange={date => setToDate(date)}
-                        className="form-control form-control-sm custom-datepicker"
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="To Date"
-                        portalId="root-portal"
-                        popperPlacement="bottom-start"
-                        openToDate={new Date()}
-                      />
-                    </div>
-                  </div>
-                </Col>
-
-                <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                  <div
-                    onClick={openItemModal}
-                    style={{
-                      backgroundColor: "#E3F2FD",
-                      color: "#333",
-                      border: "1px solid #2196F3",
-                      borderRadius: "6px",
-                      height: "28px",
-                      padding: "2px 8px",
-                      fontSize: "0.65rem",
-                      fontWeight: "bold",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      minWidth: "120px",
-                      maxWidth: "120px"
-                    }}
-                  >
-                    <span>
-                      {selectedItemIds && selectedItemIds.length > 0
-                        ? `${selectedItemIds.length} selected`
-                        : "Item Name"}
-                    </span>
-                    <i className="fas fa-chevron-down ms-2"></i>
-                  </div>
-                </Col>
-
-                {showTable && state.FillArray.length > 0 && (
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <div className="d-flex align-items-center">
-                      <Form.Control
-                        type="text"
-                        size="sm"
-                        placeholder="Search ledger name..."
-                        value={ledgerFilter}
-                        onChange={e => setLedgerFilter(e.target.value)}
-                        className="me-1"
-                        style={{ minWidth: "120px", maxWidth: "120px", height: "28px", fontSize: "0.7rem", fontWeight: "bold", backgroundColor: "#E3F2FD", border: "1px solid #2196F3" }}
-                      />
-                      {ledgerFilter && (
-                        <Button
-                          variant="outline-secondary"
-                          size="sm"
-                          onClick={() => setLedgerFilter("")}
-                          className="py-0"
-                          title="Clear filter"
-                          style={{ height: "28px", padding: "0 4px" }}
+                      );
+                      break;
+                    case 'itemFilter':
+                      content = (
+                        <div
+                          onClick={openItemModal}
+                          style={{
+                            backgroundColor: "#E3F2FD",
+                            color: "#333",
+                            border: "1px solid #2196F3",
+                            borderRadius: "6px",
+                            height: "28px",
+                            padding: "2px 8px",
+                            fontSize: "0.65rem",
+                            fontWeight: "bold",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            width: "100%"
+                          }}
                         >
-                          <X size={12} />
-                        </Button>
-                      )}
-                    </div>
-                  </Col>
-                )}
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {selectedItemIds && selectedItemIds.length > 0
+                              ? `${selectedItemIds.length} selected`
+                              : "Item Name"}
+                          </span>
+                          <i className="fas fa-chevron-down ms-1" style={{ flexShrink: 0 }}></i>
+                        </div>
+                      );
+                      break;
+                    case 'searchFilter':
+                      if (showTable && state.FillArray.length > 0) {
+                        content = (
+                          <div className="d-flex align-items-center" style={{ width: "100%" }}>
+                            <Form.Control
+                              type="text"
+                              size="sm"
+                              placeholder="Search ledger name..."
+                              value={ledgerFilter}
+                              onChange={e => setLedgerFilter(e.target.value)}
+                              className="me-1"
+                              style={{ width: "100%", height: "28px", fontSize: "0.7rem", fontWeight: "bold", backgroundColor: "#E3F2FD", border: "1px solid #2196F3" }}
+                            />
+                            {ledgerFilter && (
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                onClick={() => setLedgerFilter("")}
+                                className="py-0"
+                                title="Clear filter"
+                                style={{ height: "28px", padding: "0 4px", flexShrink: 0 }}
+                              >
+                                <X size={12} />
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      }
+                      break;
+                    case 'totalsFilter':
+                      if (selectedRows.size > 0) {
+                        content = (
+                          <div className="alert alert-info d-flex justify-content-between align-items-center mb-0 py-1 px-2" style={{ whiteSpace: 'nowrap', width: '100%', height: '28px' }}>
+                            <div className="d-flex align-items-center" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                              <span className="small me-2" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                                <strong>{selectedRows.size}/{getFilteredAndSortedData().length}</strong>
+                              </span>
+                              <span className="badge bg-success small">
+                                ₹{calculateSelectedTotals().totalSum.toFixed(0)}
+                              </span>
+                            </div>
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              className="py-0 px-2 ms-1"
+                              onClick={() => {
+                                setSelectedRows(new Set())
+                                setSelectAll(false)
+                                setIsSelectingAll(false)
+                              }}
+                              style={{ fontSize: '0.7rem', height: '20px', flexShrink: 0 }}
+                            >
+                              Clear
+                            </Button>
+                          </div>
+                        );
+                      }
+                      break;
+                    default:
+                      break;
+                  }
 
-                {selectedRows.size > 0 && (
-                  <Col xs="auto" style={{ flex: "0 0 auto" }}>
-                    <div className="alert alert-info d-flex justify-content-between align-items-center mb-0 py-1 px-2" style={{ whiteSpace: 'nowrap', minWidth: 'fit-content' }}>
-                      <div className="d-flex align-items-center">
-                        <span className="small me-2">
-                          <strong>{selectedRows.size}/{getFilteredAndSortedData().length}</strong> rows
-                          {(ledgerFilter || totalFilter.size > 0) && (
-                            <span className="text-muted ms-1">({state.FillArray.length})</span>
-                          )}
-                        </span>
-                        <span className="badge bg-success small ms-2">
-                          ₹{calculateSelectedTotals().totalSum.toFixed(0)}
-                        </span>
+                  if (!content) return null;
+
+                  const isDragging = activeReorderId === filterId;
+                  return (
+                    <div
+                      key={filterId}
+                      data-filter-id={filterId}
+                      className={`filter-item ${isDragging ? 'dragging' : ''}`}
+                      onMouseDown={e => handleFilterStart(e, filterId, false)}
+                      onTouchStart={e => handleFilterStart(e, filterId, true)}
+                      onClickCapture={e => {
+                        if (activeReorderId) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }
+                      }}
+                      style={{
+                        width: `${filterWidths[filterId] || 100}px`,
+                        flexShrink: 0,
+                        position: "relative",
+                        cursor: activeReorderId ? (isDragging ? "grabbing" : "default") : "grab",
+                        touchAction: activeReorderId ? "none" : "pan-x",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", width: "100%", height: "100%" }}>
+                        <div style={{ flex: 1, overflow: "hidden" }}>
+                          {content}
+                        </div>
                       </div>
-                      <Button
-                        variant="outline-secondary"
-                        size="sm"
-                        className="py-0 px-2 ms-2"
-                        onClick={() => {
-                          setSelectedRows(new Set())
-                          setSelectAll(false)
-                          setIsSelectingAll(false)
-                        }}
-                        style={{ fontSize: '0.7rem', height: '24px' }}
-                      >
-                        Clear
-                      </Button>
+                      <div className="filter-resize-handle" onMouseDown={e => handleFilterResizeMouseDown(e, filterId)} onTouchStart={e => handleFilterResizeMouseDown(e, filterId)} />
                     </div>
-                  </Col>
-                )}
-              </Row>
+                  );
+                })}
+                
+                <div className="filter-gap-control" style={{ marginLeft: "4px" }}>
+                  <button type="button" onClick={() => setFilterGap(filterGap - 2)} title="Decrease gap">−</button>
+                  <span>{filterGap}</span>
+                  <button type="button" onClick={() => setFilterGap(filterGap + 2)} title="Increase gap">+</button>
+                </div>
+                <button type="button" className="filter-reset-btn" onClick={resetLayout} title="Reset layout">
+                  <i className="fas fa-undo" style={{ fontSize: "0.5rem" }}></i>
+                </button>
+              </div>
             </div>
           </Form>
         </Card.Body>

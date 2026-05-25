@@ -42,6 +42,17 @@ export default function useFilterLayout(storageKey, defaultFilters) {
   const rafId = useRef(null);
   const pendingWidth = useRef(null);
 
+  // ─── Hold-to-Move State and Refs ───────────────────────
+  const [activeReorderId, setActiveReorderId] = useState(null);
+  const activeReorderIdRef = useRef(null);
+  useEffect(() => {
+    activeReorderIdRef.current = activeReorderId;
+  }, [activeReorderId]);
+
+  const holdTimer = useRef(null);
+  const startPos = useRef({ x: 0, y: 0 });
+  const hasHeld = useRef(false);
+
   // Persist to localStorage
   const persist = useCallback((newLayout) => {
     try {
@@ -51,11 +62,42 @@ export default function useFilterLayout(storageKey, defaultFilters) {
     }
   }, [storageKey]);
 
-  // ─── Drag and Drop ─────────────────────────────────────
+  // ─── Start Hold Detection ──────────────────────────────
+  const handleFilterStart = useCallback((e, filterId, isTouch) => {
+    // If user interacts with a resize handle, ignore it
+    if (e.target.closest('.filter-resize-handle')) {
+      return;
+    }
+
+    // Only handle left mouse click or touch
+    if (!isTouch && e.button !== 0) return;
+
+    const point = isTouch ? e.touches[0] : e;
+    if (!point) return;
+
+    startPos.current = { x: point.clientX, y: point.clientY };
+    hasHeld.current = false;
+    setActiveReorderId(null);
+
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+
+    holdTimer.current = setTimeout(() => {
+      hasHeld.current = true;
+      setActiveReorderId(filterId);
+      if (navigator.vibrate) {
+        try {
+          navigator.vibrate(50);
+        } catch (err) {
+          // ignore vibration issues
+        }
+      }
+    }, 2000); // 2 seconds hold
+  }, []);
+
+  // ─── Drag and Drop (HTML5 fallback) ────────────────────
   const handleDragStart = useCallback((e, filterId) => {
     dragItem.current = filterId;
     e.dataTransfer.effectAllowed = 'move';
-    // Add a small delay for visual feedback
     setTimeout(() => {
       const el = e.target.closest('.filter-item');
       if (el) el.classList.add('dragging');
@@ -83,7 +125,6 @@ export default function useFilterLayout(storageKey, defaultFilters) {
 
       if (dragIdx === -1 || dropIdx === -1) return prev;
 
-      // Remove dragged item and insert at drop position
       newOrder.splice(dragIdx, 1);
       newOrder.splice(dropIdx, 0, dragItem.current);
 
@@ -99,20 +140,16 @@ export default function useFilterLayout(storageKey, defaultFilters) {
   const handleDragEnd = useCallback((e) => {
     dragItem.current = null;
     dragOverItem.current = null;
-    // Remove dragging class from all filter items
     document.querySelectorAll('.filter-item.dragging').forEach(el => {
       el.classList.remove('dragging');
     });
   }, []);
 
-  // ─── Touch Drag and Drop ───────────────────────────────
+  // ─── Touch Drag and Drop (fallback/legacy) ─────────────
   const touchDragItem = useRef(null);
-  const touchClone = useRef(null);
   const touchStartPos = useRef(null);
-  const filterBarRef = useRef(null);
 
   const handleTouchDragStart = useCallback((e, filterId) => {
-    // Only start drag on long press (handled by CSS touch-action) or direct touch on drag handle
     const touch = e.touches[0];
     touchDragItem.current = filterId;
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
@@ -131,12 +168,10 @@ export default function useFilterLayout(storageKey, defaultFilters) {
 
     if (e.cancelable) e.preventDefault();
 
-    // Find which filter item we're over
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
     if (elemBelow) {
       const filterItem = elemBelow.closest('.filter-item');
       if (filterItem && filterItem.dataset.filterId && filterItem.dataset.filterId !== touchDragItem.current) {
-        // Swap
         const targetId = filterItem.dataset.filterId;
         setLayout(prev => {
           const newOrder = [...prev.order];
@@ -185,61 +220,121 @@ export default function useFilterLayout(storageKey, defaultFilters) {
     document.body.style.webkitUserSelect = 'none';
   }, [layout.widths, defaultWidths]);
 
+  // ─── Global Mouse/Touch Event Effect ───────────────────
   useEffect(() => {
     const onMove = (e) => {
-      if (!resizeActive.current || !resizingFilter.current) return;
+      // 1. Handle Resize Active Mode
+      if (resizeActive.current && resizingFilter.current) {
+        if (e.cancelable) e.preventDefault();
 
-      if (e.cancelable) e.preventDefault();
+        let clientX;
+        if (e.touches && e.touches.length > 0) {
+          clientX = e.touches[0].clientX;
+        } else if (e.clientX !== undefined) {
+          clientX = e.clientX;
+        } else {
+          return;
+        }
 
-      let clientX;
-      if (e.touches && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-      } else if (e.clientX !== undefined) {
-        clientX = e.clientX;
-      } else {
+        const diff = clientX - resizingFilter.current.startX;
+        const newWidth = Math.max(40, resizingFilter.current.startWidth + diff);
+        const filterId = resizingFilter.current.id;
+
+        pendingWidth.current = { id: filterId, width: newWidth };
+        if (!rafId.current) {
+          rafId.current = requestAnimationFrame(() => {
+            if (pendingWidth.current) {
+              const { id, width } = pendingWidth.current;
+              setLayout(prev => ({
+                ...prev,
+                widths: { ...prev.widths, [id]: width },
+              }));
+              pendingWidth.current = null;
+            }
+            rafId.current = null;
+          });
+        }
         return;
       }
 
-      const diff = clientX - resizingFilter.current.startX;
-      const newWidth = Math.max(40, resizingFilter.current.startWidth + diff);
-      const filterId = resizingFilter.current.id;
+      // 2. Handle Reordering Hold and Move Mode
+      const isTouch = e.type.startsWith('touch');
+      const point = isTouch ? e.touches[0] : e;
+      if (!point) return;
 
-      pendingWidth.current = { id: filterId, width: newWidth };
-      if (!rafId.current) {
-        rafId.current = requestAnimationFrame(() => {
-          if (pendingWidth.current) {
-            const { id, width } = pendingWidth.current;
-            setLayout(prev => ({
-              ...prev,
-              widths: { ...prev.widths, [id]: width },
-            }));
-            pendingWidth.current = null;
+      // If user moved too much (e.g. scrolled or drifted) before 2 seconds are up, cancel the timer
+      if (holdTimer.current && !hasHeld.current) {
+        const dx = point.clientX - startPos.current.x;
+        const dy = point.clientY - startPos.current.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 8) {
+          clearTimeout(holdTimer.current);
+          holdTimer.current = null;
+        }
+      }
+
+      const currentReorderId = activeReorderIdRef.current;
+      if (currentReorderId) {
+        if (e.cancelable) e.preventDefault(); // Stop mobile scrolling during reorder drag
+
+        const elemBelow = document.elementFromPoint(point.clientX, point.clientY);
+        if (elemBelow) {
+          const filterItem = elemBelow.closest('[data-filter-id]');
+          if (filterItem && filterItem.dataset.filterId) {
+            const targetId = filterItem.dataset.filterId;
+            if (targetId !== currentReorderId) {
+              setLayout(prev => {
+                const newOrder = [...prev.order];
+                const dragIdx = newOrder.indexOf(currentReorderId);
+                const dropIdx = newOrder.indexOf(targetId);
+                if (dragIdx === -1 || dropIdx === -1) return prev;
+
+                newOrder.splice(dragIdx, 1);
+                newOrder.splice(dropIdx, 0, currentReorderId);
+                const newLayout = { ...prev, order: newOrder };
+                persist(newLayout);
+                return newLayout;
+              });
+            }
           }
-          rafId.current = null;
-        });
+        }
       }
     };
 
     const onUp = () => {
-      if (!resizeActive.current) return;
-      resizeActive.current = false;
-      resizingFilter.current = null;
-      pendingWidth.current = null;
-      if (rafId.current) {
-        cancelAnimationFrame(rafId.current);
-        rafId.current = null;
-      }
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.body.style.webkitUserSelect = '';
+      // 1. End Resize
+      if (resizeActive.current) {
+        resizeActive.current = false;
+        resizingFilter.current = null;
+        pendingWidth.current = null;
+        if (rafId.current) {
+          cancelAnimationFrame(rafId.current);
+          rafId.current = null;
+        }
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.body.style.webkitUserSelect = '';
 
-      setLayout(prev => {
-        persist(prev);
-        return prev;
-      });
+        setLayout(prev => {
+          persist(prev);
+          return prev;
+        });
+      }
+
+      // 2. End Hold Timer
+      if (holdTimer.current) {
+        clearTimeout(holdTimer.current);
+        holdTimer.current = null;
+      }
+
+      // End Active Reorder (delay slightly so click event capture can intercept accidental taps/modals)
+      setTimeout(() => {
+        hasHeld.current = false;
+        setActiveReorderId(null);
+      }, 50);
     };
 
-    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mousemove', onMove, { passive: false });
     document.addEventListener('mouseup', onUp);
     document.addEventListener('touchmove', onMove, { passive: false });
     document.addEventListener('touchend', onUp);
@@ -289,5 +384,7 @@ export default function useFilterLayout(storageKey, defaultFilters) {
     handleTouchDragEnd,
     handleFilterResizeMouseDown,
     resetLayout,
+    handleFilterStart,
+    activeReorderId,
   };
 }
