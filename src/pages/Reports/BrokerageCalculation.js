@@ -92,6 +92,11 @@ function BrokerageCalculation() {
     const [remarks, setRemarks] = useState('');
     const [pendingShareFile, setPendingShareFile] = useState(null);
     const [showSharePDFModal, setShowSharePDFModal] = useState(false);
+
+    // GST Modal state
+    const [showGSTModal, setShowGSTModal] = useState(false);
+    const [gstPercent, setGstPercent] = useState('');
+    const [pendingExportType, setPendingExportType] = useState(null); // 'excel' | 'pdf'
     
     const compactCellStyle = { padding: '0.35rem 0.5rem', fontSize: '0.85rem' };
 
@@ -748,12 +753,62 @@ const getDalaliData = async () => {
         };
     }, [dispatch, state.FromDate, state.ToDate, isDetailed, state.FillArray, selectedLedgerIds]);
 
-    // Excel Export Function
-    const handleExcelExport = async () => {
+    // GST modal handlers
+    const openGSTModal = (exportType) => {
         if (!filteredData || filteredData.length === 0) {
             toast.warning("No data to export");
             return;
         }
+        setPendingExportType(exportType);
+        setGstPercent('');
+        setShowGSTModal(true);
+    };
+
+    const handleGSTConfirm = () => {
+        setShowGSTModal(false);
+        const pct = parseFloat(gstPercent);
+        const resolvedPct = isNaN(pct) ? 0 : pct;
+        if (pendingExportType === 'excel') {
+            doExcelExport(resolvedPct);
+        } else if (pendingExportType === 'pdf') {
+            if (!selectedRows || selectedRows.length === 0) {
+                toast.warning("Please select rows to export to PDF");
+                return;
+            }
+            setRemarks('');
+            setShowRemarksModal(true);
+            // store resolved pct for use when PDF is actually generated
+            setPendingGSTPct(resolvedPct);
+        }
+    };
+
+    const [pendingGSTPct, setPendingGSTPct] = useState(0);
+
+    // Excel Export Function
+    const handleExcelExport = () => {
+        if (isDetailed) {
+            openGSTModal('excel');
+        } else {
+            doExcelExport(0);
+        }
+    };
+
+    const doExcelExport = async (gstPct) => {
+        if (!filteredData || filteredData.length === 0) {
+            toast.warning("No data to export");
+            return;
+        }
+
+        // Compute GST-enhanced totals for "Total With Tax" row
+        const taxDalaliTotal = isDetailed
+            ? filteredData.reduce((sum, ledger) => {
+                (ledger.Items || []).forEach(item => {
+                    const rateWithGST = (item.DalaliRate || 0) * (1 + gstPct / 100);
+                    sum += (item.Qty || 0) * rateWithGST;
+                });
+                return sum;
+            }, 0)
+            : 0;
 
         try {
             const workbook = new ExcelJS.Workbook();
@@ -843,6 +898,41 @@ const getDalaliData = async () => {
                 });
                 totalsRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
                 totalsRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D6EFD' } };
+
+                // Total With Tax Row (only Rate + Dal Total recalculated)
+                if (gstPct > 0) {
+                    // Weighted average Dal Rate across all items, then apply GST
+                    let totalQty = 0;
+                    let totalWeightedRate = 0;
+                    filteredData.forEach(ledger => {
+                        (ledger.Items || []).forEach(item => {
+                            totalQty += (item.Qty || 0);
+                            totalWeightedRate += (item.Qty || 0) * (item.DalaliRate || 0);
+                        });
+                    });
+                    const avgRateWithGST = totalQty > 0
+                        ? (totalWeightedRate / totalQty) * (1 + gstPct / 100)
+                        : 0;
+
+                    const taxRow = worksheet.addRow({
+                        srNo: 'Total With Tax',
+                        ledgerItem: `GST @ ${gstPct}%`,
+                        sellQty: '',
+                        purQty: '',
+                        brokerage: '',
+                        crAmount: '',
+                        drAmount: '',
+                        balance: '',
+                        dalaliSellQty: '',
+                        dalaliSellAmt: '',
+                        dalaliPurQty: '',
+                        dalaliPurAmt: '',
+                        dalaliRate: parseFloat(avgRateWithGST.toFixed(2)),
+                        dalaliTotal: parseFloat(taxDalaliTotal.toFixed(2))
+                    });
+                    taxRow.font = { bold: true, color: { argb: 'FF000000' } };
+                    taxRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3CD' } };
+                }
             } else {
                 // Normal View Excel Export
                 worksheet.columns = [
@@ -987,14 +1077,24 @@ const getDalaliData = async () => {
         }
     };
 
-    // PDF Export - open remarks modal (same as ReminderData)
+    // PDF Export - open GST modal first (Detailed only), then remarks modal
     const handlePDFExport = () => {
         if (!filteredData || filteredData.length === 0) {
             toast.warning("No data to export");
             return;
         }
-        setRemarks('');
-        setShowRemarksModal(true);
+        if (isDetailed) {
+            openGSTModal('pdf');
+        } else {
+            // Normal view: skip GST, go directly to remarks
+            if (!selectedRows || selectedRows.length === 0) {
+                toast.warning("Please select rows to export to PDF");
+                return;
+            }
+            setPendingGSTPct(0);
+            setRemarks('');
+            setShowRemarksModal(true);
+        }
     };
 
     // Generate PDF with jsPDF + jspdf-autotable, then share - only selected rows
@@ -1053,6 +1153,18 @@ const getDalaliData = async () => {
                     balance: s.balance + (item.LedgerBalance || 0)
                 }), { sellerQty: 0, buyerQty: 0, brokerage: 0, crAmount: 0, drAmount: 0, balance: 0 });
             }
+
+            // Use pendingGSTPct for PDF
+            const gstPct = pendingGSTPct || 0;
+            const taxDalaliTotal = isDetailed
+                ? pdfData.reduce((sum, ledger) => {
+                    (ledger.Items || []).forEach(item => {
+                        const rateWithGST = (item.DalaliRate || 0) * (1 + gstPct / 100);
+                        sum += (item.Qty || 0) * rateWithGST;
+                    });
+                    return sum;
+                }, 0)
+                : 0;
 
             const doc = new jsPDF({ orientation: isDetailed ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
             await registerHindiFont(doc);
@@ -1113,6 +1225,28 @@ const getDalaliData = async () => {
                     '',
                     pdfTotals.dalaliTotal.toFixed(2)
                 ]);
+                // Total With Tax row
+                if (gstPct > 0) {
+                    // Weighted average Dal Rate across selected items, then apply GST
+                    let pdTotalQty = 0;
+                    let pdWeightedRate = 0;
+                    pdfData.forEach(ledger => {
+                        (ledger.Items || []).forEach(item => {
+                            pdTotalQty += (item.Qty || 0);
+                            pdWeightedRate += (item.Qty || 0) * (item.DalaliRate || 0);
+                        });
+                    });
+                    const pdAvgRateWithGST = pdTotalQty > 0
+                        ? (pdWeightedRate / pdTotalQty) * (1 + gstPct / 100)
+                        : 0;
+
+                    body.push([
+                        { content: `Total With Tax  (GST @ ${gstPct}%)`, colSpan: 11, styles: { halign: 'left', fontStyle: 'bold', fillColor: [255, 243, 205], textColor: [0, 0, 0] } },
+                        '',
+                        { content: pdAvgRateWithGST.toFixed(2), styles: { halign: 'right', fontStyle: 'bold', fillColor: [255, 243, 205], textColor: [0, 0, 0] } },
+                        { content: taxDalaliTotal.toFixed(2), styles: { halign: 'right', fontStyle: 'bold', fillColor: [255, 243, 205], textColor: [0, 0, 0] } }
+                    ]);
+                }
 
                 doc.autoTable({
                     head,
@@ -2038,6 +2172,37 @@ const getDalaliData = async () => {
                 <Button color="primary" onClick={handleLedgerModalDone}>
                     <i className="fas fa-check me-2"></i>
                     Done
+                </Button>
+            </ModalFooter>
+        </Modal>
+
+        {/* GST Modal */}
+        <Modal isOpen={showGSTModal} toggle={() => setShowGSTModal(false)} centered size="sm">
+            <ModalHeader toggle={() => setShowGSTModal(false)}>
+                <span className="d-flex align-items-center">
+                    <i className="fas fa-percent me-2"></i>
+                    GST on Dal Rate
+                </span>
+            </ModalHeader>
+            <ModalBody>
+                <Label className="fw-semibold">GST Percentage (%)</Label>
+                <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="e.g. 18"
+                    value={gstPercent}
+                    onChange={(e) => setGstPercent(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleGSTConfirm(); }}
+                    autoFocus
+                />
+                <small className="text-muted">GST % will be added to Dal Rate and Dal Total will be recalculated. Enter 0 to skip.</small>
+            </ModalBody>
+            <ModalFooter>
+                <Button color="secondary" onClick={() => setShowGSTModal(false)}>Cancel</Button>
+                <Button color="primary" onClick={handleGSTConfirm}>
+                    <i className="fas fa-check me-1"></i> Proceed
                 </Button>
             </ModalFooter>
         </Modal>
