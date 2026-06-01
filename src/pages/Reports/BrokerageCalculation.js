@@ -910,9 +910,33 @@ const getDalaliData = async () => {
                             totalWeightedRate += (item.Qty || 0) * (item.DalaliRate || 0);
                         });
                     });
+                    const avgRateGstOnly = totalQty > 0
+                        ? (totalWeightedRate / totalQty) * (gstPct / 100)
+                        : 0;
                     const avgRateWithGST = totalQty > 0
                         ? (totalWeightedRate / totalQty) * (1 + gstPct / 100)
                         : 0;
+
+                    const gstAmount = taxDalaliTotal - totals.dalaliTotal;
+
+                    const gstAmountRow = worksheet.addRow({
+                        srNo: 'GST Amount',
+                        ledgerItem: `GST @ ${gstPct}%`,
+                        sellQty: '',
+                        purQty: '',
+                        brokerage: '',
+                        crAmount: '',
+                        drAmount: '',
+                        balance: '',
+                        dalaliSellQty: '',
+                        dalaliSellAmt: '',
+                        dalaliPurQty: '',
+                        dalaliPurAmt: '',
+                        dalaliRate: parseFloat(avgRateGstOnly.toFixed(2)),
+                        dalaliTotal: parseFloat(gstAmount.toFixed(2))
+                    });
+                    gstAmountRow.font = { bold: true, color: { argb: 'FF000000' } };
+                    gstAmountRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3CD' } };
 
                     const taxRow = worksheet.addRow({
                         srNo: 'Total With Tax',
@@ -1236,9 +1260,21 @@ const getDalaliData = async () => {
                             pdWeightedRate += (item.Qty || 0) * (item.DalaliRate || 0);
                         });
                     });
+                    const pdAvgRateGstOnly = pdTotalQty > 0
+                        ? (pdWeightedRate / pdTotalQty) * (gstPct / 100)
+                        : 0;
                     const pdAvgRateWithGST = pdTotalQty > 0
                         ? (pdWeightedRate / pdTotalQty) * (1 + gstPct / 100)
                         : 0;
+
+                    const pdGstAmountOnly = taxDalaliTotal - pdfTotals.dalaliTotal;
+
+                    body.push([
+                        { content: `GST Amount  (GST @ ${gstPct}%)`, colSpan: 11, styles: { halign: 'left', fontStyle: 'bold', fillColor: [255, 243, 205], textColor: [0, 0, 0] } },
+                        '',
+                        { content: pdAvgRateGstOnly.toFixed(2), styles: { halign: 'right', fontStyle: 'bold', fillColor: [255, 243, 205], textColor: [0, 0, 0] } },
+                        { content: pdGstAmountOnly.toFixed(2), styles: { halign: 'right', fontStyle: 'bold', fillColor: [255, 243, 205], textColor: [0, 0, 0] } }
+                    ]);
 
                     body.push([
                         { content: `Total With Tax  (GST @ ${gstPct}%)`, colSpan: 11, styles: { halign: 'left', fontStyle: 'bold', fillColor: [255, 243, 205], textColor: [0, 0, 0] } },

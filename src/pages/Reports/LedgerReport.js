@@ -102,13 +102,19 @@ const LedgerReport = () => {
         background-color: #fde7e9 !important;
       }
       
-      /* Force totals row background color */
-      tfoot tr {
+      /* Force totals row background color and override Bootstrap 5 table shadows */
+      tfoot tr.totals-row td {
         background-color: #4B0082 !important;
+        --bs-table-bg: #4B0082 !important;
+        --bs-table-accent-bg: transparent !important;
+        box-shadow: none !important;
         color: white !important;
       }
-      tfoot tr td {
-        background-color: #4B0082 !important;
+      tfoot tr.selected-totals-row td {
+        background-color: #FF8C00 !important;
+        --bs-table-bg: #FF8C00 !important;
+        --bs-table-accent-bg: transparent !important;
+        box-shadow: none !important;
         color: white !important;
       }
       
@@ -598,6 +604,8 @@ const LedgerReport = () => {
     Rate: 65,
     ContPeriod: 85,
     DeliveryPort: 90,
+    SAdvPayment: 80,
+    PAdvPayment: 80,
     AdvPayment: 80,
     AdvDate: 80,
     Lifted: 65,
@@ -636,7 +644,65 @@ const LedgerReport = () => {
 
   // Get effective visible columns based on isDetailed flag
   const getVisibleColumns = () => ALL_COLUMNS.filter(c => !c.detailedOnly || isDetailed)
-  // --- End Column Configuration -----------------------------------
+  // --- Column Drag-to-Reorder Feature ---
+  const LR_DEFAULT_ORDER = ALL_COLUMNS.map(c => c.key);
+  const LR_ORDER_KEY = 'ledgerReport_columnOrder';
+
+  const lrGetInitialOrder = () => {
+    try {
+      const saved = localStorage.getItem(LR_ORDER_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return [
+          ...parsed.filter(k => LR_DEFAULT_ORDER.includes(k)),
+          ...LR_DEFAULT_ORDER.filter(k => !parsed.includes(k)),
+        ];
+      }
+    } catch (e) { }
+    return [...LR_DEFAULT_ORDER];
+  };
+
+  const [lrColumnOrder, setLrColumnOrder] = useState(lrGetInitialOrder);
+  const [lrDragOverKey, setLrDragOverKey] = useState(null);
+  const lrDragSrcRef = useRef(null);
+
+  const lrSaveOrder = (order) => {
+    try { localStorage.setItem(LR_ORDER_KEY, JSON.stringify(order)); } catch (e) { }
+  };
+
+  const lrDragStart = (e, key) => {
+    lrDragSrcRef.current = key;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', key);
+  };
+  const lrDragOver = (e, key) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (key !== lrDragSrcRef.current) setLrDragOverKey(key);
+  };
+  const lrDrop = (e, targetKey) => {
+    e.preventDefault();
+    const srcKey = lrDragSrcRef.current;
+    if (!srcKey || srcKey === targetKey) { setLrDragOverKey(null); return; }
+    setLrColumnOrder(prev => {
+      const next = [...prev];
+      const from = next.indexOf(srcKey);
+      const to = next.indexOf(targetKey);
+      if (from === -1 || to === -1) return prev;
+      next.splice(from, 1);
+      next.splice(to, 0, srcKey);
+      lrSaveOrder(next);
+      return next;
+    });
+    setLrDragOverKey(null);
+    lrDragSrcRef.current = null;
+  };
+  const lrDragEnd = () => { setLrDragOverKey(null); lrDragSrcRef.current = null; };
+  const lrVisibleColumns = () => lrColumnOrder
+    .map(k => ALL_COLUMNS.find(c => c.key === k))
+    .filter(Boolean)
+    .filter(c => !c.detailedOnly || isDetailed);
+  // --- End Column Drag-to-Reorder Feature ---
 
   // --- Filter Layout Feature (resizable, reorderable, gap control) ---
   const TOP_FILTER_DEFAULTS = [
@@ -1153,7 +1219,7 @@ const LedgerReport = () => {
 
       setFromDate(financialYearStart)
       setToDate(financialYearEnd)
-      
+
       // Auto-select all three color checkboxes (NotStarted/Black, Pending/Red, Completed/Blue)
       setState(prev => ({
         ...prev,
@@ -3344,6 +3410,7 @@ const LedgerReport = () => {
 
       // -- Column definitions (total = 283 mm, margin 7 each side) --
       const cols = [
+        { header: 'Sr. No.', dataKey: 'SrNo', width: 12, type: 'number' },
         { header: 'Contract No', dataKey: 'ContractNo', width: 19 },
         { header: 'Date', dataKey: 'ContractDate', width: 18 },
         { header: 'Seller', dataKey: 'Seller', width: 30 },
@@ -3362,13 +3429,13 @@ const LedgerReport = () => {
       if (isDetailed) {
         cols.push({ header: 'Lifting (Date|Lorry|BNo|Qty|Rate)', dataKey: 'DetailedLifting', width: 64 });
       }
-      
+
       const head = [cols.map(c => c.header)]
       const columnStyles = {}
       cols.forEach((col, i) => {
         columnStyles[i] = {
           cellWidth: col.width,
-          halign: (col.dataKey.includes('Qty') || col.dataKey === 'Rate' || col.dataKey.includes('AdvPayment')) ? 'right' : 'left',
+          halign: (col.type === 'number' || col.dataKey.includes('Qty') || col.dataKey === 'Rate' || col.dataKey.includes('AdvPayment')) ? 'right' : 'left',
           overflow: 'linebreak',
         }
       })
@@ -3383,10 +3450,9 @@ const LedgerReport = () => {
         const gtDiffAmt = gt.totalSelQty * gt.sellAvgRate - gt.totalPurQty * gt.purchaseAvgRate
 
         // Group header row � party name (colSpan 5) + stats cells matching table's tan header row
-        const grpRemCols = cols.length - 13
+        const grpRemCols = cols.length - 14
         body.push([
-          { content: `${group.groupName}  (${group.count} rec)`, colSpan: 5, styles: { textColor: [44, 62, 80], fontStyle: 'bold', fontSize: 8, cellPadding: { top: 2, bottom: 2, left: 4, right: 2 } } },
-          { content: '', styles: {} },
+          { content: `${group.groupName}  (${group.count} rec)`, colSpan: 6, styles: { textColor: [44, 62, 80], fontStyle: 'bold', fontSize: 8, cellPadding: { top: 2, bottom: 2, left: 4, right: 2 } } },
           { content: `Buy Qty\n${gt.totalPurQty.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
           { content: `Sell Qty\n${gt.totalSelQty.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
           { content: `Buy Avg\n${gt.purchaseAvgRate.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
@@ -3421,6 +3487,7 @@ const LedgerReport = () => {
           }
 
           const rowPushData = [
+            selectionOrder.indexOf(getRowIdentifier(row)) + 1,
             row.ContractNo || '',
             row.ContractDate || '',
             row.Seller || '',
@@ -3446,10 +3513,9 @@ const LedgerReport = () => {
       })
 
       // Overall totals row � same structure as group header rows
-      const overallRemCols = cols.length - 13
+      const overallRemCols = cols.length - 14
       body.push([
-        { content: `OVERALL TOTALS  (${rowsForExport.length} records)`, colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', textColor: [75, 0, 130] } },
-        { content: '', styles: {} },
+        { content: `OVERALL TOTALS  (${rowsForExport.length} records)`, colSpan: 6, styles: { halign: 'right', fontStyle: 'bold', textColor: [75, 0, 130] } },
         { content: `Buy Qty\n${overall.totalPurQty.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
         { content: `Sell Qty\n${overall.totalSelQty.toFixed(2)}`, styles: { textColor: [180, 30, 30], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
         { content: `Buy Avg\n${overall.purchaseAvgRate.toFixed(2)}`, styles: { textColor: [0, 102, 204], fontStyle: 'bold', fontSize: 7.5, halign: 'center', cellPadding: 1.5 } },
@@ -3656,7 +3722,7 @@ const LedgerReport = () => {
     const worksheet = workbook.addWorksheet("Ledger Report")
 
     // Determine the last column letter for merging based on isDetailed
-    const lastCol = isDetailed ? "U" : "T"
+    const lastCol = isDetailed ? "V" : "U"
 
     // Add title and header info
     let currentRow = 1
@@ -3687,6 +3753,7 @@ const LedgerReport = () => {
 
     // Column headers - exactly matching table columns
     const headers = [
+      "Sr. No.",
       "Contract No",
       "Contract Date",
       "Seller",
@@ -3722,67 +3789,67 @@ const LedgerReport = () => {
       // Group header row � party name (A:H merged) + stats cells matching table's tan header row
       const grpBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }
 
-      worksheet.mergeCells(`A${currentRow}:H${currentRow}`)
+      worksheet.mergeCells(`A${currentRow}:I${currentRow}`)
       const groupHeaderCell = worksheet.getCell(`A${currentRow}`)
       groupHeaderCell.value = `${group.groupName}  (${group.count} records)`
       groupHeaderCell.font = { bold: true, size: 10, color: { argb: "FF2C3E50" } }
       groupHeaderCell.alignment = { vertical: "middle" }
       groupHeaderCell.border = grpBorder
 
-      // Buy Qty (col I = index 9 in 1-based)
-      const buyQtyCell = worksheet.getCell(`I${currentRow}`)
+      // Buy Qty (col J = index 10 in 1-based)
+      const buyQtyCell = worksheet.getCell(`J${currentRow}`)
       buyQtyCell.value = Number(groupTotals.totalPurQty)
       buyQtyCell.numFmt = '0.00'
       buyQtyCell.font = { bold: true, color: { argb: "FF0066CC" } }
       buyQtyCell.alignment = { horizontal: "center", vertical: "middle" }
       buyQtyCell.border = grpBorder
 
-      // Sell Qty (col J)
-      const sellQtyCell = worksheet.getCell(`J${currentRow}`)
+      // Sell Qty (col K)
+      const sellQtyCell = worksheet.getCell(`K${currentRow}`)
       sellQtyCell.value = Number(groupTotals.totalSelQty)
       sellQtyCell.numFmt = '0.00'
       sellQtyCell.font = { bold: true, color: { argb: "FFB41E1E" } }
       sellQtyCell.alignment = { horizontal: "center", vertical: "middle" }
       sellQtyCell.border = grpBorder
 
-      // Buy Avg (col K)
-      const buyAvgCell = worksheet.getCell(`K${currentRow}`)
+      // Buy Avg (col L)
+      const buyAvgCell = worksheet.getCell(`L${currentRow}`)
       buyAvgCell.value = parseFloat(groupTotals.purchaseAvgRate.toFixed(2))
       buyAvgCell.numFmt = '0.00'
       buyAvgCell.font = { bold: true, color: { argb: "FF0066CC" } }
       buyAvgCell.alignment = { horizontal: "center", vertical: "middle" }
       buyAvgCell.border = grpBorder
 
-      // Sell Avg (col L)
-      const sellAvgCell = worksheet.getCell(`L${currentRow}`)
+      // Sell Avg (col M)
+      const sellAvgCell = worksheet.getCell(`M${currentRow}`)
       sellAvgCell.value = parseFloat(groupTotals.sellAvgRate.toFixed(2))
       sellAvgCell.numFmt = '0.00'
       sellAvgCell.font = { bold: true, color: { argb: "FFB41E1E" } }
       sellAvgCell.alignment = { horizontal: "center", vertical: "middle" }
       sellAvgCell.border = grpBorder
 
-      // Col M (Cont Period) � empty
-      const mCell = worksheet.getCell(`M${currentRow}`)
+      // Col N (Cont Period) — empty
+      const mCell = worksheet.getCell(`N${currentRow}`)
       mCell.border = grpBorder
 
-      // Diff Amt (col N)
-      const diffAmtCell = worksheet.getCell(`N${currentRow}`)
+      // Diff Amt (col O)
+      const diffAmtCell = worksheet.getCell(`O${currentRow}`)
       diffAmtCell.value = parseFloat(diffAmt.toFixed(2))
       diffAmtCell.numFmt = '0.00'
       diffAmtCell.font = { bold: true, color: { argb: diffAmt >= 0 ? "FF198754" : "FFdc3545" } }
       diffAmtCell.alignment = { horizontal: "center", vertical: "middle" }
       diffAmtCell.border = grpBorder
 
-      // S Adv Pay (col O)
-      const sAdvCell = worksheet.getCell(`O${currentRow}`)
+      // S Adv Pay (col P)
+      const sAdvCell = worksheet.getCell(`P${currentRow}`)
       sAdvCell.value = parseFloat(groupTotals.totalSAdvPayment.toFixed(2))
       sAdvCell.numFmt = '0.00'
       sAdvCell.font = { bold: true, color: { argb: "FFB41E1E" } }
       sAdvCell.alignment = { horizontal: "center", vertical: "middle" }
       sAdvCell.border = grpBorder
 
-      // P Adv Pay (col P)
-      const pAdvCell = worksheet.getCell(`P${currentRow}`)
+      // P Adv Pay (col Q)
+      const pAdvCell = worksheet.getCell(`Q${currentRow}`)
       pAdvCell.value = parseFloat(groupTotals.totalPAdvPayment.toFixed(2))
       pAdvCell.numFmt = '0.00'
       pAdvCell.font = { bold: true, color: { argb: "FF0066CC" } }
@@ -3790,7 +3857,7 @@ const LedgerReport = () => {
       pAdvCell.border = grpBorder
 
       // Fill remaining cols with border
-      for (let c = 17; c <= headers.length; c++) {
+      for (let c = 18; c <= headers.length; c++) {
         const cell = worksheet.getCell(currentRow, c)
         cell.border = grpBorder
       }
@@ -3841,6 +3908,7 @@ const LedgerReport = () => {
         lastColData = getCombinedNotes(row) || "-";
 
         const rowData = [
+          selectionOrder.indexOf(getRowIdentifier(row)) + 1,
           row.ContractNo || "",
           row.ContractDate || "",
           row.Seller || "",
@@ -3890,7 +3958,7 @@ const LedgerReport = () => {
     const overallDiffAmt = overallTotals.diffAmt
     const overallBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } }
 
-    worksheet.mergeCells(`A${currentRow}:H${currentRow}`)
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`)
     const overallHeaderCell = worksheet.getCell(`A${currentRow}`)
     overallHeaderCell.value = `OVERALL TOTALS  (${rowsForExport.length} records)`
     overallHeaderCell.font = { bold: true, size: 11, color: { argb: "FF4B0082" } }
@@ -3906,20 +3974,20 @@ const LedgerReport = () => {
       cell.border = overallBorder
     }
 
-    setOverallCell('I', overallTotals.totalPurQty, "FF0066CC")
-    setOverallCell('J', overallTotals.totalSelQty, "FFB41E1E")
-    setOverallCell('K', overallTotals.purchaseAvgRate, "FF0066CC")
-    setOverallCell('L', overallTotals.sellAvgRate, "FFB41E1E")
+    setOverallCell('J', overallTotals.totalPurQty, "FF0066CC")
+    setOverallCell('K', overallTotals.totalSelQty, "FFB41E1E")
+    setOverallCell('L', overallTotals.purchaseAvgRate, "FF0066CC")
+    setOverallCell('M', overallTotals.sellAvgRate, "FFB41E1E")
 
-    const mOverall = worksheet.getCell(`M${currentRow}`)
+    const mOverall = worksheet.getCell(`N${currentRow}`)
     mOverall.border = overallBorder
 
-    setOverallCell('N', overallDiffAmt, overallDiffAmt >= 0 ? "FF198754" : "FFB41E1E")
+    setOverallCell('O', overallDiffAmt, overallDiffAmt >= 0 ? "FF198754" : "FFB41E1E")
 
-    setOverallCell('O', overallTotals.totalSAdvPayment, "FFB41E1E")
-    setOverallCell('P', overallTotals.totalPAdvPayment, "FF0066CC")
+    setOverallCell('P', overallTotals.totalSAdvPayment, "FFB41E1E")
+    setOverallCell('Q', overallTotals.totalPAdvPayment, "FF0066CC")
 
-    for (let c = 17; c <= headers.length; c++) {
+    for (let c = 18; c <= headers.length; c++) {
       const cell = worksheet.getCell(currentRow, c)
       cell.border = overallBorder
     }
@@ -4041,6 +4109,296 @@ const LedgerReport = () => {
     toast.success("Excel exported successfully with colored rows!")
   }
 
+  const getFooterCalculations = () => {
+    const allTotals = calculateLedgerGroupTotals(flattenedVisibleRows)
+    let allPurQty = 0
+    let allSelQty = 0
+    let allPurchaseAmount = 0
+    let allSellAmount = 0
+    flattenedVisibleRows.forEach(row => {
+      const qty = parseFloat(row.Qty) || 0
+      const rate = parseFloat(row.Rate) || 0
+      if (row.Status === "P") {
+        allPurQty += qty
+        allPurchaseAmount += qty * rate
+      } else if (row.Status === "S") {
+        allSelQty += qty
+        allSellAmount += qty * rate
+      }
+    })
+    const allPurchaseAvgRate = allPurQty > 0 ? allPurchaseAmount / allPurQty : 0
+    const allSellAvgRate = allSelQty > 0 ? allSellAmount / allSelQty : 0
+    const allDiff = (allSelQty * allSellAvgRate) - (allPurQty * allPurchaseAvgRate)
+    const allLifted = state.FillArray.reduce((sum, row) => sum + (parseFloat(row.Lifted) || 0), 0)
+
+    const selectedRows = flattenedVisibleRows.filter(row =>
+      selectedRowIds.has(getRowIdentifier(row))
+    )
+    const selTotals = calculateLedgerGroupTotals(selectedRows)
+    let selPurQty = 0
+    let selSelQty = 0
+    let selPurchaseAmount = 0
+    let selSellAmount = 0
+    selectedRows.forEach(row => {
+      const qty = parseFloat(row.Qty) || 0
+      const rate = parseFloat(row.Rate) || 0
+      if (row.Status === "P") {
+        selPurQty += qty
+        selPurchaseAmount += qty * rate
+      } else if (row.Status === "S") {
+        selSelQty += qty
+        selSellAmount += qty * rate
+      }
+    })
+    const selPurchaseAvgRate = selPurQty > 0 ? selPurchaseAmount / selPurQty : 0
+    const selSellAvgRate = selSelQty > 0 ? selSellAmount / selSelQty : 0
+    const selDiff = (selSelQty * selSellAvgRate) - (selPurQty * selPurchaseAvgRate)
+    const selLifted = selectedRows.reduce((sum, row) => sum + (parseFloat(row.Lifted) || 0), 0)
+
+    return {
+      all: {
+        count: flattenedVisibleRows.length,
+        buyQty: allPurQty,
+        sellQty: allSelQty,
+        buyAvg: allPurchaseAvgRate,
+        sellAvg: allSellAvgRate,
+        diff: allDiff,
+        sAdv: allTotals.totalSAdvPayment,
+        pAdv: allTotals.totalPAdvPayment,
+        lifted: allLifted,
+      },
+      selected: {
+        count: selectedRows.length,
+        buyQty: selPurQty,
+        sellQty: selSelQty,
+        buyAvg: selPurchaseAvgRate,
+        sellAvg: selSellAvgRate,
+        diff: selDiff,
+        sAdv: selTotals.totalSAdvPayment,
+        pAdv: selTotals.totalPAdvPayment,
+        lifted: selLifted,
+        hasSelection: selectedRowIds.size > 0,
+      }
+    }
+  }
+
+  const getGroupHeaderCellProps = (colKey, group, ledgerTotals) => {
+    let content = ""
+    let halign = "center"
+    let widthVal = `${columnWidths[colKey] || COLUMN_DEFAULT_WIDTHS[colKey] || 80}px`
+    
+    // Default styling
+    let cellStyle = {
+      backgroundColor: "#D2B48C",
+      color: "#2c3e50",
+      padding: "2px 4px",
+      verticalAlign: "middle",
+      border: "1.5px solid black !important",
+      boxShadow: "none",
+      fontSize: "0.6rem",
+      fontWeight: "bold",
+    }
+    
+    if (colKey === "CheckBox") {
+      content = ""
+    } else if (colKey === "ContractNo") {
+      content = (
+        <div style={{ position: "relative" }}>
+          {/* Desktop: Party name only */}
+          <span
+            className="fw-bold d-none d-md-inline-block"
+            style={{
+              color: "red",
+              fontWeight: "bold",
+              fontSize: "0.75rem",
+              lineHeight: "1.3",
+              whiteSpace: "nowrap",
+              position: "absolute",
+              zIndex: 2,
+              top: "50%",
+              transform: "translateY(-50%)"
+            }}
+          >
+            {group.groupName}
+          </span>
+          {/* Mobile: Party name on first line, totals on second line */}
+          <div className="d-md-none">
+            <div
+              className="fw-bold"
+              style={{
+                color: "red",
+                fontWeight: "bold",
+                fontSize: "0.75rem",
+                wordBreak: "break-all",
+                overflowWrap: "break-word",
+                lineHeight: "1.3",
+                marginBottom: "2px",
+              }}
+            >
+              {group.groupName}
+            </div>
+            <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block", minWidth: "250px" }}>
+              <span style={{ color: "#000000", fontWeight: "bold" }}>B:{Number(ledgerTotals.totalPurQty).toFixed(2)}</span>
+              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
+              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>S:{Number(ledgerTotals.totalSelQty).toFixed(2)}</span>
+              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
+              <span style={{ color: "#000000", fontWeight: "bold" }}>BA:{Number(ledgerTotals.purchaseAvgRate).toFixed(2)}</span>
+              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
+              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>SA:{Number(ledgerTotals.sellAvgRate).toFixed(2)}</span>
+              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
+              {(() => {
+                const diff = ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate - ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
+                return (
+                  <span style={{ color: diff >= 0 ? "#198754" : "#dc3545", fontWeight: "bold" }}>
+                    Diff:{Number(diff).toFixed(2)}
+                  </span>
+                )
+              })()}
+            </small>
+          </div>
+        </div>
+      )
+      halign = "start"
+    } else if (colKey === "PurQty") {
+      content = (
+        <div>
+          <div style={{ fontSize: "0.55rem", color: "#0066cc" }}>Buy Qty</div>
+          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
+            {ledgerTotals.totalPurQty.toLocaleString()}
+          </div>
+        </div>
+      )
+    } else if (colKey === "SelQty") {
+      content = (
+        <div>
+          <div style={{ fontSize: "0.55rem", color: "#dc3545" }}>Sell Qty</div>
+          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
+            {ledgerTotals.totalSelQty.toLocaleString()}
+          </div>
+        </div>
+      )
+    } else if (colKey === "Vessel") {
+      content = (
+        <div>
+          <div style={{ fontSize: "0.55rem", color: "#0066cc" }}>Buy Avg</div>
+          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
+            \u20B9{ledgerTotals.purchaseAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </div>
+        </div>
+      )
+    } else if (colKey === "Rate") {
+      content = (
+        <div>
+          <div style={{ fontSize: "0.55rem", color: "#dc3545" }}>Sell Avg</div>
+          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
+            \u20B9{ledgerTotals.sellAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </div>
+        </div>
+      )
+    } else if (colKey === "DeliveryPort") {
+      content = (
+        <div>
+          <div style={{ fontSize: "0.55rem", color: "#198754" }}>Diff Amt</div>
+          <div
+            style={{
+              fontSize: "0.65rem",
+              fontWeight: "bold",
+              color: (() => {
+                const difference = ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate - ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
+                return difference >= 0 ? "#198754" : "#dc3545"
+              })()
+            }}
+          >
+            \u20B9{parseFloat(
+              ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate -
+              ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
+            ).toFixed(2)}
+          </div>
+        </div>
+      )
+    } else if (colKey === "SAdvPayment") {
+      content = (
+        <div>
+          <div style={{ fontSize: "0.55rem", color: "#dc3545" }}>S Adv Pay</div>
+          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
+            {ledgerTotals.totalSAdvPayment.toFixed(2)}
+          </div>
+        </div>
+      )
+    } else if (colKey === "PAdvPayment") {
+      content = (
+        <div>
+          <div style={{ fontSize: "0.55rem", color: "#0066cc" }}>P Adv Pay</div>
+          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
+            {ledgerTotals.totalPAdvPayment.toFixed(2)}
+          </div>
+        </div>
+      )
+    } else if (colKey === "Note") {
+      content = (
+        <Button
+          size="sm"
+          variant="outline-primary"
+          style={{
+            fontSize: "0.6rem",
+            padding: "3px 8px",
+          }}
+          onClick={() => {
+            const csv = group.items
+              .map(
+                row =>
+                  `"${row.ContractNo}","${row.ContractDate}","${row.Seller}","${row.Buyer}","${row.Status}","${row.Tax}","${row.Unit}","${row.Item}","${row.PurQty}","${row.SelQty}","${row.Vessel}","${row.Rate}","${row.ShipmentDate}","${row.LiftedDate}","${row.DeliveryPort}","${row.AdvPayment}","${row.AdvDate}","${row.Lifted}","${row.Contract}","${getCombinedNotes(row)}"`
+              )
+              .join("\n")
+            navigator.clipboard.writeText(csv)
+            toast.success(
+              `Copied ${group.count} records for ${group.groupName} to clipboard`
+            )
+          }}
+          title="Copy group data to clipboard"
+        >
+          <i className="fas fa-copy"></i>
+        </Button>
+      )
+      halign = "end"
+    }
+    
+    return {
+      halign,
+      content,
+      style: cellStyle,
+      widthVal
+    }
+  }
+
+  const getFooterCellProps = (colKey, type, footerCalcs) => {
+    const totals = type === 'all' ? footerCalcs.all : footerCalcs.selected
+    let content = ""
+    let halign = "center"
+
+    if (colKey === "CheckBox") {
+      content = totals.count
+    } else if (colKey === "ContractNo") {
+      content = `B: ${totals.buyQty.toFixed(2)}`
+    } else if (colKey === "ContractDate") {
+      content = `S: ${totals.sellQty.toFixed(2)}`
+    } else if (colKey === "Seller") {
+      content = `Diff: ${totals.diff.toFixed(2)}`
+      halign = "start"
+    } else if (colKey === "SAdvPayment") {
+      content = totals.sAdv.toFixed(2)
+      halign = "end"
+    } else if (colKey === "PAdvPayment") {
+      content = totals.pAdv.toFixed(2)
+      halign = "end"
+    } else if (colKey === "Lifted") {
+      content = totals.lifted.toFixed(2)
+      halign = "end"
+    }
+
+    return { content, halign }
+  }
+
   return (
     <div
       className="ledger-report-container"
@@ -4137,10 +4495,15 @@ const LedgerReport = () => {
                           }}
                         >
                           <tr>
-                            {getVisibleColumns().map((col) => (
+                            {lrVisibleColumns().map((col) => (
                               <th
                                 key={col.key}
-                                className="text-center align-middle"
+                                className={`text-center align-middle${lrDragOverKey === col.key ? ' col-drag-over' : ''}`}
+                                draggable={col.key !== 'CheckBox'}
+                                onDragStart={col.key !== 'CheckBox' ? (e => lrDragStart(e, col.key)) : undefined}
+                                onDragOver={e => lrDragOver(e, col.key)}
+                                onDrop={e => lrDrop(e, col.key)}
+                                onDragEnd={lrDragEnd}
                                 style={{
                                   backgroundColor: "#0000FF",
                                   color: "white",
@@ -4151,7 +4514,7 @@ const LedgerReport = () => {
                                   width: `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`,
                                   maxWidth: `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`,
                                   minWidth: "1px",
-                                  cursor: col.sortKey ? "pointer" : "default",
+                                  cursor: col.key !== 'CheckBox' ? "grab" : "default",
                                   border: "1.5px solid black",
                                   boxShadow: "none",
                                   position: "relative",
@@ -4214,306 +4577,26 @@ const LedgerReport = () => {
                                         border: "1px solid #d2b48c",
                                       }}
                                     >
-                                      {/* Group Name - Spans columns 1-7 (CheckBox + ContractNo to Status) */}
-                                      <td
-                                        colSpan="7"
-                                        className="fw-bold border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 8px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                        }}
-                                      >
-                                        <div>
-                                          {/* Desktop: Party name only */}
-                                          <span
-                                            className="fw-bold d-none d-md-inline-block"
+                                      {lrVisibleColumns().map((col) => {
+                                        const cellProps = getGroupHeaderCellProps(col.key, group, ledgerTotals)
+                                        return (
+                                          <td
+                                            key={col.key}
+                                            className={`text-${cellProps.halign}`}
                                             style={{
-                                              color: "red",
-                                              fontWeight: "bold",
-                                              fontSize: "0.75rem",
-                                              maxWidth: "18ch",
-                                              wordBreak: "break-all",
-                                              overflowWrap: "break-word",
-                                              lineHeight: "1.3",
+                                              ...cellProps.style,
+                                              width: cellProps.widthVal,
+                                              maxWidth: cellProps.widthVal,
+                                              minWidth: 0,
+                                              overflow: col.key === "ContractNo" ? "visible" : "hidden",
+                                              textOverflow: "ellipsis",
+                                              whiteSpace: "nowrap",
                                             }}
                                           >
-                                            {group.groupName}
-                                          </span>
-                                          
-                                          {/* Mobile: Party name on first line, totals on second line */}
-                                          <div className="d-md-none">
-                                            <div
-                                              className="fw-bold"
-                                              style={{
-                                                color: "red",
-                                                fontWeight: "bold",
-                                                fontSize: "0.75rem",
-                                                wordBreak: "break-all",
-                                                overflowWrap: "break-word",
-                                                lineHeight: "1.3",
-                                                marginBottom: "2px",
-                                              }}
-                                            >
-                                              {group.groupName}
-                                            </div>
-                                            <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
-                                              <span style={{ color: "#000000", fontWeight: "bold" }}>B:{Number(ledgerTotals.totalPurQty).toFixed(2)}</span>
-                                              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>S:{Number(ledgerTotals.totalSelQty).toFixed(2)}</span>
-                                              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                              <span style={{ color: "#000000", fontWeight: "bold" }}>BA:{Number(ledgerTotals.purchaseAvgRate).toFixed(2)}</span>
-                                              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                              <span style={{ color: "#d62d5d", fontWeight: "bold" }}>SA:{Number(ledgerTotals.sellAvgRate).toFixed(2)}</span>
-                                              <span style={{ color: "#555", fontWeight: "bold" }}> | </span>
-                                              {(() => {
-                                                const diff = ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate - ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
-                                                return (
-                                                  <span style={{ color: diff >= 0 ? "#198754" : "#dc3545", fontWeight: "bold" }}>
-                                                    Diff:{Number(diff).toFixed(2)}
-                                                  </span>
-                                                )
-                                              })()}
-                                            </small>
-                                          </div>
-                                          {/* <small className="text-muted ms-2" style={{ fontSize: "0.65rem" }}>
-                                            ({group.count}{" "}
-                                            {group.count === 1 ? "record" : "records"})
-                                            {(() => {
-                                              const groupSelectedCount = group.items.filter(item => {
-                                                const rowId = getRowIdentifier(item);
-                                                return rowId && selectedRowIds.has(rowId);
-                                              }).length;
-
-                                              if (groupSelectedCount > 0) {
-                                                return <span className="ms-2" style={{ color: "#0056b3", fontWeight: "bold" }}> | Sel : {groupSelectedCount}</span>;
-                                              }
-                                              return null;
-                                            })()}
-                                          </small> */}
-                                        </div>
-                                      </td>
-                                      {/* Empty - Column 7 (Unit) */}
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          // border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                        }}
-                                      >
-                                      </td>
-                                      {/* Empty - Column 8 (Item) */}
-
-                                      {/* Buy Qty - Column 9 (Pur Qty) */}
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 4px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          fontSize: "0.6rem",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        <div>
-                                          <div style={{ fontSize: "0.55rem", color: "#0066cc" }}>Buy Qty</div>
-                                          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            {ledgerTotals.totalPurQty.toLocaleString()}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {/* Sell Qty - Column 10 (Sel Qty) */}
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 4px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          fontSize: "0.6rem",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        <div>
-                                          <div style={{ fontSize: "0.55rem", color: "#dc3545" }}>Sell Qty</div>
-                                          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            {ledgerTotals.totalSelQty.toLocaleString()}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {/* Buy Avg - Column 11 (Vessel) */}
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 4px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          fontSize: "0.6rem",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        <div>
-                                          <div style={{ fontSize: "0.55rem", color: "#0066cc" }}>Buy Avg</div>
-                                          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            ?{ledgerTotals.purchaseAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {/* Sell Avg - Column 12 (Rate) */}
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 4px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          fontSize: "0.6rem",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        <div>
-                                          <div style={{ fontSize: "0.55rem", color: "#dc3545" }}>Sell Avg</div>
-                                          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            ?{ledgerTotals.sellAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          // border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                        }}
-                                      >
-                                      </td>
-                                      {/* Diff Amt - Column 13 (Cont Period) */}
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 4px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          fontSize: "0.6rem",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        <div>
-                                          <div style={{ fontSize: "0.55rem", color: "#198754" }}>Diff Amt</div>
-                                          <div
-                                            style={{
-                                              fontSize: "0.65rem",
-                                              fontWeight: "bold",
-                                              color: (() => {
-                                                const difference = ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate - ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
-                                                return difference >= 0 ? "#198754" : "#dc3545"
-                                              })()
-                                            }}
-                                          >
-                                            ?{parseFloat(
-                                              ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate -
-                                              ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
-                                            ).toFixed(2)}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {/* S Adv Pay */}
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 4px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          fontSize: "0.6rem",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        <div>
-                                          <div style={{ fontSize: "0.55rem", color: "#dc3545" }}>S Adv Pay</div>
-                                          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            {ledgerTotals.totalSAdvPayment.toFixed(2)}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {/* P Adv Pay */}
-                                      <td
-                                        className="text-center border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 4px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                          fontSize: "0.6rem",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        <div>
-                                          <div style={{ fontSize: "0.55rem", color: "#0066cc" }}>P Adv Pay</div>
-                                          <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-                                            {ledgerTotals.totalPAdvPayment.toFixed(2)}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {/* Copy Button - remaining columns */}
-                                      <td
-                                        colSpan="4"
-                                        className="text-end border-bottom"
-                                        style={{
-                                          backgroundColor: "#D2B48C",
-                                          color: "#2c3e50",
-                                          padding: "2px 8px",
-                                          verticalAlign: "middle",
-                                          border: "1.5px solid black !important",
-                                          boxShadow: "none",
-                                        }}
-                                      >
-                                        <Button
-                                          size="sm"
-                                          variant="outline-primary"
-                                          style={{
-                                            fontSize: "0.6rem",
-                                            padding: "3px 8px",
-                                          }}
-                                          onClick={() => {
-                                            // Copy group data to clipboard
-                                            const csv = group.items
-                                              .map(
-                                                row =>
-                                                  `"${row.ContractNo}","${row.ContractDate}","${row.Seller}","${row.Buyer}","${row.Status}","${row.Tax}","${row.Unit}","${row.Item}","${row.PurQty}","${row.SelQty}","${row.Vessel}","${row.Rate}","${row.ShipmentDate}","${row.LiftedDate}","${row.DeliveryPort}","${row.AdvPayment}","${row.AdvDate}","${row.Lifted}","${row.Contract}","${getCombinedNotes(row)}"`
-                                              )
-                                              .join("\n")
-                                            navigator.clipboard.writeText(csv)
-                                            toast.success(
-                                              `Copied ${group.count} records for ${group.groupName} to clipboard`
-                                            )
-                                          }}
-                                          title="Copy group data to clipboard"
-                                        >
-                                          <i className="fas fa-copy"></i>
-                                        </Button>
-                                      </td>
+                                            {cellProps.content}
+                                          </td>
+                                        )
+                                      })}
                                     </tr>
                                   )
                                 })()}
@@ -4548,7 +4631,7 @@ const LedgerReport = () => {
                                       }}
 
                                     >
-                                      {getVisibleColumns().map((col) => {
+                                      {lrVisibleColumns().map((col) => {
                                         const tdStyle = {
                                           verticalAlign: "middle",
                                           padding: col.key === 'CheckBox' ? '4px' : '2px 4px',
@@ -4667,482 +4750,181 @@ const LedgerReport = () => {
                             overflow: "visible",
                           }}
                         >
-                          {/* Totals Row */}
-                          <tr
-                            style={{
-                              backgroundColor: "#4B0082",
-                              color: "white",
-                              borderColor: "#000",
-                              height: "25px",
-                            }}
-                          >
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                                fontSize: "0.6rem"
-                              }}
-                            >
-                              {flattenedVisibleRows.length}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                                width: `${columnWidths['ContractNo'] || COLUMN_DEFAULT_WIDTHS['ContractNo'] || 110}px`,
-                                maxWidth: `${columnWidths['ContractNo'] || COLUMN_DEFAULT_WIDTHS['ContractNo'] || 110}px`,
-                                minWidth: 0,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap"
-                              }}
-                            >
-                              B: {flattenedVisibleRows
-                                .filter(r => r.Status === "P")
-                                .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
-                                .toFixed(2)}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                                width: `${columnWidths['ContractDate'] || COLUMN_DEFAULT_WIDTHS['ContractDate'] || 90}px`,
-                                maxWidth: `${columnWidths['ContractDate'] || COLUMN_DEFAULT_WIDTHS['ContractDate'] || 90}px`,
-                                minWidth: 0,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap"
-                              }}
-                            >
-                              S: {flattenedVisibleRows
-                                .filter(r => r.Status === "S")
-                                .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
-                                .toFixed(2)}
-                            </td>
-                            <td
-                              className="text-start fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0 4px",
-                                border: "1.5px solid black",
-                                width: `${columnWidths['Seller'] || COLUMN_DEFAULT_WIDTHS['Seller'] || 120}px`,
-                                maxWidth: `${columnWidths['Seller'] || COLUMN_DEFAULT_WIDTHS['Seller'] || 120}px`,
-                                minWidth: 0,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap"
-                              }}
-                            >
-                              {(() => {
-                                let totalPurQty = 0
-                                let totalSelQty = 0
-                                let totalPurchaseAmount = 0
-                                let totalSellAmount = 0
-                                flattenedVisibleRows.forEach(row => {
-                                  const qty = parseFloat(row.Qty) || 0
-                                  const rate = parseFloat(row.Rate) || 0
-                                  if (row.Status === "P") {
-                                    totalPurQty += qty
-                                    totalPurchaseAmount += qty * rate
-                                  } else if (row.Status === "S") {
-                                    totalSelQty += qty
-                                    totalSellAmount += qty * rate
-                                  }
-                                })
-                                const purchaseAvgRate = totalPurQty > 0 ? totalPurchaseAmount / totalPurQty : 0
-                                const sellAvgRate = totalSelQty > 0 ? totalSellAmount / totalSelQty : 0
-                                const totalDiff = (totalSelQty * sellAvgRate) - (totalPurQty * purchaseAvgRate)
-                                return `Diff: ${totalDiff.toFixed(2)}`
-                              })()}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                                width: `${columnWidths['Buyer'] || COLUMN_DEFAULT_WIDTHS['Buyer'] || 120}px`,
-                                maxWidth: `${columnWidths['Buyer'] || COLUMN_DEFAULT_WIDTHS['Buyer'] || 120}px`,
-                                minWidth: 0,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap"
-                              }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-end fw-bold"
-                              style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-end fw-bold"
-                              style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-end fw-bold"
-                              style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-end fw-bold"
-                              style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                            >
-                              {calculateLedgerGroupTotals(flattenedVisibleRows).totalSAdvPayment.toFixed(2)}
-                            </td>
-                            <td
-                              className="text-end fw-bold"
-                              style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                            >
-                              {calculateLedgerGroupTotals(flattenedVisibleRows).totalPAdvPayment.toFixed(2)}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-end fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              {state.FillArray.reduce(
-                                (sum, row) =>
-                                  sum + (parseFloat(row.Lifted) || 0),
-                                0
-                              ).toFixed(2)}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "0",
-                                border: "1.5px solid black",
-                              }}
-                            >
-                              {" "}
-                            </td>
-                            <td
-                              className="text-center fw-bold"
-                              style={{
-                                verticalAlign: "middle",
-                                padding: "4px",
-                                border: "1.5px solid black",
-                                whiteSpace: "pre-wrap",
-                              }}
-                            >
-                              {" "}
-                            </td>
-                          </tr>
-
-                          {/* Selected Rows Totals */}
-                          {selectedRowIds.size > 0 && (() => {
-                            const selectedRows = flattenedVisibleRows.filter(row =>
-                              selectedRowIds.has(getRowIdentifier(row))
-                            );
-                            const selTotals = calculateLedgerGroupTotals(selectedRows);
+                          {(() => {
+                            const footerCalcs = getFooterCalculations()
                             return (
-                              <tr
-                                style={{
-                                  backgroundColor: "#FF8C00 !important",
-                                  color: "white !important",
-                                  borderColor: "#000 !important",
-                                  height: "25px",
-                                }}
-                              >
-                                <td
-                                  className="text-center fw-bold"
+                              <>
+                                {/* --- All Records Totals --- */}
+                                {/* Mobile view */}
+                                <tr className="totals-row d-md-none">
+                                  <td
+                                    colSpan={lrVisibleColumns().length}
+                                    className="border-bottom text-start p-0"
+                                    style={{
+                                      verticalAlign: "middle",
+                                      border: "none",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        backgroundColor: "#4B0082",
+                                        padding: "6px 8px",
+                                        width: "100%",
+                                        height: "100%",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "2px",
+                                        boxSizing: "border-box",
+                                      }}
+                                    >
+                                      {/* <div className="fw-bold" style={{ fontSize: "0.75rem", color: "#FFD700" }}>
+                                        All ({footerCalcs.all.count} Records)
+                                      </div> */}
+                                      <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
+                                        <span style={{ color: "#FFFFFF" }}>B:{footerCalcs.all.buyQty.toFixed(2)}</span>
+                                        <span style={{ color: "#A0A0A0" }}> | </span>
+                                        <span style={{ color: "#FFFFFF" }}>S:{footerCalcs.all.sellQty.toFixed(2)}</span>
+                                        <span style={{ color: "#A0A0A0" }}> | </span>
+                                        <span style={{ color: "#FFFFFF" }}>BA:{footerCalcs.all.buyAvg.toFixed(2)}</span>
+                                        <span style={{ color: "#A0A0A0" }}> | </span>
+                                        <span style={{ color: "#FFFFFF" }}>SA:{footerCalcs.all.sellAvg.toFixed(2)}</span>
+                                        <span style={{ color: "#A0A0A0" }}> | </span>
+                                        <span style={{ color: footerCalcs.all.diff >= 0 ? "#90EE90" : "#FFB6C1" }}>
+                                          Diff:{footerCalcs.all.diff.toFixed(2)}
+                                        </span>
+                                        <span style={{ color: "#A0A0A0" }}> | </span>
+                                        <span style={{ color: "#FFFFFF" }}>S.Adv:{footerCalcs.all.sAdv.toFixed(2)}</span>
+                                        <span style={{ color: "#A0A0A0" }}> | </span>
+                                        <span style={{ color: "#FFFFFF" }}>P.Adv:{footerCalcs.all.pAdv.toFixed(2)}</span>
+                                        <span style={{ color: "#A0A0A0" }}> | </span>
+                                        <span style={{ color: "#FFFFFF" }}>Lifted:{footerCalcs.all.lifted.toFixed(2)}</span>
+                                      </small>
+                                    </div>
+                                  </td>
+                                </tr>
+                                {/* Desktop view */}
+                                <tr
+                                  className="totals-row d-none d-md-table-row"
                                   style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                    fontSize: "0.6rem"
+                                    height: "25px",
+                                    backgroundColor: "#4B0082",
+                                    color: "white",
                                   }}
                                 >
-                                {selectedRows.length}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  B: {selectedRows
-                                    .filter(r => r.Status === "P")
-                                    .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
-                                    .toFixed(2)}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  S: {selectedRows
-                                    .filter(r => r.Status === "S")
-                                    .reduce((sum, r) => sum + (parseFloat(r.Qty) || 0), 0)
-                                    .toFixed(2)}
-                                </td>
-                                <td
-                                  className="text-start fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0 4px",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {(() => {
-                                    let totalPurQty = 0
-                                    let totalSelQty = 0
-                                    let totalPurchaseAmount = 0
-                                    let totalSellAmount = 0
-                                    selectedRows.forEach(row => {
-                                      const qty = parseFloat(row.Qty) || 0
-                                      const rate = parseFloat(row.Rate) || 0
-                                      if (row.Status === "P") {
-                                        totalPurQty += qty
-                                        totalPurchaseAmount += qty * rate
-                                      } else if (row.Status === "S") {
-                                        totalSelQty += qty
-                                        totalSellAmount += qty * rate
-                                      }
-                                    })
-                                    const purchaseAvgRate = totalPurQty > 0 ? totalPurchaseAmount / totalPurQty : 0
-                                    const sellAvgRate = totalSelQty > 0 ? totalSellAmount / totalSelQty : 0
-                                    const totalDiff = (totalSelQty * sellAvgRate) - (totalPurQty * purchaseAvgRate)
-                                    return `Diff: ${totalDiff.toFixed(2)}`
-                                  })()}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-end fw-bold"
-                                  style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-end fw-bold"
-                                  style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-end fw-bold"
-                                  style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-end fw-bold"
-                                  style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                                >
-                                  {selTotals.totalSAdvPayment.toFixed(2)}
-                                </td>
-                                <td
-                                  className="text-end fw-bold"
-                                  style={{ verticalAlign: "middle", padding: "0", border: "1.5px solid black" }}
-                                >
-                                  {selTotals.totalPAdvPayment.toFixed(2)}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-end fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {selectedRows.reduce(
-                                    (sum, row) =>
-                                      sum + (parseFloat(row.Lifted) || 0),
-                                    0
-                                  ).toFixed(2)}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "0",
-                                    border: "1.5px solid black",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                                <td
-                                  className="text-center fw-bold"
-                                  style={{
-                                    verticalAlign: "middle",
-                                    padding: "4px",
-                                    border: "1.5px solid black",
-                                    whiteSpace: "pre-wrap",
-                                  }}
-                                >
-                                  {" "}
-                                </td>
-                              </tr>
-                            );
+                                  {lrVisibleColumns().map((col) => {
+                                    const widthVal = `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`
+                                    const cellProps = getFooterCellProps(col.key, 'all', footerCalcs)
+                                    return (
+                                      <td
+                                        key={col.key}
+                                        className={`text-${cellProps.halign} fw-bold`}
+                                        style={{
+                                          verticalAlign: "middle",
+                                          padding: "0 4px",
+                                          border: "1.5px solid black",
+                                          width: widthVal,
+                                          maxWidth: widthVal,
+                                          minWidth: 0,
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                          fontSize: "0.65rem",
+                                        }}
+                                      >
+                                        {cellProps.content}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+
+                                {/* --- Selected Rows Totals --- */}
+                                {footerCalcs.selected.hasSelection && (
+                                  <>
+                                    {/* Mobile view */}
+                                    <tr className="selected-totals-row d-md-none">
+                                      <td
+                                        colSpan={lrVisibleColumns().length}
+                                        className="border-bottom text-start p-0"
+                                        style={{
+                                          verticalAlign: "middle",
+                                          border: "none",
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            backgroundColor: "#FF8C00",
+                                            padding: "6px 8px",
+                                            width: "100%",
+                                            height: "100%",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "2px",
+                                            boxSizing: "border-box",
+                                          }}
+                                        >
+                                          {/* <div className="fw-bold" style={{ fontSize: "0.75rem", color: "#FFFFFF" }}>
+                                            Selected ({footerCalcs.selected.count} Records)
+                                          </div> */}
+                                          <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
+                                            <span style={{ color: "#FFFFFF" }}>B:{footerCalcs.selected.buyQty.toFixed(2)}</span>
+                                            <span style={{ color: "#E0E0E0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>S:{footerCalcs.selected.sellQty.toFixed(2)}</span>
+                                            <span style={{ color: "#E0E0E0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>BA:{footerCalcs.selected.buyAvg.toFixed(2)}</span>
+                                            <span style={{ color: "#E0E0E0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>SA:{footerCalcs.selected.sellAvg.toFixed(2)}</span>
+                                            <span style={{ color: "#E0E0E0" }}> | </span>
+                                            <span style={{ color: footerCalcs.selected.diff >= 0 ? "#90EE90" : "#FFB6C1" }}>
+                                              Diff:{footerCalcs.selected.diff.toFixed(2)}
+                                            </span>
+                                            <span style={{ color: "#E0E0E0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>S.Adv:{footerCalcs.selected.sAdv.toFixed(2)}</span>
+                                            <span style={{ color: "#E0E0E0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>P.Adv:{footerCalcs.selected.pAdv.toFixed(2)}</span>
+                                            <span style={{ color: "#E0E0E0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>Lifted:{footerCalcs.selected.lifted.toFixed(2)}</span>
+                                          </small>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                    {/* Desktop view */}
+                                    <tr
+                                      className="selected-totals-row d-none d-md-table-row"
+                                      style={{
+                                        height: "25px",
+                                        backgroundColor: "#FF8C00",
+                                        color: "white",
+                                      }}
+                                    >
+                                      {lrVisibleColumns().map((col) => {
+                                        const widthVal = `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`
+                                        const cellProps = getFooterCellProps(col.key, 'selected', footerCalcs)
+                                        return (
+                                          <td
+                                            key={col.key}
+                                            className={`text-${cellProps.halign} fw-bold`}
+                                            style={{
+                                              verticalAlign: "middle",
+                                              padding: "0 4px",
+                                              border: "1.5px solid black",
+                                              width: widthVal,
+                                              maxWidth: widthVal,
+                                              minWidth: 0,
+                                              overflow: "hidden",
+                                              textOverflow: "ellipsis",
+                                              whiteSpace: "nowrap",
+                                              fontSize: "0.65rem",
+                                            }}
+                                          >
+                                            {cellProps.content}
+                                          </td>
+                                        )
+                                      })}
+                                    </tr>
+                                  </>
+                                )}
+                              </>
+                            )
                           })()}
                         </tfoot>
                       </Table>
@@ -6231,7 +6013,7 @@ const LedgerReport = () => {
                       <input
                         type="checkbox"
                         checked={tempSelectedVessels.includes(vessel.value)}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         style={{ marginRight: "10px", cursor: "pointer" }}
                       />
                       <span>{vessel.label}</span>
@@ -6264,102 +6046,102 @@ const LedgerReport = () => {
 
       {/* Period Filter Modal */}
       {showPeriodModal && (
-      <Modal
-        show={showPeriodModal}
-        onHide={closePeriodModal}
-        size="lg"
-        centered
-        style={{ zIndex: 10000 }}
-      >
-        <ModalHeader className="bg-primary text-white">
-          <div className="d-flex justify-content-between align-items-center w-100">
-            <h5 className="mb-0">
-              <i className="fas fa-calendar-alt me-2"></i>
-              Select Period
-            </h5>
-            <Button
-              variant="light"
-              onClick={closePeriodModal}
-              className="btn-close btn-close-white"
-              style={{ border: "none", background: "transparent" }}
-            >
-              <i className="fas fa-times"></i>
-            </Button>
-          </div>
-        </ModalHeader>
-        <ModalBody style={{ padding: "1.5rem", maxHeight: "60vh", overflowY: "auto" }}>
-          <Form>
-            <FormGroup>
-              <div className="mb-3">
-                <FormLabel className="fw-semibold mb-0">
-                  Period
-                </FormLabel>
-              </div>
-              <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px", padding: "10px" }}>
-                {state.PeriodDataArray.map((period) => (
-                  <div
-                    key={period.Name}
-                    style={{
-                      padding: "8px",
-                      cursor: "pointer",
-                      borderRadius: "4px",
-                      backgroundColor: tempSelectedPeriod.some(p => p === period.Name) ? "#e7f3ff" : "transparent",
-                      marginBottom: "4px",
-                    }}
-                    onClick={() => {
-                      const isSelected = tempSelectedPeriod.some(p => p === period.Name)
-                      if (isSelected) {
-                        setTempSelectedPeriod(tempSelectedPeriod.filter(p => p !== period.Name))
-                      } else {
-                        setTempSelectedPeriod([...tempSelectedPeriod, period.Name])
-                      }
-                    }}
+        <Modal
+          show={showPeriodModal}
+          onHide={closePeriodModal}
+          size="lg"
+          centered
+          style={{ zIndex: 10000 }}
+        >
+          <ModalHeader className="bg-primary text-white">
+            <div className="d-flex justify-content-between align-items-center w-100">
+              <h5 className="mb-0">
+                <i className="fas fa-calendar-alt me-2"></i>
+                Select Period
+              </h5>
+              <Button
+                variant="light"
+                onClick={closePeriodModal}
+                className="btn-close btn-close-white"
+                style={{ border: "none", background: "transparent" }}
+              >
+                <i className="fas fa-times"></i>
+              </Button>
+            </div>
+          </ModalHeader>
+          <ModalBody style={{ padding: "1.5rem", maxHeight: "60vh", overflowY: "auto" }}>
+            <Form>
+              <FormGroup>
+                <div className="mb-3">
+                  <FormLabel className="fw-semibold mb-0">
+                    Period
+                  </FormLabel>
+                </div>
+                <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px", padding: "10px" }}>
+                  {state.PeriodDataArray.map((period) => (
+                    <div
+                      key={period.Name}
+                      style={{
+                        padding: "8px",
+                        cursor: "pointer",
+                        borderRadius: "4px",
+                        backgroundColor: tempSelectedPeriod.some(p => p === period.Name) ? "#e7f3ff" : "transparent",
+                        marginBottom: "4px",
+                      }}
+                      onClick={() => {
+                        const isSelected = tempSelectedPeriod.some(p => p === period.Name)
+                        if (isSelected) {
+                          setTempSelectedPeriod(tempSelectedPeriod.filter(p => p !== period.Name))
+                        } else {
+                          setTempSelectedPeriod([...tempSelectedPeriod, period.Name])
+                        }
+                      }}
 
-                  >
-                    <div className="d-flex align-items-center">
-                      <input
-                        type="checkbox"
-                        checked={tempSelectedPeriod.some(p => p === period.Name)}
-                        onChange={() => { }}
-                        style={{ marginRight: "10px", cursor: "pointer" }}
-                      />
-                      <span>{period.Name}</span>
+                    >
+                      <div className="d-flex align-items-center">
+                        <input
+                          type="checkbox"
+                          checked={tempSelectedPeriod.some(p => p === period.Name)}
+                          onChange={() => { }}
+                          style={{ marginRight: "10px", cursor: "pointer" }}
+                        />
+                        <span>{period.Name}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {state.PeriodDataArray.length === 0 && (
-                  <div className="text-center text-muted py-3">
-                    No periods available
-                  </div>
-                )}
-              </div>
-            </FormGroup>
-          </Form>
-        </ModalBody>
-        <ModalFooter className="d-flex justify-content-end gap-2">
-          <Button
-            variant="outline-secondary"
-            size="sm"
-            onClick={() => setTempSelectedPeriod([])}
-          >
-            Clear All
-          </Button>
-          <Button
-            variant="outline-primary"
-            size="sm"
-            onClick={() => {
-              const allPeriods = state.PeriodDataArray.map(p => p.Name)
-              setTempSelectedPeriod(allPeriods)
-            }}
-          >
-            Select All
-          </Button>
-          <Button variant="primary" onClick={handlePeriodModalDone}>
-            <i className="fas fa-check me-2"></i>
-            Done
-          </Button>
-        </ModalFooter>
-      </Modal>
+                  ))}
+                  {state.PeriodDataArray.length === 0 && (
+                    <div className="text-center text-muted py-3">
+                      No periods available
+                    </div>
+                  )}
+                </div>
+              </FormGroup>
+            </Form>
+          </ModalBody>
+          <ModalFooter className="d-flex justify-content-end gap-2">
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => setTempSelectedPeriod([])}
+            >
+              Clear All
+            </Button>
+            <Button
+              variant="outline-primary"
+              size="sm"
+              onClick={() => {
+                const allPeriods = state.PeriodDataArray.map(p => p.Name)
+                setTempSelectedPeriod(allPeriods)
+              }}
+            >
+              Select All
+            </Button>
+            <Button variant="primary" onClick={handlePeriodModalDone}>
+              <i className="fas fa-check me-2"></i>
+              Done
+            </Button>
+          </ModalFooter>
+        </Modal>
       )}
 
       {/* Ledger Selection Modal */}

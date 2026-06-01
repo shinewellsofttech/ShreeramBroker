@@ -754,6 +754,7 @@ function LinkCreateRegister() {
 
       // Define columns
       worksheet.columns = [
+        { header: 'Sr. No.', key: 'srNo', width: 8 },
         { header: 'Contract No', key: 'contractNo', width: 15 },
         { header: 'Date', key: 'date', width: 12 },
         { header: 'Seller', key: 'seller', width: 20 },
@@ -782,7 +783,10 @@ function LinkCreateRegister() {
 
       // Add data rows with colors
       selectedData.forEach((row, index) => {
+        // Use the checkbox sequence number (position in selectedRows array)
+        const srNo = selectedRows.indexOf(row.Id) + 1
         const excelRow = worksheet.addRow({
+          srNo: srNo,
           contractNo: row.ContractNo || '-',
           date: row.Date ? new Date(row.Date).toLocaleDateString('en-GB') : '-',
           seller: row.SellerLedger || '-',
@@ -839,6 +843,7 @@ function LinkCreateRegister() {
 
       // Add totals row
       const totalsRow = worksheet.addRow({
+        srNo: '',
         contractNo: 'TOTAL',
         date: '',
         seller: '',

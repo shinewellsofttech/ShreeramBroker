@@ -59,8 +59,8 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
   
   // Modal state for EditContract
   const [showEditContractModal, setShowEditContractModal] = useState(false);
-  const [selectedContractData, setSelectedContractData] = useState(null);
-  const [modalLoading, setModalLoading] = useState(false);
+  const [selectedContractData , setSelectedContractData] = useState(null);
+  const [modalLoading , setModalLoading] = useState(false);
   
   // Sorting state
   const [sortConfig, setSortConfig] = useState({
@@ -69,7 +69,7 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
   });
 
   // ─── Column Resize Feature ─────────────────────────────────────
-  const { columnWidths, handleResizeMouseDown } = useColumnResize('reminderData_columnWidths', {
+  const RD_DEFAULT_WIDTHS = {
     Checkbox: 40,
     ContractNo: 100,
     Date: 85,
@@ -80,7 +80,20 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
     Qty: 70,
     Rate: 70,
     Period: 120,
-  });
+  };
+
+  const depResizeObj = useColumnResize('reminderData_dep_columnWidths', RD_DEFAULT_WIDTHS);
+  const shipMonResizeObj = useColumnResize('reminderData_shipMon_columnWidths', RD_DEFAULT_WIDTHS);
+  const liftResizeObj = useColumnResize('reminderData_lift_columnWidths', RD_DEFAULT_WIDTHS);
+  const shipPdResizeObj = useColumnResize('reminderData_shipPd_columnWidths', RD_DEFAULT_WIDTHS);
+
+  const { columnWidths, handleResizeMouseDown } = (() => {
+    if (dep) return depResizeObj;
+    if (shipMon) return shipMonResizeObj;
+    if (lift) return liftResizeObj;
+    if (shipPd) return shipPdResizeObj;
+    return depResizeObj;
+  })();
 
   // ─── Column Reorder Feature ─────────────────────────────────────
   const RD_ALL_COLUMNS = [
@@ -96,11 +109,10 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
     { key: 'Period', label: 'Period', sortKey: null },
   ];
   const RD_DEFAULT_ORDER = RD_ALL_COLUMNS.map(c => c.key);
-  const RD_ORDER_KEY = 'reminderData_columnOrder';
 
-  const rdGetInitialOrder = () => {
+  const rdGetInitialOrder = (storageKey) => {
     try {
-      const saved = localStorage.getItem(RD_ORDER_KEY);
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
         return [
@@ -112,12 +124,31 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
     return [...RD_DEFAULT_ORDER];
   };
 
-  const [rdColumnOrder, setRdColumnOrder] = useState(rdGetInitialOrder);
+  const [depColumnOrder, setDepColumnOrder] = useState(() => rdGetInitialOrder('reminderData_dep_columnOrder'));
+  const [shipMonColumnOrder, setShipMonColumnOrder] = useState(() => rdGetInitialOrder('reminderData_shipMon_columnOrder'));
+  const [liftColumnOrder, setLiftColumnOrder] = useState(() => rdGetInitialOrder('reminderData_lift_columnOrder'));
+  const [shipPdColumnOrder, setShipPdColumnOrder] = useState(() => rdGetInitialOrder('reminderData_shipPd_columnOrder'));
+
+  const activeOrderKey = dep ? 'reminderData_dep_columnOrder' :
+                          shipMon ? 'reminderData_shipMon_columnOrder' :
+                          lift ? 'reminderData_lift_columnOrder' :
+                          'reminderData_shipPd_columnOrder';
+
+  const rdColumnOrder = dep ? depColumnOrder :
+                         shipMon ? shipMonColumnOrder :
+                         lift ? liftColumnOrder :
+                         shipPdColumnOrder;
+
+  const setRdColumnOrder = dep ? setDepColumnOrder :
+                            shipMon ? setShipMonColumnOrder :
+                            lift ? setLiftColumnOrder :
+                            setShipPdColumnOrder;
+
   const [rdDragOverKey, setRdDragOverKey] = useState(null);
   const rdDragSrcRef = useRef(null);
 
   const rdSaveOrder = (order) => {
-    try { localStorage.setItem(RD_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
+    try { localStorage.setItem(activeOrderKey, JSON.stringify(order)); } catch (e) {}
   };
 
   const rdDragStart = (e, key) => {
@@ -489,6 +520,7 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
 
       // Define columns
       worksheet.columns = [
+        { header: 'Sr. No.', key: 'srNo', width: 8 },
         { header: 'Date', key: 'date', width: 12 },
         { header: 'Contract No', key: 'contractNo', width: 15 },
         { header: 'Seller', key: 'seller', width: 20 },
@@ -513,7 +545,10 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
 
       // Add data rows
       selectedData.forEach((row, index) => {
+        const rowId = getRowIdentifier(row);
+        const srNo = selectedRows.indexOf(rowId) + 1;
         const dataRow = worksheet.addRow({
+          srNo: srNo,
           date: row.ContractDate ? new Date(row.ContractDate).toLocaleDateString() : '-',
           contractNo: row.ContractNo || '-',
           seller: row.SellerLedger || '-',
@@ -634,8 +669,9 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
       doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB')}`, 14, 22);
       doc.text(`Total Records: ${selectedData.length}`, 14, 27);
 
-      const head = [['Date', 'Contract No', 'Seller', 'Buyer', 'Item', 'Deposit', 'Qty', 'Rate', 'Period']];
+      const head = [['Sr. No.', 'Date', 'Contract No', 'Seller', 'Buyer', 'Item', 'Deposit', 'Qty', 'Rate', 'Period']];
       const body = selectedData.map(row => [
+        selectedRows.indexOf(getRowIdentifier(row)) + 1,
         row.ContractDate ? new Date(row.ContractDate).toLocaleDateString() : '-',
         row.ContractNo || '-',
         row.SellerLedger || '-',

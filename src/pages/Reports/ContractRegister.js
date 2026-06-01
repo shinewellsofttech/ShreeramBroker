@@ -1348,6 +1348,7 @@ function ContractRegister() {
 
       // Define columns
       worksheet.columns = [
+        { header: 'Sr. No.', key: 'srNo', width: 8 },
         { header: 'Contract No', key: 'contractNo', width: 15 },
         { header: 'Date', key: 'date', width: 12 },
         { header: 'Seller', key: 'seller', width: 20 },
@@ -1376,7 +1377,10 @@ function ContractRegister() {
 
       // Add data rows with colors
       selectedData.forEach((row, index) => {
+        // Use the checkbox sequence number (position in selectedRows array)
+        const srNo = selectedRows.indexOf(row.Id) + 1
         const excelRow = worksheet.addRow({
+          srNo: srNo,
           contractNo: row.ContractNo || '-',
           date: row.Date ? new Date(row.Date).toLocaleDateString('en-GB') : '-',
           seller: row.SellerLedger || '-',
@@ -1432,6 +1436,7 @@ function ContractRegister() {
 
       // Add totals row
       const totalsRow = worksheet.addRow({
+        srNo: '',
         contractNo: 'TOTAL',
         date: '',
         seller: '',
@@ -1638,6 +1643,7 @@ function ContractRegister() {
       doc.setTextColor(0, 0, 0)
 
       const cols = [
+        { header: 'Sr. No.', key: 'SrNo', width: 12, type: 'number' },
         { header: 'Contract No', key: 'ContractNo', width: 22 },
         { header: 'Date', key: 'Date', width: 20 },
         { header: 'Seller', key: 'Seller', width: 35 },
@@ -1664,6 +1670,7 @@ function ContractRegister() {
       })
 
       const body = selectedData.map(row => [
+        selectedRows.indexOf(row.Id) + 1,
         row.ContractNo || '-',
         row.Date ? new Date(row.Date).toLocaleDateString('en-GB') : '-',
         row.SellerLedger || '-',
