@@ -488,6 +488,12 @@ const LedgerReport = () => {
         .ledger-report-container .table-responsive tfoot tr {
           box-shadow: 0 -2px 4px rgba(0,0,0,0.15) !important;
         }
+
+        /* Force totals row text to black on mobile */
+        tfoot tr.totals-row td,
+        tfoot tr.selected-totals-row td {
+          color: black !important;
+        }
         
         /* Bottom filters bar - attached to table top, sits above app footer (no overlap) */
         .ledger-report-container .bottom-filters-bar {

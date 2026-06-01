@@ -29,7 +29,7 @@ import { registerHindiFont, setHindiFont } from '../../helpers/pdfHindiFont';
 import useColumnResize from '../../helpers/useColumnResize';
 import '../../helpers/columnResize.css';
 
-function ReminderData({ hideDateFilters = false, onTotalChange }) {
+function ReminderData({ hideDateFilters = false, onTotalChange, disableScrollLock = false }) {
   const dispatch = useDispatch();
   
   // Get global dates from Redux store
@@ -256,6 +256,8 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
 
   // Handle mobile-responsive viewport scroll locking to prevent drag-to-refresh
   useEffect(() => {
+    if (disableScrollLock) return;
+
     const isMobile = () => window.innerWidth <= 768;
     if (isMobile()) {
       document.body.classList.add('no-overscroll');
@@ -278,7 +280,7 @@ function ReminderData({ hideDateFilters = false, onTotalChange }) {
       document.body.classList.remove('no-overscroll');
       document.documentElement.classList.remove('no-overscroll');
     };
-  }, [])
+  }, [disableScrollLock])
 
   // Handle global navbar refresh event
   useEffect(() => {

@@ -652,7 +652,7 @@ function NewLedgerReport() {
                         content = (
                           <div style={{ border: '1px solid #000000', borderRadius: '4px', padding: '0.25rem 0.5rem', backgroundColor: '#f8f9fa', width: 'fit-content', whiteSpace: 'nowrap', height: '28px', display: 'flex', alignItems: 'center' }}>
                             <div className="d-flex gap-2 align-items-center">
-                              <span style={{ fontSize: '0.65rem', fontWeight: '600', color: '#333', marginRight: '2px', whiteSpace: 'nowrap' }}>Filter:</span>
+                              {/* <span style={{ fontSize: '0.65rem', fontWeight: '600', color: '#333', marginRight: '2px', whiteSpace: 'nowrap' }}></span> */}
                               <div className="form-check mb-0">
                                 <input
                                   type="checkbox"

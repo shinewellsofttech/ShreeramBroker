@@ -94,6 +94,13 @@ html, body {
   overscroll-behavior: none !important;
 }
 
+html.allow-overscroll,
+body.allow-overscroll {
+  overscroll-behavior-y: auto !important;
+  overscroll-behavior: auto !important;
+}
+
+
 html.no-overscroll,
 body.no-overscroll {
   overflow: hidden !important;

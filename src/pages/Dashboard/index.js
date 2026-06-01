@@ -86,19 +86,19 @@ const Dashboard = props => {
   // Add keyboard event listener for Ctrl+C and Ctrl+G
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.ctrlKey && event.key === 'c') {
+      if (event.ctrlKey && event.key == 'c') {
         event.preventDefault();
         navigate('/Contract');
       }
-      if (event.ctrlKey && event.key === 'g') {
+      if (event.ctrlKey && event.key == 'g') {
         event.preventDefault();
         navigate('/UpdateGlobalOptions');
       }
-      if (event.ctrlKey && event.key === 'l') {
+      if (event.ctrlKey && event.key == 'l') {
         event.preventDefault();
         navigate('/PartyAccountMaster');
       }
-      if (event.ctrlKey && event.key === 'm') {
+      if (event.ctrlKey && event.key == 'm') {
         event.preventDefault();
         navigate('/TransportMaster');
       }
@@ -134,6 +134,15 @@ const Dashboard = props => {
     };
   }, [navigate]);
 
+  // Enable native drag-to-refresh on Dashboard
+  useEffect(() => {
+    document.body.classList.add('allow-overscroll');
+    document.documentElement.classList.add('allow-overscroll');
+    return () => {
+      document.body.classList.remove('allow-overscroll');
+      document.documentElement.classList.remove('allow-overscroll');
+    };
+  }, []);
    
   return (
     <React.Fragment>
@@ -603,7 +612,7 @@ const Dashboard = props => {
             {/* Right Container - ReminderData (All Devices) */}
             <Col lg={10} md={6} style={{ paddingLeft: 0, paddingRight: 0, paddingTop: 0, marginTop: 0 }}>
               <div className="reminder-data-container" style={{ margin: 0, padding: 0, marginTop: 0, paddingTop: 0, width: '100%' }}>
-                <ReminderData hideDateFilters={true} onTotalChange={handleTotalQuantityChange} />
+                <ReminderData hideDateFilters={true} onTotalChange={handleTotalQuantityChange} disableScrollLock={true} />
               </div>
             </Col>
           </Row>
