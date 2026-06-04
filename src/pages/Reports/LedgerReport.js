@@ -62,16 +62,16 @@ const LedgerReport = () => {
     const style = document.createElement("style")
     style.textContent = `
       .table th,
-      .table td {
+      .table td:not(.group-header-td) {
         border: 1.5px solid black !important;
       }
       .table th[style*="border"] {
         border: 1.5px solid black !important;
       }
-      .table td[style*="border"] {
+      .table td[style*="border"]:not(.group-header-td) {
         border: 1.5px solid black !important;
       }
-      .table tbody tr td {
+      .table tbody tr td:not(.group-header-td) {
         border: 1.5px solid black !important;
       }
       .table thead tr th {
@@ -98,8 +98,19 @@ const LedgerReport = () => {
       .table-danger {
         background-color: #fde7e9 !important;
       }
-      .table-danger td {
+      .table tbody tr.table-danger td {
         background-color: #fde7e9 !important;
+      }
+      
+      /* Group header row: no internal column borders, only outer row borders */
+      /* Must beat: .table th/.table td, .table td[style*=border], .table tbody tr td — all !important */
+      .table tbody tr td.group-header-td,
+      .table td.group-header-td,
+      .table td[style*="border"].group-header-td {
+        border-left: none !important;
+        border-right: none !important;
+        border-top: 1.5px solid black !important;
+        border-bottom: 1.5px solid black !important;
       }
       
       /* Force totals row background color and override Bootstrap 5 table shadows */
@@ -108,14 +119,14 @@ const LedgerReport = () => {
         --bs-table-bg: #4B0082 !important;
         --bs-table-accent-bg: transparent !important;
         box-shadow: none !important;
-        color: white !important;
+        color: black !important;
       }
       tfoot tr.selected-totals-row td {
         background-color: #FF8C00 !important;
         --bs-table-bg: #FF8C00 !important;
         --bs-table-accent-bg: transparent !important;
         box-shadow: none !important;
-        color: white !important;
+        color: black !important;
       }
       
       /* Remove all gaps between input and table sections */
@@ -4193,21 +4204,22 @@ const LedgerReport = () => {
     let halign = "center"
     let widthVal = `${columnWidths[colKey] || COLUMN_DEFAULT_WIDTHS[colKey] || 80}px`
     
-    // Default styling
+    // Default styling — no internal column borders for group header row (looks like a merged row)
     let cellStyle = {
       backgroundColor: "#D2B48C",
       color: "#2c3e50",
       padding: "2px 4px",
       verticalAlign: "middle",
-      border: "1.5px solid black !important",
+      borderTop: "1.5px solid black",
+      borderBottom: "1.5px solid black",
+      borderLeft: "none",
+      borderRight: "none",
       boxShadow: "none",
       fontSize: "0.6rem",
       fontWeight: "bold",
     }
     
     if (colKey === "CheckBox") {
-      content = ""
-    } else if (colKey === "ContractNo") {
       content = (
         <div style={{ position: "relative" }}>
           {/* Desktop: Party name only */}
@@ -4222,6 +4234,7 @@ const LedgerReport = () => {
               position: "absolute",
               zIndex: 2,
               top: "50%",
+              left: 10,
               transform: "translateY(-50%)"
             }}
           >
@@ -4265,6 +4278,9 @@ const LedgerReport = () => {
         </div>
       )
       halign = "start"
+      cellStyle.paddingLeft = "2px"
+    } else if (colKey === "ContractNo") {
+      content = ""
     } else if (colKey === "PurQty") {
       content = (
         <div>
@@ -4288,7 +4304,7 @@ const LedgerReport = () => {
         <div>
           <div style={{ fontSize: "0.55rem", color: "#0066cc" }}>Buy Avg</div>
           <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-            \u20B9{ledgerTotals.purchaseAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            {ledgerTotals.purchaseAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
       )
@@ -4297,28 +4313,23 @@ const LedgerReport = () => {
         <div>
           <div style={{ fontSize: "0.55rem", color: "#dc3545" }}>Sell Avg</div>
           <div style={{ fontSize: "0.65rem", fontWeight: "bold" }}>
-            \u20B9{ledgerTotals.sellAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            {ledgerTotals.sellAvgRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
       )
     } else if (colKey === "DeliveryPort") {
+      const diffVal = ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate - ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
       content = (
         <div>
-          <div style={{ fontSize: "0.55rem", color: "#198754" }}>Diff Amt</div>
+          <div style={{ fontSize: "0.55rem", color: diffVal >= 0 ? "#198754" : "#dc3545" }}>Diff Amt</div>
           <div
             style={{
               fontSize: "0.65rem",
               fontWeight: "bold",
-              color: (() => {
-                const difference = ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate - ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
-                return difference >= 0 ? "#198754" : "#dc3545"
-              })()
+              color: diffVal >= 0 ? "#198754" : "#dc3545"
             }}
           >
-            \u20B9{parseFloat(
-              ledgerTotals.totalSelQty * ledgerTotals.sellAvgRate -
-              ledgerTotals.totalPurQty * ledgerTotals.purchaseAvgRate
-            ).toFixed(2)}
+            {parseFloat(diffVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       )
@@ -4588,13 +4599,13 @@ const LedgerReport = () => {
                                         return (
                                           <td
                                             key={col.key}
-                                            className={`text-${cellProps.halign}`}
+                                            className={`group-header-td text-${cellProps.halign}`}
                                             style={{
                                               ...cellProps.style,
                                               width: cellProps.widthVal,
                                               maxWidth: cellProps.widthVal,
                                               minWidth: 0,
-                                              overflow: col.key === "ContractNo" ? "visible" : "hidden",
+                                              overflow: (col.key === "ContractNo" || col.key === "CheckBox") ? "visible" : "hidden",
                                               textOverflow: "ellipsis",
                                               whiteSpace: "nowrap",
                                             }}
@@ -4814,7 +4825,7 @@ const LedgerReport = () => {
                                   style={{
                                     height: "25px",
                                     backgroundColor: "#4B0082",
-                                    color: "white",
+                                    color: "black",
                                   }}
                                 >
                                   {lrVisibleColumns().map((col) => {
@@ -4872,23 +4883,23 @@ const LedgerReport = () => {
                                             Selected ({footerCalcs.selected.count} Records)
                                           </div> */}
                                           <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
-                                            <span style={{ color: "#FFFFFF" }}>B:{footerCalcs.selected.buyQty.toFixed(2)}</span>
-                                            <span style={{ color: "#E0E0E0" }}> | </span>
-                                            <span style={{ color: "#FFFFFF" }}>S:{footerCalcs.selected.sellQty.toFixed(2)}</span>
-                                            <span style={{ color: "#E0E0E0" }}> | </span>
-                                            <span style={{ color: "#FFFFFF" }}>BA:{footerCalcs.selected.buyAvg.toFixed(2)}</span>
-                                            <span style={{ color: "#E0E0E0" }}> | </span>
-                                            <span style={{ color: "#FFFFFF" }}>SA:{footerCalcs.selected.sellAvg.toFixed(2)}</span>
-                                            <span style={{ color: "#E0E0E0" }}> | </span>
-                                            <span style={{ color: footerCalcs.selected.diff >= 0 ? "#90EE90" : "#FFB6C1" }}>
+                                            <span style={{ color: "#000000" }}>B:{footerCalcs.selected.buyQty.toFixed(2)}</span>
+                                            <span style={{ color: "#333333" }}> | </span>
+                                            <span style={{ color: "#000000" }}>S:{footerCalcs.selected.sellQty.toFixed(2)}</span>
+                                            <span style={{ color: "#333333" }}> | </span>
+                                            <span style={{ color: "#000000" }}>BA:{footerCalcs.selected.buyAvg.toFixed(2)}</span>
+                                            <span style={{ color: "#333333" }}> | </span>
+                                            <span style={{ color: "#000000" }}>SA:{footerCalcs.selected.sellAvg.toFixed(2)}</span>
+                                            <span style={{ color: "#333333" }}> | </span>
+                                            <span style={{ color: footerCalcs.selected.diff >= 0 ? "#006400" : "#8B0000" }}>
                                               Diff:{footerCalcs.selected.diff.toFixed(2)}
                                             </span>
-                                            <span style={{ color: "#E0E0E0" }}> | </span>
-                                            <span style={{ color: "#FFFFFF" }}>S.Adv:{footerCalcs.selected.sAdv.toFixed(2)}</span>
-                                            <span style={{ color: "#E0E0E0" }}> | </span>
-                                            <span style={{ color: "#FFFFFF" }}>P.Adv:{footerCalcs.selected.pAdv.toFixed(2)}</span>
-                                            <span style={{ color: "#E0E0E0" }}> | </span>
-                                            <span style={{ color: "#FFFFFF" }}>Lifted:{footerCalcs.selected.lifted.toFixed(2)}</span>
+                                            <span style={{ color: "#333333" }}> | </span>
+                                            <span style={{ color: "#000000" }}>S.Adv:{footerCalcs.selected.sAdv.toFixed(2)}</span>
+                                            <span style={{ color: "#333333" }}> | </span>
+                                            <span style={{ color: "#000000" }}>P.Adv:{footerCalcs.selected.pAdv.toFixed(2)}</span>
+                                            <span style={{ color: "#333333" }}> | </span>
+                                            <span style={{ color: "#000000" }}>Lifted:{footerCalcs.selected.lifted.toFixed(2)}</span>
                                           </small>
                                         </div>
                                       </td>
@@ -4899,7 +4910,7 @@ const LedgerReport = () => {
                                       style={{
                                         height: "25px",
                                         backgroundColor: "#FF8C00",
-                                        color: "white",
+                                        color: "black",
                                       }}
                                     >
                                       {lrVisibleColumns().map((col) => {

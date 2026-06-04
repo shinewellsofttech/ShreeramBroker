@@ -2522,7 +2522,7 @@ function ContractRegister() {
                                       switch (col.key) {
                                         case 'Checkbox': return <td key={col.key} style={hStyle}></td>
                                         case 'ContractNo': return <td key={col.key} className="fw-semibold align-middle" style={hStyle}>{h.ContractNo || '-'}</td>
-                                        case 'Date': return <td key={col.key} className="text-center align-middle" style={hStyle}>{h.Date ? new Date(h.Date).toLocaleDateString('en-GB') : '-'}</td>
+                                        case 'Date': return <td key={col.key} className="text-center align-middle" style={hStyle}>{h.EditedOn ? new Date(h.EditedOn).toLocaleDateString('en-GB') : (h.Date ? new Date(h.Date).toLocaleDateString('en-GB') : '-')}</td>
                                         case 'Seller': return <td key={col.key} className="align-middle" style={hStyle}>{h.SellerLedgerName || '-'}</td>
                                         case 'Buyer': return <td key={col.key} className="align-middle" style={hStyle}>{h.BuyerLedgerName || '-'}</td>
                                         case 'Item': return <td key={col.key} className="align-middle" style={hStyle}>{row.ItemTypeName || '-'}</td>

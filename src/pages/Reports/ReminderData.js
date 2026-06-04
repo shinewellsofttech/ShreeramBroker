@@ -681,7 +681,7 @@ function ReminderData({ hideDateFilters = false, onTotalChange, disableScrollLoc
         row.ItemTypeName || '-',
         String(row.AdvPayment || '0'),
         String(row.Qty || '0'),
-        `₹${row.Rate || '0'}`,
+        `Rs. ${row.Rate || '0'}`,
         getPeriodValue(row)
       ]);
 

@@ -638,7 +638,7 @@ function NewLedgerReport() {
           className={window.innerWidth > 576 ? "px-3" : "py-1 px-3"}
           style={{
             overflow: 'visible',
-            paddingTop: window.innerWidth > 576 ? '2.5rem' : undefined,
+            paddingTop: window.innerWidth > 576 ? '3rem' : undefined,
           }}
         >
           <Form>
