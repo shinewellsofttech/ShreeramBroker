@@ -4798,6 +4798,8 @@ const LedgerReport = () => {
                                         All ({footerCalcs.all.count} Records)
                                       </div> */}
                                       <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
+                                        <span style={{ color: "#FFD700" }}>{footerCalcs.all.count}</span>
+                                        <span style={{ color: "#A0A0A0" }}> | </span>
                                         <span style={{ color: "#FFFFFF" }}>B:{footerCalcs.all.buyQty.toFixed(2)}</span>
                                         <span style={{ color: "#A0A0A0" }}> | </span>
                                         <span style={{ color: "#FFFFFF" }}>S:{footerCalcs.all.sellQty.toFixed(2)}</span>
@@ -4883,6 +4885,8 @@ const LedgerReport = () => {
                                             Selected ({footerCalcs.selected.count} Records)
                                           </div> */}
                                           <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
+                                            <span style={{ color: "#000000" }}>{footerCalcs.selected.count}</span>
+                                            <span style={{ color: "#333333" }}> | </span>
                                             <span style={{ color: "#000000" }}>B:{footerCalcs.selected.buyQty.toFixed(2)}</span>
                                             <span style={{ color: "#333333" }}> | </span>
                                             <span style={{ color: "#000000" }}>S:{footerCalcs.selected.sellQty.toFixed(2)}</span>
