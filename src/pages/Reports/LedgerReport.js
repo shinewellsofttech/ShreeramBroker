@@ -918,7 +918,7 @@ const LedgerReport = () => {
       case 'party':
         return (
           <div onClick={openPartyModal} className="bottom-filter-control" style={{ backgroundColor: "#E3F2FD", color: "#333", border: "1px solid #2196F3", borderRadius: "6px", height: "32px", minHeight: "32px", padding: "0 8px", fontSize: "0.65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-            <span>{selectedParties && selectedParties.length > 0 ? `${selectedParties.length} selected` : "Party"}</span>
+            <span>{selectedParties !== null ? `${selectedParties.length} selected` : "Party"}</span>
             <i className="fas fa-chevron-down ms-2"></i>
           </div>
         );
@@ -1065,7 +1065,7 @@ const LedgerReport = () => {
   const [selectedLedger, setSelectedLedger] = useState("")
   const [fromDate, setFromDate] = useState(globalDates?.fromDate || new Date("2025-01-01T00:00:00")) // Default from date: from global dates
   const [selectedParty, setSelectedParty] = useState("")
-  const [selectedParties, setSelectedParties] = useState([])
+  const [selectedParties, setSelectedParties] = useState(null)
   const [selectedVessels, setSelectedVessels] = useState([])
   const [selectedItem, setSelectedItem] = useState("")
   const [selectedItems, setSelectedItems] = useState([])
@@ -2682,6 +2682,8 @@ const LedgerReport = () => {
         .filter(id => Boolean(id))
       setSelectedRowIds(new Set(allRowIds))
       setSelectionOrder(allRowIds)
+      
+      setSelectedParties(null)
     }
   }, [state.FillArray])
 
@@ -2705,14 +2707,17 @@ const LedgerReport = () => {
     }
 
     // Filter data by selected parties if any parties are selected
-    if (selectedParties && selectedParties.length > 0) {
-      filteredData = filteredData.filter(row =>
-        selectedParties.some(
-          selectedParty =>
-            (row.Buyer && row.Buyer.trim().toLowerCase() === selectedParty.toLowerCase()) ||
-            (row.Seller && row.Seller.trim().toLowerCase() === selectedParty.toLowerCase())
-        )
-      )
+    if (selectedParties !== null) {
+      const selectedPartiesLower = selectedParties.map(p => p.toLowerCase())
+      filteredData = filteredData.filter(row => {
+        const buyer = row.Buyer ? row.Buyer.trim().toLowerCase() : null
+        const seller = row.Seller ? row.Seller.trim().toLowerCase() : null
+        
+        const isBuyerValid = buyer ? selectedPartiesLower.includes(buyer) : true
+        const isSellerValid = seller ? selectedPartiesLower.includes(seller) : true
+        
+        return isBuyerValid && isSellerValid
+      })
     }
 
     // Filter data by selected vessel if one is selected
@@ -3074,7 +3079,12 @@ const LedgerReport = () => {
 
   // Filters Modal Handlers - Individual dropdown modals
   const openPartyModal = () => {
-    setTempSelectedParties(selectedParties)
+    if (selectedParties === null) {
+      const allParties = getUniquePartiesFromData().map(p => p.value)
+      setTempSelectedParties(allParties)
+    } else {
+      setTempSelectedParties(selectedParties)
+    }
     setShowPartyModal(true)
   }
 
