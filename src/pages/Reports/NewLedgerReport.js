@@ -436,6 +436,11 @@ function NewLedgerReport() {
           padding: 0;
         }
         
+        .ledger-report-wrapper .card-body {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+        }
+        
         @media (max-width: 576px) {
           .ledger-report-wrapper {
             margin-top: 0 !important;
@@ -607,6 +612,36 @@ function NewLedgerReport() {
           background-color: #0b5ed7 !important;
           box-shadow: 0 2px 4px rgba(13, 110, 253, 0.4) !important;
         }
+
+        .checkbox-green:checked {
+          border-color: #198754 !important;
+          background-color: #198754 !important;
+          box-shadow: 0 1px 3px rgba(25, 135, 84, 0.3) !important;
+        }
+        .checkbox-green:hover:checked {
+          border-color: #157347 !important;
+          background-color: #157347 !important;
+          box-shadow: 0 2px 4px rgba(25, 135, 84, 0.4) !important;
+        }
+        .checkbox-green:focus {
+          border-color: #198754 !important;
+          box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25), 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .checkbox-red:checked {
+          border-color: #dc3545 !important;
+          background-color: #dc3545 !important;
+          box-shadow: 0 1px 3px rgba(220, 53, 69, 0.3) !important;
+        }
+        .checkbox-red:hover:checked {
+          border-color: #bb2d3b !important;
+          background-color: #bb2d3b !important;
+          box-shadow: 0 2px 4px rgba(220, 53, 69, 0.4) !important;
+        }
+        .checkbox-red:focus {
+          border-color: #dc3545 !important;
+          box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25), 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+        }
         
         /* Override Bootstrap striped table styles - no alternate colors */
         .table-scroll-container table tbody tr {
@@ -635,7 +670,7 @@ function NewLedgerReport() {
       {/* Filter Form */}
       <Card className="shadow-sm border-0 mb-2" style={{ flexShrink: 0 }}>
         <Card.Body
-          className={window.innerWidth > 576 ? "px-3" : "py-1 px-3"}
+          className={window.innerWidth > 576 ? "px-0" : "py-1 px-0"}
           style={{
             overflow: 'visible',
             paddingTop: window.innerWidth > 576 ? '3rem' : undefined,
@@ -657,7 +692,7 @@ function NewLedgerReport() {
                                 <input
                                   type="checkbox"
                                   id="total-greater-than-zero"
-                                  className="form-check-input"
+                                  className="form-check-input checkbox-green"
                                   checked={totalFilter.has(">0")}
                                   onClick={e => {
                                     e.stopPropagation()
@@ -670,7 +705,7 @@ function NewLedgerReport() {
                                   }}
                                   style={{ marginTop: '0' }}
                                 />
-                                <label htmlFor="total-greater-than-zero" className="form-check-label small" style={{ fontSize: '0.7rem', marginLeft: '4px' }}>
+                                <label htmlFor="total-greater-than-zero" className="form-check-label small" style={{ fontSize: '0.7rem', marginLeft: '4px', color: totalFilter.has(">0") ? '#198754' : 'inherit', fontWeight: totalFilter.has(">0") ? 'bold' : 'normal' }}>
                                   {">0"}
                                 </label>
                               </div>
@@ -678,7 +713,7 @@ function NewLedgerReport() {
                                 <input
                                   type="checkbox"
                                   id="total-equals-zero"
-                                  className="form-check-input"
+                                  className="form-check-input checkbox-red"
                                   checked={totalFilter.has("=0")}
                                   onClick={e => {
                                     e.stopPropagation()
@@ -691,7 +726,7 @@ function NewLedgerReport() {
                                   }}
                                   style={{ marginTop: '0' }}
                                 />
-                                <label htmlFor="total-equals-zero" className="form-check-label small" style={{ fontSize: '0.7rem', marginLeft: '4px' }}>
+                                <label htmlFor="total-equals-zero" className="form-check-label small" style={{ fontSize: '0.7rem', marginLeft: '4px', color: totalFilter.has("=0") ? '#dc3545' : 'inherit', fontWeight: totalFilter.has("=0") ? 'bold' : 'normal' }}>
                                   {"=0"}
                                 </label>
                               </div>
