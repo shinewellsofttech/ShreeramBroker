@@ -5835,37 +5835,43 @@ const LedgerReport = () => {
                 </FormLabel>
               </div>
               <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px", padding: "10px" }}>
-                {getUniquePartiesFromData().map((party) => (
-                  <div
-                    key={party.value}
-                    style={{
-                      padding: "8px",
-                      cursor: "pointer",
-                      borderRadius: "4px",
-                      backgroundColor: tempSelectedParties.some(p => p === party.value) ? "#e7f3ff" : "transparent",
-                      marginBottom: "4px",
-                    }}
-                    onClick={() => {
-                      const isSelected = tempSelectedParties.some(p => p === party.value)
-                      if (isSelected) {
-                        setTempSelectedParties(tempSelectedParties.filter(p => p !== party.value))
-                      } else {
-                        setTempSelectedParties([...tempSelectedParties, party.value])
-                      }
-                    }}
-
-                  >
-                    <div className="d-flex align-items-center">
-                      <input
-                        type="checkbox"
-                        checked={tempSelectedParties.some(p => p === party.value)}
-                        onChange={() => { }}
-                        style={{ marginRight: "10px", cursor: "pointer" }}
-                      />
-                      <span>{party.label}</span>
+                {getUniquePartiesFromData().map((party) => {
+                  const isHeadLedger = selectedLedgerNames.includes(party.value)
+                  return (
+                    <div
+                      key={party.value}
+                      style={{
+                        padding: "8px",
+                        cursor: isHeadLedger ? "not-allowed" : "pointer",
+                        borderRadius: "4px",
+                        backgroundColor: tempSelectedParties.some(p => p === party.value) ? "#e7f3ff" : "transparent",
+                        marginBottom: "4px",
+                        opacity: isHeadLedger ? 0.8 : 1,
+                      }}
+                      onClick={() => {
+                        if (isHeadLedger) return;
+                        
+                        const isSelected = tempSelectedParties.some(p => p === party.value)
+                        if (isSelected) {
+                          setTempSelectedParties(tempSelectedParties.filter(p => p !== party.value))
+                        } else {
+                          setTempSelectedParties([...tempSelectedParties, party.value])
+                        }
+                      }}
+                    >
+                      <div className="d-flex align-items-center">
+                        <input
+                          type="checkbox"
+                          checked={tempSelectedParties.some(p => p === party.value)}
+                          onChange={() => { }}
+                          style={{ marginRight: "10px", cursor: isHeadLedger ? "not-allowed" : "pointer" }}
+                          disabled={isHeadLedger}
+                        />
+                        <span>{party.label} {isHeadLedger && <span className="badge bg-secondary ms-2" style={{ fontSize: "0.6rem" }}>Head</span>}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 {getUniquePartiesFromData().length === 0 && (
                   <div className="text-center text-muted py-3">
                     No parties available
@@ -5876,7 +5882,12 @@ const LedgerReport = () => {
           </Form>
         </ModalBody>
         <ModalFooter className="d-flex justify-content-end gap-2">
-          <Button variant="outline-secondary" size="sm" onClick={() => setTempSelectedParties([])}>
+          <Button variant="outline-secondary" size="sm" onClick={() => {
+            const headLedgers = getUniquePartiesFromData()
+              .filter(p => selectedLedgerNames.includes(p.value))
+              .map(p => p.value)
+            setTempSelectedParties(headLedgers)
+          }}>
             Clear All
           </Button>
           <Button variant="outline-primary" size="sm" onClick={() => {

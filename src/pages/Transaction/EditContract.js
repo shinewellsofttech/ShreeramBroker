@@ -949,7 +949,7 @@ const EditContract = ({
       const totalLiftingQtyCheck = validLiftingRowsCheck.reduce((sum, row) => {
         return sum + parseFloat(row.Lifted || 0)
       }, 0)
-      if (contractQtyCheck > 0 && totalLiftingQtyCheck > contractQtyCheck) {
+      if (contractQtyCheck > 0 && Math.trunc(totalLiftingQtyCheck) > Math.trunc(contractQtyCheck)) {
         setState(prev => ({
           ...prev,
           isProgress: false,

@@ -407,25 +407,17 @@ const ContractPrint2 = () => {
 
               {/* Terms & Conditions */}
               <div className="terms-conditions" style={{ marginBottom: "8px" }}>
-                <div className="terms-header-section" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                  <h4 className="terms-title" style={{ fontSize: "15px", fontWeight: "bold", color: "#000", margin: "0", textDecoration: "underline" }}>
-                    TERMS & CONDITIONS
-                  </h4>
-                  <div className="regards-text" style={{ fontSize: "12px", color: "#000", fontWeight: "bold", fontStyle: "italic" }}>
-                    Thanking with Regards
-                  </div>
-                </div>
                 <div className="terms-list">
                   <div className="term-item" style={{ marginBottom: "6px", lineHeight: "1.3" }}>
-                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "2px" }}>
-                      1. SAMPLING AND QUALITY:
+                    <span className="term-number" style={{ fontSize: "12px", color: "#000", marginRight: "5px", display: "inline" }}>
+                      <strong style={{ fontWeight: "900" }}>T&C:</strong> <span style={{ fontWeight: "bold" }}>1. SAMPLING AND QUALITY:</span>
                     </span>
                     <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
                       Buyer may appoint their surveyor to draw samples from the tank/s alloted by the seller to lift the material and buyer should start lifting only after satisfaction with quality specifications. The seller will not be responsible for any quality rebate after the tanker leaves from the installation.'/During the loading of tankar, sample draw & seal should be in front of drivers.
                     </span>
                   </div>
                   <div className="term-item" style={{ marginBottom: "6px", lineHeight: "1.3" }}>
-                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "2px" }}>
+                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", marginRight: "5px", display: "inline" }}>
                       2. INFORMATION FLOW:
                     </span>
                     <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
@@ -433,7 +425,7 @@ const ContractPrint2 = () => {
                     </span>
                   </div>
                   <div className="term-item" style={{ marginBottom: "6px", lineHeight: "1.3" }}>
-                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "2px" }}>
+                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", marginRight: "5px", display: "inline" }}>
                       3. ARBITRATIONS:
                     </span>
                     <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
@@ -441,7 +433,7 @@ const ContractPrint2 = () => {
                     </span>
                   </div>
                   <div className="term-item" style={{ marginBottom: "6px", lineHeight: "1.3" }}>
-                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", display: "block", marginBottom: "2px" }}>
+                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", marginRight: "5px", display: "inline" }}>
                       4. BROKERAGE:
                     </span>
                     <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
