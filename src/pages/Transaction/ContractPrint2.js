@@ -440,6 +440,14 @@ const ContractPrint2 = () => {
                       Brokerage : Rs 75 /- MT (PLUS APPLICABLE GST)
                     </span>
                   </div>
+                  <div className="term-item" style={{ marginBottom: "6px", lineHeight: "1.3" }}>
+                    <span className="term-number" style={{ fontSize: "12px", fontWeight: "bold", color: "#000", marginRight: "5px", display: "inline" }}>
+                      5.
+                    </span>
+                    <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
+                      For any transaction/contract done through our brokerage firm, we shall be responsible for the settlement and execution of the contract, including payment, receipt, difference settlement, and delivery. Further, any party who has entered into a contract through our brokerage firm may transact through another broker or directly with a buyer/seller only after obtaining prior permission/NOC from SRAB, in case such transaction is going outside the chain of transactions handled through SRAB.
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
