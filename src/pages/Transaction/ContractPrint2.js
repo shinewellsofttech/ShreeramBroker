@@ -445,7 +445,7 @@ const ContractPrint2 = () => {
                       5.
                     </span>
                     <span className="term-description" style={{ fontSize: "12px", color: "#000", lineHeight: "1.3", fontWeight: "bold" }}>
-                      For any transaction/contract done through our brokerage firm, we shall be responsible for the settlement and execution of the contract, including payment, receipt, difference settlement, and delivery. Further, any party who has entered into a contract through our brokerage firm may transact through another broker or directly with a buyer/seller only after obtaining prior permission/NOC from SRAB, in case such transaction is going outside the chain of transactions handled through SRAB.
+                      For any transaction/contract done through our brokerage firm, we shall be responsible for the settlement and execution of the contract, including payment, receipt, difference settlement, and delivery, only if confirmation via email agreeing to pay brokerage @ Rs. 75/- MT with effect from 1st April 2026 is provided to us; otherwise, we shall not be responsible for the same. Further, any party who has entered into a contract through our brokerage firm may transact through another broker or directly with a buyer/seller only after obtaining prior permission/NOC from SRAB, in case such transaction is going outside the chain of transactions handled through SRAB.
                     </span>
                   </div>
                 </div>

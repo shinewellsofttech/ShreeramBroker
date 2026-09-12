@@ -33,6 +33,8 @@ export default function useColumnResize(storageKey, defaultWidths) {
   const activeRef = useRef(false);
   const rafId = useRef(null);
   const pendingWidth = useRef(null);
+  const hasMovedRef = useRef(false);
+  const justResizedRef = useRef(false);
 
   const handleResizeMouseDown = useCallback((e, colKey) => {
     e.preventDefault();
@@ -54,6 +56,8 @@ export default function useColumnResize(storageKey, defaultWidths) {
       startWidth: columnWidths[colKey] || defaultWidths[colKey] || 80,
     };
     activeRef.current = true;
+    hasMovedRef.current = false;
+    justResizedRef.current = true;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     // Prevent text selection on mobile
@@ -80,6 +84,10 @@ export default function useColumnResize(storageKey, defaultWidths) {
       }
 
       const diff = clientX - resizingCol.current.startX;
+      if (Math.abs(diff) > 1) {
+        hasMovedRef.current = true;
+      }
+
       const newWidth = Math.max(1, resizingCol.current.startWidth + diff);
       const colKey = resizingCol.current.key;
       // Throttle updates using requestAnimationFrame to prevent rapid re-renders (mobile crash fix)
@@ -111,6 +119,25 @@ export default function useColumnResize(storageKey, defaultWidths) {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       document.body.style.webkitUserSelect = '';
+
+      // Suppress any accidental click/sort trigger following drag release
+      if (hasMovedRef.current) {
+        const suppressClick = (clickEv) => {
+          clickEv.stopPropagation();
+          clickEv.preventDefault();
+          window.removeEventListener('click', suppressClick, true);
+        };
+        window.addEventListener('click', suppressClick, true);
+        setTimeout(() => {
+          window.removeEventListener('click', suppressClick, true);
+        }, 300);
+      }
+
+      setTimeout(() => {
+        justResizedRef.current = false;
+        hasMovedRef.current = false;
+      }, 300);
+
       setColumnWidths(prev => {
         try {
           localStorage.setItem(storageKey, JSON.stringify(prev));
@@ -143,5 +170,7 @@ export default function useColumnResize(storageKey, defaultWidths) {
     try { localStorage.removeItem(storageKey); } catch (e) { /* ignore */ }
   }, [defaultWidths, storageKey]);
 
-  return { columnWidths, handleResizeMouseDown, resetColumnWidths };
+  const isResizing = useCallback(() => activeRef.current || justResizedRef.current, []);
+
+  return { columnWidths, handleResizeMouseDown, resetColumnWidths, isResizing, justResizedRef };
 }

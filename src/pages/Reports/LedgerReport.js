@@ -631,7 +631,7 @@ const LedgerReport = () => {
     Note: 120,
   }
 
-  const { columnWidths, handleResizeMouseDown } = useColumnResize('ledgerReport_columnWidths', COLUMN_DEFAULT_WIDTHS)
+  const { columnWidths, handleResizeMouseDown, isResizing } = useColumnResize('ledgerReport_columnWidths', COLUMN_DEFAULT_WIDTHS)
   // --- End Column Resize Feature ----------------------------------
 
   // --- Column Configuration ---------------------------------------
@@ -682,6 +682,7 @@ const LedgerReport = () => {
   const [lrColumnOrder, setLrColumnOrder] = useState(lrGetInitialOrder);
   const [lrDragOverKey, setLrDragOverKey] = useState(null);
   const lrDragSrcRef = useRef(null);
+  const lrJustDraggedRef = useRef(false);
 
   const lrSaveOrder = (order) => {
     try { localStorage.setItem(LR_ORDER_KEY, JSON.stringify(order)); } catch (e) { }
@@ -713,8 +714,17 @@ const LedgerReport = () => {
     });
     setLrDragOverKey(null);
     lrDragSrcRef.current = null;
+    lrJustDraggedRef.current = true;
+    setTimeout(() => { lrJustDraggedRef.current = false; }, 250);
   };
-  const lrDragEnd = () => { setLrDragOverKey(null); lrDragSrcRef.current = null; };
+  const lrDragEnd = () => {
+    if (lrDragSrcRef.current) {
+      lrJustDraggedRef.current = true;
+      setTimeout(() => { lrJustDraggedRef.current = false; }, 250);
+    }
+    setLrDragOverKey(null);
+    lrDragSrcRef.current = null;
+  };
   const lrVisibleColumns = () => lrColumnOrder
     .map(k => ALL_COLUMNS.find(c => c.key === k))
     .filter(Boolean)
@@ -4212,7 +4222,8 @@ const LedgerReport = () => {
   const getGroupHeaderCellProps = (colKey, group, ledgerTotals) => {
     let content = ""
     let halign = "center"
-    let widthVal = `${columnWidths[colKey] || COLUMN_DEFAULT_WIDTHS[colKey] || 80}px`
+    const colW = columnWidths[colKey] || COLUMN_DEFAULT_WIDTHS[colKey] || 80
+    let widthVal = `${colW}px`
     
     // Default styling — no internal column borders for group header row (looks like a merged row)
     let cellStyle = {
@@ -4227,6 +4238,10 @@ const LedgerReport = () => {
       boxShadow: "none",
       fontSize: "0.6rem",
       fontWeight: "bold",
+      width: widthVal,
+      minWidth: widthVal,
+      maxWidth: widthVal,
+      boxSizing: "border-box",
     }
     
     if (colKey === "CheckBox") {
@@ -4502,377 +4517,332 @@ const LedgerReport = () => {
                         height: "100%",
                       }}
                     >
-                      <Table
-                        bordered
-                        hover
-                        className="resizable-table"
-                        style={{
-                          tableLayout: "fixed",
-                          minWidth: "100%",
-                          whiteSpace: "nowrap",
-                          margin: 0,
-                          padding: 0,
-                        }}
-                      >
-                        <thead
-                          style={{
-                            position: "sticky",
-                            top: 0,
-                            zIndex: 10,
-                          }}
-                        >
-                          <tr>
-                            {lrVisibleColumns().map((col) => (
-                              <th
-                                key={col.key}
-                                className={`text-center align-middle${lrDragOverKey === col.key ? ' col-drag-over' : ''}`}
-                                draggable={col.key !== 'CheckBox'}
-                                onDragStart={col.key !== 'CheckBox' ? (e => lrDragStart(e, col.key)) : undefined}
-                                onDragOver={e => lrDragOver(e, col.key)}
-                                onDrop={e => lrDrop(e, col.key)}
-                                onDragEnd={lrDragEnd}
-                                style={{
-                                  backgroundColor: "#0000FF",
-                                  color: "white",
-                                  height: "25px",
-                                  fontSize: "0.7rem",
-                                  fontWeight: "600",
-                                  padding: col.key === 'CheckBox' ? '6px 12px' : '0 8px',
-                                  width: `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`,
-                                  maxWidth: `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`,
-                                  minWidth: "1px",
-                                  cursor: col.key !== 'CheckBox' ? "grab" : "default",
-                                  border: "1.5px solid black",
-                                  boxShadow: "none",
-                                  position: "relative",
-                                  overflow: "hidden",
-                                  userSelect: "none",
-                                }}
-                                onClick={() => col.sortKey && handleSort(col.sortKey)}
-                              >
-                                {col.key === 'CheckBox' ? (
-                                  <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", pointerEvents: "none" }}>
-                                    <input
-                                      type="checkbox"
-                                      ref={selectAllRef}
-                                      checked={allVisibleRowsSelected}
-                                      onClick={e => { e.stopPropagation(); handleSelectAllVisibleRows() }}
-                                      disabled={visibleRowIds.length === 0}
-                                      style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer", pointerEvents: "auto" }}
-                                      title="Select all visible contracts"
-                                    />
-                                  </div>
-                                ) : (
-                                  <div style={{ width: "100%", paddingRight: col.sortKey ? "14px" : "0", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0 }}>
-                                    {col.sortKey && (
-                                      <span style={{ display: "inline-flex", flexDirection: "column", marginRight: "2px", flexShrink: 0, lineHeight: 0 }}>
-                                        <i className={`fas fa-caret-up ${sortConfig.key === col.sortKey && sortConfig.direction === "asc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.55rem", lineHeight: "0.55rem" }}></i>
-                                        <i className={`fas fa-caret-down ${sortConfig.key === col.sortKey && sortConfig.direction === "desc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.55rem", lineHeight: "0.55rem" }}></i>
-                                      </span>
-                                    )}
-                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{col.label}</span>
-                                  </div>
-                                )}
-                                <div
-                                  className="col-resize-handle"
-                                  onMouseDown={e => handleResizeMouseDown(e, col.key)}
-                                  onTouchStart={e => handleResizeMouseDown(e, col.key)}
-                                />
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(() => {
-                            const data = tableData
-                            // Always render grouped data
-                            return data.map((group, groupIndex) => (
-                              <React.Fragment key={groupIndex}>
-                                {/* Group Header Row with Totals */}
-                                {(() => {
-                                  const selectedGroupItems = group.items.filter(item => {
-                                    const id = getRowIdentifier(item)
-                                    return id && selectedRowIds.has(id)
-                                  })
-                                  const ledgerTotals =
-                                    calculateLedgerGroupTotals(selectedGroupItems.length > 0 ? selectedGroupItems : group.items)
+                      {(() => {
+                        const lrCols = lrVisibleColumns();
+                        const totalTableWidth = lrCols.reduce(
+                          (sum, col) => sum + (columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80),
+                          0
+                        );
+                        return (
+                          <Table
+                            bordered
+                            hover
+                            className="resizable-table"
+                            style={{
+                              tableLayout: "fixed",
+                              width: `${totalTableWidth}px`,
+                              minWidth: `${totalTableWidth}px`,
+                              whiteSpace: "nowrap",
+                              margin: 0,
+                              padding: 0,
+                            }}
+                          >
+                            <colgroup>
+                              {lrCols.map((col) => {
+                                const colW = columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80;
+                                return (
+                                  <col
+                                    key={col.key}
+                                    style={{
+                                      width: `${colW}px`,
+                                      minWidth: `${colW}px`,
+                                      maxWidth: `${colW}px`,
+                                    }}
+                                  />
+                                );
+                              })}
+                            </colgroup>
+                            <thead
+                              style={{
+                                position: "sticky",
+                                top: 0,
+                                zIndex: 10,
+                              }}
+                            >
+                              <tr>
+                                {lrCols.map((col) => {
+                                  const colW = columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80;
                                   return (
-                                    <tr
+                                    <th
+                                      key={col.key}
+                                      className={`text-center align-middle${lrDragOverKey === col.key ? ' col-drag-over' : ''}`}
+                                      draggable={col.key !== 'CheckBox'}
+                                      onDragStart={col.key !== 'CheckBox' ? (e => lrDragStart(e, col.key)) : undefined}
+                                      onDragOver={e => lrDragOver(e, col.key)}
+                                      onDrop={e => lrDrop(e, col.key)}
+                                      onDragEnd={lrDragEnd}
                                       style={{
-                                        backgroundColor: "#D2B48C",
-                                        height: "28px",
-                                        border: "1px solid #d2b48c",
+                                        backgroundColor: "#0000FF",
+                                        color: "white",
+                                        height: "25px",
+                                        fontSize: "0.7rem",
+                                        fontWeight: "600",
+                                        padding: col.key === 'CheckBox' ? '6px 12px' : '0 8px',
+                                        width: `${colW}px`,
+                                        maxWidth: `${colW}px`,
+                                        minWidth: `${colW}px`,
+                                        boxSizing: "border-box",
+                                        cursor: col.key !== 'CheckBox' ? "grab" : "default",
+                                        border: "1.5px solid black",
+                                        boxShadow: "none",
+                                        position: "relative",
+                                        overflow: "hidden",
+                                        userSelect: "none",
+                                      }}
+                                      onClick={(e) => {
+                                        if (isResizing && isResizing()) return;
+                                        if (lrJustDraggedRef.current) return;
+                                        if (col.sortKey) handleSort(col.sortKey);
                                       }}
                                     >
-                                      {lrVisibleColumns().map((col) => {
-                                        const cellProps = getGroupHeaderCellProps(col.key, group, ledgerTotals)
-                                        return (
-                                          <td
-                                            key={col.key}
-                                            className={`group-header-td text-${cellProps.halign}`}
-                                            style={{
-                                              ...cellProps.style,
-                                              width: cellProps.widthVal,
-                                              maxWidth: cellProps.widthVal,
-                                              minWidth: 0,
-                                              overflow: (col.key === "ContractNo" || col.key === "CheckBox") ? "visible" : "hidden",
+                                      {col.key === 'CheckBox' ? (
+                                        <div style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", pointerEvents: "none" }}>
+                                          <input
+                                            type="checkbox"
+                                            ref={selectAllRef}
+                                            checked={allVisibleRowsSelected}
+                                            onClick={e => { e.stopPropagation(); handleSelectAllVisibleRows() }}
+                                            disabled={visibleRowIds.length === 0}
+                                            style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer", pointerEvents: "auto" }}
+                                            title="Select all visible contracts"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div style={{ width: "100%", paddingRight: col.sortKey ? "14px" : "0", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0 }}>
+                                          {col.sortKey && (
+                                            <span style={{ display: "inline-flex", flexDirection: "column", marginRight: "2px", flexShrink: 0, lineHeight: 0 }}>
+                                              <i className={`fas fa-caret-up ${sortConfig.key === col.sortKey && sortConfig.direction === "asc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.55rem", lineHeight: "0.55rem" }}></i>
+                                              <i className={`fas fa-caret-down ${sortConfig.key === col.sortKey && sortConfig.direction === "desc" ? "text-warning" : "text-light"}`} style={{ fontSize: "0.55rem", lineHeight: "0.55rem" }}></i>
+                                            </span>
+                                          )}
+                                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{col.label}</span>
+                                        </div>
+                                      )}
+                                      <div
+                                        className="col-resize-handle"
+                                        onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+                                        onMouseDown={e => handleResizeMouseDown(e, col.key)}
+                                        onTouchStart={e => handleResizeMouseDown(e, col.key)}
+                                      />
+                                    </th>
+                                  );
+                                })}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(() => {
+                                const data = tableData
+                                // Always render grouped data
+                                return data.map((group, groupIndex) => (
+                                  <React.Fragment key={groupIndex}>
+                                    {/* Group Header Row with Totals */}
+                                    {(() => {
+                                      const selectedGroupItems = group.items.filter(item => {
+                                        const id = getRowIdentifier(item)
+                                        return id && selectedRowIds.has(id)
+                                      })
+                                      const ledgerTotals =
+                                        calculateLedgerGroupTotals(selectedGroupItems.length > 0 ? selectedGroupItems : group.items)
+                                      return (
+                                        <tr
+                                          style={{
+                                            backgroundColor: "#D2B48C",
+                                            height: "28px",
+                                            border: "1px solid #d2b48c",
+                                          }}
+                                        >
+                                          {lrCols.map((col) => {
+                                            const cellProps = getGroupHeaderCellProps(col.key, group, ledgerTotals)
+                                            return (
+                                              <td
+                                                key={col.key}
+                                                className={`group-header-td text-${cellProps.halign}`}
+                                                style={{
+                                                  ...cellProps.style,
+                                                  width: cellProps.widthVal,
+                                                  maxWidth: cellProps.widthVal,
+                                                  minWidth: cellProps.widthVal,
+                                                  boxSizing: "border-box",
+                                                  overflow: (col.key === "ContractNo" || col.key === "CheckBox") ? "visible" : "hidden",
+                                                  textOverflow: "ellipsis",
+                                                  whiteSpace: "nowrap",
+                                                }}
+                                              >
+                                                {cellProps.content}
+                                              </td>
+                                            )
+                                          })}
+                                        </tr>
+                                      )
+                                    })()}
+                                    {/* Group Items */}
+                                    {group.items.map((row, rowIndex) => {
+                                      const rowId = getRowIdentifier(row)
+                                      const isRowSelected = rowId
+                                        ? selectedRowIds.has(rowId)
+                                        : false
+
+                                      return (
+                                        <tr
+                                          key={`${groupIndex}-${rowIndex}`}
+                                          className={
+                                            row.Lifted == 0 ||
+                                              row.Lifted == null ||
+                                              row.Lifted == undefined
+                                              ? "table-secondary fw-semibold" // light grey
+                                              : row.Lifted == row.PurQty ||
+                                                row.Lifted == row.SelQty
+                                                ? "table-info fw-semibold" // light blue
+                                                : row.PurQty > row.Lifted ||
+                                                  row.SelQty > row.Lifted
+                                                  ? "table-danger fw-semibold" // light red
+                                                  : ""
+                                          }
+                                          style={{
+                                            height: "25px",
+                                            borderBottom: "1px solid #dee2e6",
+                                            color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit",
+                                            fontWeight: row.Status === "S" ? "bold" : "inherit",
+                                          }}
+
+                                        >
+                                          {lrCols.map((col) => {
+                                            const colW = columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80;
+                                            const colWVal = `${colW}px`;
+                                            const tdStyle = {
+                                              verticalAlign: "middle",
+                                              padding: col.key === 'CheckBox' ? '4px' : '2px 4px',
+                                              border: "1.5px solid black",
+                                              color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit",
+                                              fontWeight: row.Status === "S" ? "bold" : "inherit",
+                                              fontSize: "0.7rem",
+                                              width: colWVal,
+                                              minWidth: colWVal,
+                                              maxWidth: colWVal,
+                                              boxSizing: "border-box",
+                                              overflow: "hidden",
                                               textOverflow: "ellipsis",
                                               whiteSpace: "nowrap",
-                                            }}
-                                          >
-                                            {cellProps.content}
-                                          </td>
-                                        )
-                                      })}
-                                    </tr>
-                                  )
-                                })()}
-                                {/* Group Items */}
-                                {group.items.map((row, rowIndex) => {
-                                  const rowId = getRowIdentifier(row)
-                                  const isRowSelected = rowId
-                                    ? selectedRowIds.has(rowId)
-                                    : false
-
-                                  return (
-                                    <tr
-                                      key={`${groupIndex}-${rowIndex}`}
-                                      className={
-                                        row.Lifted == 0 ||
-                                          row.Lifted == null ||
-                                          row.Lifted == undefined
-                                          ? "table-secondary fw-semibold" // light grey
-                                          : row.Lifted == row.PurQty ||
-                                            row.Lifted == row.SelQty
-                                            ? "table-info fw-semibold" // light blue
-                                            : row.PurQty > row.Lifted ||
-                                              row.SelQty > row.Lifted
-                                              ? "table-danger fw-semibold" // light red
-                                              : ""
-                                      }
-                                      style={{
-                                        height: "25px",
-                                        borderBottom: "1px solid #dee2e6",
-                                        color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit",
-                                        fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                      }}
-
-                                    >
-                                      {lrVisibleColumns().map((col) => {
-                                        const tdStyle = {
-                                          verticalAlign: "middle",
-                                          padding: col.key === 'CheckBox' ? '4px' : '2px 4px',
-                                          border: "1.5px solid black",
-                                          color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit",
-                                          fontWeight: row.Status === "S" ? "bold" : "inherit",
-                                          fontSize: "0.7rem",
-                                        }
-                                        const tdNumStyle = {
-                                          ...tdStyle,
-                                          textAlign: "right",
-                                          boxShadow: "none",
-                                        }
-                                        switch (col.key) {
-                                          case 'CheckBox': return (
-                                            <td key={col.key} className={`text-center align-middle ${rowId && selectedRowIds.has(rowId) ? 'contractno-selected' : 'contractno-unselected'}`} style={{ ...tdStyle, padding: "4px", width: "35px" }}>
-                                              {rowId && selectedRowIds.has(rowId) ? (
-                                                <div
-                                                  onClick={e => { e.stopPropagation(); toggleRowSelection(row) }}
-                                                  style={{ width: "24px", height: "24px", borderRadius: "4px", backgroundColor: "#556ee6", color: "white", fontWeight: "bold", fontSize: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", border: "2px solid #556ee6" }}
-                                                  title={`Sequence #${selectionOrder.indexOf(rowId) + 1} - Click to deselect`}
-                                                >
-                                                  {selectionOrder.indexOf(rowId) + 1}
-                                                </div>
-                                              ) : (
-                                                <input type="checkbox" checked={false} onClick={e => { e.stopPropagation(); toggleRowSelection(row) }} style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer" }} title="Select contract" />
-                                              )}
-                                            </td>
-                                          )
-                                          case 'ContractNo': return (
-                                            <td key={col.key} className={`${row.Status === "S" ? "fw-bold" : "fw-semibold"} ${rowId && selectedRowIds.has(rowId) ? 'contractno-selected' : 'contractno-unselected'}`} style={{ ...tdStyle, padding: "2px 2px", width: `${columnWidths['ContractNo'] || COLUMN_DEFAULT_WIDTHS['ContractNo'] || 110}px`, maxWidth: `${columnWidths['ContractNo'] || COLUMN_DEFAULT_WIDTHS['ContractNo'] || 110}px`, minWidth: 0, overflow: "hidden", backgroundColor: rowId && selectedRowIds.has(rowId) ? "#fffec8" : undefined }}>
-                                              {row.ContractNo ? (
-                                                <div className="d-flex align-items-center" style={{ overflow: "hidden", minWidth: 0 }}>
-                                                  <Button variant="link" className={`p-0 text-decoration-none fw-bold ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ cursor: "pointer", transition: "all 0.2s ease", border: "none", background: "none", padding: "1px 2px", borderRadius: "4px", display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "0.75rem", whiteSpace: "nowrap", width: "100%", minWidth: 0, overflow: "hidden", justifyContent: "flex-start", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd", fontWeight: "bold" }} onMouseEnter={e => { e.target.style.color = row.Status === "S" ? "#b02550" : row.Status === "P" ? "#0d4f27" : "#0056b3"; e.target.style.textDecoration = "underline"; e.target.style.backgroundColor = "#f8f9fa" }} onMouseLeave={e => { e.target.style.color = row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd"; e.target.style.textDecoration = "none"; e.target.style.backgroundColor = "transparent" }} onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button">
-                                                    <i className={`fas fa-edit ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd", flexShrink: 0 }}></i>
-                                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{row.ContractNo}</span>
-                                                  </Button>
-                                                </div>
-                                              ) : "-"}
-                                            </td>
-                                          )
-                                          case 'ContractDate': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center", width: `${columnWidths['ContractDate'] || COLUMN_DEFAULT_WIDTHS['ContractDate'] || 90}px`, maxWidth: `${columnWidths['ContractDate'] || COLUMN_DEFAULT_WIDTHS['ContractDate'] || 90}px`, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.ContractDate || "-"}</td>
-                                          case 'Seller': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, width: `${columnWidths['Seller'] || COLUMN_DEFAULT_WIDTHS['Seller'] || 120}px`, maxWidth: `${columnWidths['Seller'] || COLUMN_DEFAULT_WIDTHS['Seller'] || 120}px`, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.Seller || "-"}</td>
-                                          case 'Buyer': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, width: `${columnWidths['Buyer'] || COLUMN_DEFAULT_WIDTHS['Buyer'] || 120}px`, maxWidth: `${columnWidths['Buyer'] || COLUMN_DEFAULT_WIDTHS['Buyer'] || 120}px`, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.Buyer || "-"}</td>
-                                          case 'Status': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Status || "-"}</td>
-                                          case 'Unit': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Unit || "-"}</td>
-                                          case 'Item': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Item || "-"}</td>
-                                          case 'PurQty': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.PurQty ? parseFloat(row.PurQty).toFixed(2) : "0.00"}</td>
-                                          case 'SelQty': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.SelQty ? parseFloat(row.SelQty).toFixed(2) : "0.00"}</td>
-                                          case 'Vessel': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Vessel || "-"}</td>
-                                          case 'Rate': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Rate ? parseFloat(row.Rate).toFixed(2) : "0.00"}</td>
-                                          case 'ContPeriod': return <td key={col.key} className={row.Status === "S" ? "text-center fw-bold" : "text-center"} style={tdStyle}>{row.ShipmentOrLifted || "-"}</td>
-                                          case 'DeliveryPort': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.DeliveryPort || "-"}</td>
-                                          case 'SAdvPayment': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Status === "S" ? (row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00") : ""}</td>
-                                          case 'PAdvPayment': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Status === "P" ? (row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00") : ""}</td>
-                                          case 'AdvDate': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.AdvDate || "-"}</td>
-                                          case 'Lifted': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Lifted ? parseFloat(row.Lifted).toFixed(2) : "0.00"}</td>
-                                          case 'Contract': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Contract || "-"}</td>
-                                          case 'Lifting': return (
-                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "top", padding: "0", border: "1.5px solid black", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
-                                              {(() => {
-                                                if (!row.LiftingJson) return "-";
-                                                try {
-                                                  const liftingData = JSON.parse(row.LiftingJson);
-                                                  if (!Array.isArray(liftingData) || liftingData.length === 0) return "-";
-                                                  return (
-                                                    <div style={{ maxHeight: "150px", overflowY: "auto", width: "100%", margin: 0, padding: 0 }}>
-                                                      <table style={{ width: "100%", fontSize: "0.55rem", borderCollapse: "collapse", margin: 0, padding: 0, border: "none" }}>
-                                                        <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8f9fa", zIndex: 1, borderBottom: "1px solid #ccc" }}>
-                                                          <tr>
-                                                            <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Date</th>
-                                                            <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>LorryNo</th>
-                                                            <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>BNo/InvNo</th>
-                                                            <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Qty</th>
-                                                            <th style={{ padding: "2px", textAlign: "left", width: "20%", fontWeight: 600 }}>Rate</th>
-                                                          </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                          {liftingData.map((lift, idx) => (
-                                                            <tr key={idx} style={{ borderBottom: "1px dashed #eee" }}>
-                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LiftDate || '-'}</td>
-                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LorryNo || '-'}</td>
-                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.BNo || lift.InvoiceNo || '-'}</td>
-                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
-                                                              <td style={{ padding: '2px', textAlign: 'left' }}>{lift.Rate != null ? lift.Rate : '-'}</td>
-                                                            </tr>
-                                                          ))}
-                                                        </tbody>
-                                                      </table>
+                                            }
+                                            const tdNumStyle = {
+                                              ...tdStyle,
+                                              textAlign: "right",
+                                              boxShadow: "none",
+                                            }
+                                            switch (col.key) {
+                                              case 'CheckBox': return (
+                                                <td key={col.key} className={`text-center align-middle ${rowId && selectedRowIds.has(rowId) ? 'contractno-selected' : 'contractno-unselected'}`} style={{ ...tdStyle, padding: "4px" }}>
+                                                  {rowId && selectedRowIds.has(rowId) ? (
+                                                    <div
+                                                      onClick={e => { e.stopPropagation(); toggleRowSelection(row) }}
+                                                      style={{ width: "24px", height: "24px", borderRadius: "4px", backgroundColor: "#556ee6", color: "white", fontWeight: "bold", fontSize: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", border: "2px solid #556ee6" }}
+                                                      title={`Sequence #${selectionOrder.indexOf(rowId) + 1} - Click to deselect`}
+                                                    >
+                                                      {selectionOrder.indexOf(rowId) + 1}
                                                     </div>
-                                                  );
-                                                } catch (e) { return "Invalid Data"; }
-                                              })()}
-                                            </td>
-                                          )
-                                          case 'Note': return (
-                                            <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ verticalAlign: "middle", border: "1.5px solid black", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "inherit", fontWeight: row.Status === "S" ? "bold" : "inherit" }}>
-                                              <div className="note-inner">{getCombinedNotes(row)}</div>
-                                            </td>
-                                          )
-                                          default: return null
-                                        }
-                                      })}
-                                    </tr>
-                                  )
-                                })}
-                              </React.Fragment>
-                            ))
-                          })()}
-                        </tbody>
-                        <tfoot
-                          style={{
-                            position: "sticky",
-                            bottom: 0,
-                            zIndex: 10,
-                            overflow: "visible",
-                          }}
-                        >
-                          {(() => {
-                            const footerCalcs = getFooterCalculations()
-                            return (
-                              <>
-                                {/* --- All Records Totals --- */}
-                                {/* Mobile view */}
-                                <tr className="totals-row d-md-none">
-                                  <td
-                                    colSpan={lrVisibleColumns().length}
-                                    className="border-bottom text-start p-0"
-                                    style={{
-                                      verticalAlign: "middle",
-                                      border: "none",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        backgroundColor: "#4B0082",
-                                        padding: "6px 8px",
-                                        width: "100%",
-                                        height: "100%",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "2px",
-                                        boxSizing: "border-box",
-                                      }}
-                                    >
-                                      {/* <div className="fw-bold" style={{ fontSize: "0.75rem", color: "#FFD700" }}>
-                                        All ({footerCalcs.all.count} Records)
-                                      </div> */}
-                                      <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
-                                        <span style={{ color: "#FFD700" }}>{footerCalcs.all.count}</span>
-                                        <span style={{ color: "#A0A0A0" }}> | </span>
-                                        <span style={{ color: "#FFFFFF" }}>B:{footerCalcs.all.buyQty.toFixed(2)}</span>
-                                        <span style={{ color: "#A0A0A0" }}> | </span>
-                                        <span style={{ color: "#FFFFFF" }}>S:{footerCalcs.all.sellQty.toFixed(2)}</span>
-                                        <span style={{ color: "#A0A0A0" }}> | </span>
-                                        <span style={{ color: "#FFFFFF" }}>BA:{footerCalcs.all.buyAvg.toFixed(2)}</span>
-                                        <span style={{ color: "#A0A0A0" }}> | </span>
-                                        <span style={{ color: "#FFFFFF" }}>SA:{footerCalcs.all.sellAvg.toFixed(2)}</span>
-                                        <span style={{ color: "#A0A0A0" }}> | </span>
-                                        <span style={{ color: footerCalcs.all.diff >= 0 ? "#90EE90" : "#FFB6C1" }}>
-                                          Diff:{footerCalcs.all.diff.toFixed(2)}
-                                        </span>
-                                        <span style={{ color: "#A0A0A0" }}> | </span>
-                                        <span style={{ color: "#FFFFFF" }}>S.Adv:{footerCalcs.all.sAdv.toFixed(2)}</span>
-                                        <span style={{ color: "#A0A0A0" }}> | </span>
-                                        <span style={{ color: "#FFFFFF" }}>P.Adv:{footerCalcs.all.pAdv.toFixed(2)}</span>
-                                        <span style={{ color: "#A0A0A0" }}> | </span>
-                                        <span style={{ color: "#FFFFFF" }}>Lifted:{footerCalcs.all.lifted.toFixed(2)}</span>
-                                      </small>
-                                    </div>
-                                  </td>
-                                </tr>
-                                {/* Desktop view */}
-                                <tr
-                                  className="totals-row d-none d-md-table-row"
-                                  style={{
-                                    height: "25px",
-                                    backgroundColor: "#4B0082",
-                                    color: "black",
-                                  }}
-                                >
-                                  {lrVisibleColumns().map((col) => {
-                                    const widthVal = `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`
-                                    const cellProps = getFooterCellProps(col.key, 'all', footerCalcs)
-                                    return (
-                                      <td
-                                        key={col.key}
-                                        className={`text-${cellProps.halign} fw-bold`}
-                                        style={{
-                                          verticalAlign: "middle",
-                                          padding: "0 4px",
-                                          border: "1.5px solid black",
-                                          width: widthVal,
-                                          maxWidth: widthVal,
-                                          minWidth: 0,
-                                          overflow: "hidden",
-                                          textOverflow: "ellipsis",
-                                          whiteSpace: "nowrap",
-                                          fontSize: "0.65rem",
-                                        }}
-                                      >
-                                        {cellProps.content}
-                                      </td>
-                                    )
-                                  })}
-                                </tr>
-
-                                {/* --- Selected Rows Totals --- */}
-                                {footerCalcs.selected.hasSelection && (
+                                                  ) : (
+                                                    <input type="checkbox" checked={false} onClick={e => { e.stopPropagation(); toggleRowSelection(row) }} style={{ width: "12px", height: "12px", margin: "0", cursor: "pointer" }} title="Select contract" />
+                                                  )}
+                                                </td>
+                                              )
+                                              case 'ContractNo': return (
+                                                <td key={col.key} className={`${row.Status === "S" ? "fw-bold" : "fw-semibold"} ${rowId && selectedRowIds.has(rowId) ? 'contractno-selected' : 'contractno-unselected'}`} style={{ ...tdStyle, padding: "2px 2px", backgroundColor: rowId && selectedRowIds.has(rowId) ? "#fffec8" : undefined }}>
+                                                  {row.ContractNo ? (
+                                                    <div className="d-flex align-items-center" style={{ overflow: "hidden", minWidth: 0, width: "100%" }}>
+                                                      <Button variant="link" className={`p-0 text-decoration-none fw-bold ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ cursor: "pointer", transition: "all 0.2s ease", border: "none", background: "none", padding: "1px 2px", borderRadius: "4px", display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "0.75rem", whiteSpace: "nowrap", width: "100%", minWidth: 0, overflow: "hidden", justifyContent: "flex-start", color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd", fontWeight: "bold" }} onMouseEnter={e => { e.target.style.color = row.Status === "S" ? "#b02550" : row.Status === "P" ? "#0d4f27" : "#0056b3"; e.target.style.textDecoration = "underline"; e.target.style.backgroundColor = "#f8f9fa" }} onMouseLeave={e => { e.target.style.color = row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd"; e.target.style.textDecoration = "none"; e.target.style.backgroundColor = "transparent" }} onClick={event => { const button = event.target.closest("button"); const orig = button.innerHTML; button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...'; button.disabled = true; setTimeout(() => { openEditContractModal(row); button.innerHTML = orig; button.disabled = false }, 300) }} title={`Click to edit contract: ${row.ContractNo}`} tabIndex={0} role="button">
+                                                        <i className={`fas fa-edit ${row.Status === "S" ? "" : row.Status === "P" ? "" : "text-primary"}`} style={{ color: row.Status === "S" ? "#d62d5d" : row.Status === "P" ? "#166534" : "#0d6efd", flexShrink: 0 }}></i>
+                                                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{row.ContractNo}</span>
+                                                      </Button>
+                                                    </div>
+                                                  ) : "-"}
+                                                </td>
+                                              )
+                                              case 'ContractDate': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.ContractDate || "-"}</td>
+                                              case 'Seller': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Seller || "-"}</td>
+                                              case 'Buyer': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Buyer || "-"}</td>
+                                              case 'Status': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Status || "-"}</td>
+                                              case 'Unit': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Unit || "-"}</td>
+                                              case 'Item': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Item || "-"}</td>
+                                              case 'PurQty': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.PurQty ? parseFloat(row.PurQty).toFixed(2) : "0.00"}</td>
+                                              case 'SelQty': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.SelQty ? parseFloat(row.SelQty).toFixed(2) : "0.00"}</td>
+                                              case 'Vessel': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.Vessel || "-"}</td>
+                                              case 'Rate': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Rate ? parseFloat(row.Rate).toFixed(2) : "0.00"}</td>
+                                              case 'ContPeriod': return <td key={col.key} className={row.Status === "S" ? "text-center fw-bold" : "text-center"} style={tdStyle}>{row.ShipmentOrLifted || "-"}</td>
+                                              case 'DeliveryPort': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={tdStyle}>{row.DeliveryPort || "-"}</td>
+                                              case 'SAdvPayment': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Status === "S" ? (row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00") : ""}</td>
+                                              case 'PAdvPayment': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Status === "P" ? (row.AdvPayment ? parseFloat(row.AdvPayment).toFixed(2) : "0.00") : ""}</td>
+                                              case 'AdvDate': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.AdvDate || "-"}</td>
+                                              case 'Lifted': return <td key={col.key} className={row.Status === "S" ? "text-end fw-bold" : "text-end fw-semibold"} style={tdNumStyle}>{row.Lifted ? parseFloat(row.Lifted).toFixed(2) : "0.00"}</td>
+                                              case 'Contract': return <td key={col.key} className={row.Status === "S" ? "fw-bold" : ""} style={{ ...tdStyle, textAlign: "center" }}>{row.Contract || "-"}</td>
+                                              case 'Lifting': return (
+                                                <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ ...tdStyle, verticalAlign: "top", padding: "0" }}>
+                                                  {(() => {
+                                                    if (!row.LiftingJson) return "-";
+                                                    try {
+                                                      const liftingData = JSON.parse(row.LiftingJson);
+                                                      if (!Array.isArray(liftingData) || liftingData.length === 0) return "-";
+                                                      return (
+                                                        <div style={{ maxHeight: "150px", overflowY: "auto", width: "100%", margin: 0, padding: 0 }}>
+                                                          <table style={{ width: "100%", fontSize: "0.55rem", borderCollapse: "collapse", margin: 0, padding: 0, border: "none" }}>
+                                                            <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8f9fa", zIndex: 1, borderBottom: "1px solid #ccc" }}>
+                                                              <tr>
+                                                                <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Date</th>
+                                                                <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>LorryNo</th>
+                                                                <th style={{ padding: "2px", textAlign: "left", width: "25%", fontWeight: 600 }}>BNo/InvNo</th>
+                                                                <th style={{ padding: "2px", textAlign: "left", width: "15%", fontWeight: 600 }}>Qty</th>
+                                                                <th style={{ padding: "2px", textAlign: "left", width: "20%", fontWeight: 600 }}>Rate</th>
+                                                              </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                              {liftingData.map((lift, idx) => (
+                                                                <tr key={idx} style={{ borderBottom: "1px dashed #eee" }}>
+                                                                  <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LiftDate || '-'}</td>
+                                                                  <td style={{ padding: '2px', textAlign: 'left' }}>{lift.LorryNo || '-'}</td>
+                                                                  <td style={{ padding: '2px', textAlign: 'left' }}>{lift.BNo || lift.InvoiceNo || '-'}</td>
+                                                                  <td style={{ padding: '2px', textAlign: 'left' }}>{Number(lift.LiftedQty).toFixed(4).replace(/\.?0+$/, '')}</td>
+                                                                  <td style={{ padding: '2px', textAlign: 'left' }}>{lift.Rate != null ? lift.Rate : '-'}</td>
+                                                                </tr>
+                                                              ))}
+                                                            </tbody>
+                                                          </table>
+                                                        </div>
+                                                      );
+                                                    } catch (e) { return "Invalid Data"; }
+                                                  })()}
+                                                </td>
+                                              )
+                                              case 'Note': return (
+                                                <td key={col.key} className={`ledger-note-cell ${row.Status === "S" ? "fw-bold" : ""}`} style={{ ...tdStyle, verticalAlign: "middle" }}>
+                                                  <div className="note-inner">{getCombinedNotes(row)}</div>
+                                                </td>
+                                              )
+                                              default: return null
+                                            }
+                                          })}
+                                        </tr>
+                                      )
+                                    })}
+                                  </React.Fragment>
+                                ))
+                              })()}
+                            </tbody>
+                            <tfoot
+                              style={{
+                                position: "sticky",
+                                bottom: 0,
+                                zIndex: 10,
+                                overflow: "visible",
+                              }}
+                            >
+                              {(() => {
+                                const footerCalcs = getFooterCalculations()
+                                return (
                                   <>
+                                    {/* --- All Records Totals --- */}
                                     {/* Mobile view */}
-                                    <tr className="selected-totals-row d-md-none">
+                                    <tr className="totals-row d-md-none">
                                       <td
-                                        colSpan={lrVisibleColumns().length}
+                                        colSpan={lrCols.length}
                                         className="border-bottom text-start p-0"
                                         style={{
                                           verticalAlign: "middle",
@@ -4881,7 +4851,7 @@ const LedgerReport = () => {
                                       >
                                         <div
                                           style={{
-                                            backgroundColor: "#FF8C00",
+                                            backgroundColor: "#4B0082",
                                             padding: "6px 8px",
                                             width: "100%",
                                             height: "100%",
@@ -4891,45 +4861,45 @@ const LedgerReport = () => {
                                             boxSizing: "border-box",
                                           }}
                                         >
-                                          {/* <div className="fw-bold" style={{ fontSize: "0.75rem", color: "#FFFFFF" }}>
-                                            Selected ({footerCalcs.selected.count} Records)
-                                          </div> */}
+                                          {/* <div className="fw-bold" style={{ fontSize: "0.75rem", color: "#FFD700" }}>
+                                        All ({footerCalcs.all.count} Records)
+                                      </div> */}
                                           <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
-                                            <span style={{ color: "#000000" }}>{footerCalcs.selected.count}</span>
-                                            <span style={{ color: "#333333" }}> | </span>
-                                            <span style={{ color: "#000000" }}>B:{footerCalcs.selected.buyQty.toFixed(2)}</span>
-                                            <span style={{ color: "#333333" }}> | </span>
-                                            <span style={{ color: "#000000" }}>S:{footerCalcs.selected.sellQty.toFixed(2)}</span>
-                                            <span style={{ color: "#333333" }}> | </span>
-                                            <span style={{ color: "#000000" }}>BA:{footerCalcs.selected.buyAvg.toFixed(2)}</span>
-                                            <span style={{ color: "#333333" }}> | </span>
-                                            <span style={{ color: "#000000" }}>SA:{footerCalcs.selected.sellAvg.toFixed(2)}</span>
-                                            <span style={{ color: "#333333" }}> | </span>
-                                            <span style={{ color: footerCalcs.selected.diff >= 0 ? "#006400" : "#8B0000" }}>
-                                              Diff:{footerCalcs.selected.diff.toFixed(2)}
+                                            <span style={{ color: "#FFD700" }}>{footerCalcs.all.count}</span>
+                                            <span style={{ color: "#A0A0A0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>B:{footerCalcs.all.buyQty.toFixed(2)}</span>
+                                            <span style={{ color: "#A0A0A0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>S:{footerCalcs.all.sellQty.toFixed(2)}</span>
+                                            <span style={{ color: "#A0A0A0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>BA:{footerCalcs.all.buyAvg.toFixed(2)}</span>
+                                            <span style={{ color: "#A0A0A0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>SA:{footerCalcs.all.sellAvg.toFixed(2)}</span>
+                                            <span style={{ color: "#A0A0A0" }}> | </span>
+                                            <span style={{ color: footerCalcs.all.diff >= 0 ? "#90EE90" : "#FFB6C1" }}>
+                                              Diff:{footerCalcs.all.diff.toFixed(2)}
                                             </span>
-                                            <span style={{ color: "#333333" }}> | </span>
-                                            <span style={{ color: "#000000" }}>S.Adv:{footerCalcs.selected.sAdv.toFixed(2)}</span>
-                                            <span style={{ color: "#333333" }}> | </span>
-                                            <span style={{ color: "#000000" }}>P.Adv:{footerCalcs.selected.pAdv.toFixed(2)}</span>
-                                            <span style={{ color: "#333333" }}> | </span>
-                                            <span style={{ color: "#000000" }}>Lifted:{footerCalcs.selected.lifted.toFixed(2)}</span>
+                                            <span style={{ color: "#A0A0A0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>S.Adv:{footerCalcs.all.sAdv.toFixed(2)}</span>
+                                            <span style={{ color: "#A0A0A0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>P.Adv:{footerCalcs.all.pAdv.toFixed(2)}</span>
+                                            <span style={{ color: "#A0A0A0" }}> | </span>
+                                            <span style={{ color: "#FFFFFF" }}>Lifted:{footerCalcs.all.lifted.toFixed(2)}</span>
                                           </small>
                                         </div>
                                       </td>
                                     </tr>
                                     {/* Desktop view */}
                                     <tr
-                                      className="selected-totals-row d-none d-md-table-row"
+                                      className="totals-row d-none d-md-table-row"
                                       style={{
                                         height: "25px",
-                                        backgroundColor: "#FF8C00",
+                                        backgroundColor: "#4B0082",
                                         color: "black",
                                       }}
                                     >
-                                      {lrVisibleColumns().map((col) => {
+                                      {lrCols.map((col) => {
                                         const widthVal = `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`
-                                        const cellProps = getFooterCellProps(col.key, 'selected', footerCalcs)
+                                        const cellProps = getFooterCellProps(col.key, 'all', footerCalcs)
                                         return (
                                           <td
                                             key={col.key}
@@ -4940,7 +4910,8 @@ const LedgerReport = () => {
                                               border: "1.5px solid black",
                                               width: widthVal,
                                               maxWidth: widthVal,
-                                              minWidth: 0,
+                                              minWidth: widthVal,
+                                              boxSizing: "border-box",
                                               overflow: "hidden",
                                               textOverflow: "ellipsis",
                                               whiteSpace: "nowrap",
@@ -4952,13 +4923,103 @@ const LedgerReport = () => {
                                         )
                                       })}
                                     </tr>
+
+                                    {/* --- Selected Rows Totals --- */}
+                                    {footerCalcs.selected.hasSelection && (
+                                      <>
+                                        {/* Mobile view */}
+                                        <tr className="selected-totals-row d-md-none">
+                                          <td
+                                            colSpan={lrCols.length}
+                                            className="border-bottom text-start p-0"
+                                            style={{
+                                              verticalAlign: "middle",
+                                              border: "none",
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                backgroundColor: "#FF8C00",
+                                                padding: "6px 8px",
+                                                width: "100%",
+                                                height: "100%",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "2px",
+                                                boxSizing: "border-box",
+                                              }}
+                                            >
+                                              {/* <div className="fw-bold" style={{ fontSize: "0.75rem", color: "#FFFFFF" }}>
+                                            Selected ({footerCalcs.selected.count} Records)
+                                          </div> */}
+                                              <small style={{ fontSize: "0.7rem", fontWeight: "bold", display: "block" }}>
+                                                <span style={{ color: "#000000" }}>{footerCalcs.selected.count}</span>
+                                                <span style={{ color: "#333333" }}> | </span>
+                                                <span style={{ color: "#000000" }}>B:{footerCalcs.selected.buyQty.toFixed(2)}</span>
+                                                <span style={{ color: "#333333" }}> | </span>
+                                                <span style={{ color: "#000000" }}>S:{footerCalcs.selected.sellQty.toFixed(2)}</span>
+                                                <span style={{ color: "#333333" }}> | </span>
+                                                <span style={{ color: "#000000" }}>BA:{footerCalcs.selected.buyAvg.toFixed(2)}</span>
+                                                <span style={{ color: "#333333" }}> | </span>
+                                                <span style={{ color: "#000000" }}>SA:{footerCalcs.selected.sellAvg.toFixed(2)}</span>
+                                                <span style={{ color: "#333333" }}> | </span>
+                                                <span style={{ color: footerCalcs.selected.diff >= 0 ? "#006400" : "#8B0000" }}>
+                                                  Diff:{footerCalcs.selected.diff.toFixed(2)}
+                                                </span>
+                                                <span style={{ color: "#333333" }}> | </span>
+                                                <span style={{ color: "#000000" }}>S.Adv:{footerCalcs.selected.sAdv.toFixed(2)}</span>
+                                                <span style={{ color: "#333333" }}> | </span>
+                                                <span style={{ color: "#000000" }}>P.Adv:{footerCalcs.selected.pAdv.toFixed(2)}</span>
+                                                <span style={{ color: "#333333" }}> | </span>
+                                                <span style={{ color: "#000000" }}>Lifted:{footerCalcs.selected.lifted.toFixed(2)}</span>
+                                              </small>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                        {/* Desktop view */}
+                                        <tr
+                                          className="selected-totals-row d-none d-md-table-row"
+                                          style={{
+                                            height: "25px",
+                                            backgroundColor: "#FF8C00",
+                                            color: "black",
+                                          }}
+                                        >
+                                          {lrCols.map((col) => {
+                                            const widthVal = `${columnWidths[col.key] || COLUMN_DEFAULT_WIDTHS[col.key] || 80}px`
+                                            const cellProps = getFooterCellProps(col.key, 'selected', footerCalcs)
+                                            return (
+                                              <td
+                                                key={col.key}
+                                                className={`text-${cellProps.halign} fw-bold`}
+                                                style={{
+                                                  verticalAlign: "middle",
+                                                  padding: "0 4px",
+                                                  border: "1.5px solid black",
+                                                  width: widthVal,
+                                                  maxWidth: widthVal,
+                                                  minWidth: widthVal,
+                                                  boxSizing: "border-box",
+                                                  overflow: "hidden",
+                                                  textOverflow: "ellipsis",
+                                                  whiteSpace: "nowrap",
+                                                  fontSize: "0.65rem",
+                                                }}
+                                              >
+                                                {cellProps.content}
+                                              </td>
+                                            )
+                                          })}
+                                        </tr>
+                                      </>
+                                    )}
                                   </>
-                                )}
-                              </>
-                            )
-                          })()}
-                        </tfoot>
-                      </Table>
+                                )
+                              })()}
+                            </tfoot>
+                          </Table>
+                        );
+                      })()}
                     </div>
 
                     {/* Filters Bar - Party, Item, Period Dropdowns - Below Table (attached to table, no gap) */}
